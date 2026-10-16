@@ -1,0 +1,363 @@
+/* HAK Backe – en formgivningsfil, sektionsvis.
+   1 Grund och tokens  2 Ram och navigering  3 Kort och ytor  4 Tabeller
+   5 Rutnät (bemanning)  6 Formulär  7 Brickor och mätare  8 Diagram  9 Smått */
+
+/* ---------- 1 Grund och tokens ---------- */
+:root {
+  --yta:        #f6f7f9;
+  --yta-2:      #ffffff;
+  --yta-3:      #eef1f5;
+  --yta-hover:  #e7ecf3;
+  --ram:        #d3d9e2;
+  --ram-stark:  #b4bdca;
+  --text:       #1b2230;
+  --text-svag:  #5d6878;
+  --text-svagar:#8a94a3;
+  --blaa:       #2f6fb3;
+  --blaa-mjuk:  #e3eefa;
+  --gron:       #1f7a4d;
+  --gron-mjuk:  #e0f3e8;
+  --gul:        #9a6400;
+  --gul-mjuk:   #fdf0d5;
+  --rod:        #b3261e;
+  --rod-mjuk:   #fbe4e2;
+  --lila:       #6b4fa8;
+  --natt:       #30406b;
+  --natt-mjuk:  #e8ecf7;
+  --skugga:     0 1px 2px rgba(16, 24, 40, .06), 0 4px 12px rgba(16, 24, 40, .05);
+  --radie:      6px;
+  --radie-s:    4px;
+  --rad:        26px;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+[data-tema='morkt'] {
+  --yta:        #11151c;
+  --yta-2:      #171d26;
+  --yta-3:      #1e2631;
+  --yta-hover:  #26303d;
+  --ram:        #2c3745;
+  --ram-stark:  #3e4b5c;
+  --text:       #e6ebf2;
+  --text-svag:  #9aa6b6;
+  --text-svagar:#6c7889;
+  --blaa:       #74a8e8;
+  --blaa-mjuk:  #1b2a3d;
+  --gron:       #6fcf97;
+  --gron-mjuk:  #162a21;
+  --gul:        #e3b341;
+  --gul-mjuk:   #2c2415;
+  --rod:        #f28b82;
+  --rod-mjuk:   #30191a;
+  --lila:       #b39ddb;
+  --natt:       #8fa6e0;
+  --natt-mjuk:  #1c2335;
+  --skugga:     0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+}
+
+* { box-sizing: border-box; }
+html, body, #rot { height: 100%; }
+body {
+  margin: 0;
+  font: 13px/1.45 var(--sans);
+  color: var(--text);
+  background: var(--yta);
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
+h1 { font-size: 17px; }
+h2 { font-size: 15px; }
+h3 { font-size: 13px; }
+h4 { font-size: 12px; color: var(--text-svag); text-transform: uppercase; letter-spacing: .06em; }
+a { color: var(--blaa); text-decoration: none; }
+a:hover { text-decoration: underline; }
+p { margin: 0 0 8px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.svag { color: var(--text-svag); }
+.svagare { color: var(--text-svagar); }
+.liten { font-size: 11.5px; }
+.mitten { text-align: center; }
+.hoger { text-align: right; }
+.radbryt { white-space: nowrap; }
+.full { width: 100%; }
+.rad { display: flex; gap: 8px; align-items: center; }
+.rad-mellan { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.kolumn { display: flex; flex-direction: column; gap: 8px; }
+.vaxa { flex: 1 1 auto; min-width: 0; }
+.gap-16 { gap: 16px; }
+.hopp { flex-wrap: wrap; }
+
+/* ---------- 2 Ram och navigering ---------- */
+.skal { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+.topp {
+  display: flex; align-items: center; gap: 14px;
+  padding: 0 14px; height: 46px;
+  background: var(--yta-2); border-bottom: 1px solid var(--ram);
+  position: sticky; top: 0; z-index: 40;
+}
+.marke { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.02em; }
+.marke span.ikon { font-size: 17px; }
+.marke small { font-weight: 500; color: var(--text-svag); letter-spacing: 0; }
+.meny { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+.meny::-webkit-scrollbar { display: none; }
+.meny a {
+  padding: 5px 10px; border-radius: var(--radie-s); color: var(--text-svag);
+  white-space: nowrap; font-weight: 500;
+}
+.meny a:hover { background: var(--yta-3); color: var(--text); text-decoration: none; }
+.meny a[aria-current='page'] { background: var(--blaa-mjuk); color: var(--blaa); }
+.toppslut { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.innehall { overflow: auto; padding: 14px; }
+.sida { max-width: 1680px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.sidhuvud { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.sidhuvud .undertext { color: var(--text-svag); font-size: 12px; }
+
+/* ---------- 3 Kort och ytor ---------- */
+.kort {
+  background: var(--yta-2); border: 1px solid var(--ram);
+  border-radius: var(--radie); box-shadow: var(--skugga);
+}
+.kort > header {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 10px; border-bottom: 1px solid var(--ram); background: var(--yta-3);
+  border-radius: var(--radie) var(--radie) 0 0; min-height: 34px;
+}
+.kort > .kropp { padding: 10px; }
+.kort > .kropp.tat { padding: 0; }
+.rutor { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
+.rutor.bred { grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); }
+.tva { display: grid; gap: 12px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 1000px) { .tva { grid-template-columns: 1fr; } }
+.skiljare { height: 1px; background: var(--ram); margin: 8px 0; }
+
+/* ---------- 4 Tabeller ---------- */
+.tabellramp { overflow: auto; max-width: 100%; }
+table.data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
+table.data th {
+  position: sticky; top: 0; z-index: 2;
+  background: var(--yta-3); color: var(--text-svag);
+  font-weight: 600; text-align: left; white-space: nowrap;
+  padding: 5px 8px; border-bottom: 1px solid var(--ram-stark);
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
+}
+table.data th.sorterbar { cursor: pointer; user-select: none; }
+table.data th.sorterbar:hover { color: var(--text); }
+table.data td {
+  padding: 4px 8px; border-bottom: 1px solid var(--ram);
+  height: var(--rad); vertical-align: middle;
+}
+table.data tbody tr:hover > td { background: var(--yta-hover); }
+table.data tr.valdrad > td { background: var(--blaa-mjuk); }
+table.data tr.klickbar { cursor: pointer; }
+table.data td.sifra, table.data th.sifra { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+table.data tfoot td { font-weight: 600; background: var(--yta-3); }
+table.data td.redigerbar { padding: 0; }
+table.data td.redigerbar input, table.data td.redigerbar select {
+  width: 100%; height: calc(var(--rad) - 1px); border: 0; background: transparent;
+  padding: 0 8px; color: inherit; font: inherit;
+}
+table.data td.redigerbar input:focus, table.data td.redigerbar select:focus {
+  outline: 2px solid var(--blaa); outline-offset: -2px; background: var(--yta-2);
+}
+.tomt { padding: 18px; text-align: center; color: var(--text-svagar); }
+
+/* ---------- 5 Rutnät (bemanning) ---------- */
+.rutnatsramp { overflow: auto; max-height: calc(100vh - 230px); }
+table.rutnat { border-collapse: separate; border-spacing: 0; font-size: 12px; }
+table.rutnat th, table.rutnat td { border-right: 1px solid var(--ram); border-bottom: 1px solid var(--ram); }
+table.rutnat thead th {
+  position: sticky; top: 0; z-index: 3; background: var(--yta-3);
+  padding: 3px 6px; font-size: 11px; font-weight: 600; text-align: center; min-width: 96px;
+}
+table.rutnat thead th.helgdag { background: var(--natt-mjuk); color: var(--natt); }
+table.rutnat thead th .dagnamn { display: block; color: var(--text-svag); font-weight: 500; font-size: 10.5px; text-transform: uppercase; }
+table.rutnat th.hornruta {
+  position: sticky; left: 0; top: 0; z-index: 5; min-width: 180px; text-align: left;
+  background: var(--yta-3); border-right: 2px solid var(--ram-stark);
+}
+table.rutnat th.radrubrik {
+  position: sticky; left: 0; z-index: 2; background: var(--yta-2);
+  text-align: left; padding: 3px 8px; min-width: 180px; max-width: 180px;
+  border-right: 2px solid var(--ram-stark); font-weight: 500;
+}
+table.rutnat th.radrubrik .tid { font-family: var(--mono); color: var(--text-svag); font-size: 11px; }
+table.rutnat th.gruppen {
+  position: sticky; left: 0; z-index: 2; background: var(--yta-3); text-align: left;
+  padding: 3px 8px; font-weight: 700; font-size: 11.5px; border-right: 2px solid var(--ram-stark);
+}
+table.rutnat tr.gruppsrad td { background: var(--yta-3); }
+td.cell { padding: 0; height: 30px; vertical-align: top; position: relative; }
+td.cell.helgdag { background: color-mix(in srgb, var(--natt-mjuk) 45%, transparent); }
+.cellknapp {
+  display: flex; flex-direction: column; justify-content: center; gap: 1px;
+  width: 100%; height: 100%; border: 0; background: transparent; cursor: pointer;
+  padding: 2px 5px; text-align: left; color: inherit; font: inherit;
+}
+.cellknapp:focus-visible { outline: 2px solid var(--blaa); outline-offset: -2px; }
+.cellknapp .namnrad { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
+.cellknapp .antal { font-family: var(--mono); font-size: 10.5px; color: var(--text-svag); }
+td.cell.full { background: var(--gron-mjuk); }
+td.cell.delvis { background: var(--gul-mjuk); }
+td.cell.tom { background: var(--rod-mjuk); }
+td.cell.mitt { box-shadow: inset 3px 0 0 var(--blaa); }
+td.cell.markerad { outline: 2px solid var(--blaa); outline-offset: -2px; z-index: 1; }
+td.cell.obokbar { background: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--yta-3) 4px, var(--yta-3) 8px); }
+.initial {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 15px; padding: 0 3px; border-radius: 3px;
+  background: var(--yta-3); border: 1px solid var(--ram-stark);
+  font-size: 10px; font-weight: 700; letter-spacing: .02em;
+}
+.initial.jag { background: var(--blaa); border-color: var(--blaa); color: #fff; }
+.initial.auto { border-style: dashed; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-svag); align-items: center; }
+.legend i { display: inline-block; width: 11px; height: 11px; border: 1px solid var(--ram-stark); border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+/* ---------- 6 Formulär ---------- */
+label.falt { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--text-svag); min-width: 0; }
+label.falt > span.krav::after { content: ' *'; color: var(--rod); }
+input, select, textarea, button { font: inherit; color: inherit; }
+input[type='text'], input[type='number'], input[type='date'], input[type='time'],
+input[type='password'], input[type='email'], select, textarea {
+  background: var(--yta-2); border: 1px solid var(--ram-stark); border-radius: var(--radie-s);
+  padding: 4px 7px; min-height: 28px; color: var(--text); width: 100%;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--blaa); outline-offset: -1px; border-color: var(--blaa); }
+textarea { min-height: 62px; resize: vertical; line-height: 1.4; }
+input[type='checkbox'] { width: 15px; height: 15px; accent-color: var(--blaa); }
+.faltrad { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); align-items: end; }
+button, .knapp {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  background: var(--yta-2); border: 1px solid var(--ram-stark); border-radius: var(--radie-s);
+  padding: 4px 10px; min-height: 28px; cursor: pointer; font-weight: 500; white-space: nowrap;
+}
+button:hover, .knapp:hover { background: var(--yta-hover); text-decoration: none; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+button.primar { background: var(--blaa); border-color: var(--blaa); color: #fff; }
+button.primar:hover { filter: brightness(1.07); }
+button.fara { color: var(--rod); border-color: color-mix(in srgb, var(--rod) 50%, var(--ram-stark)); }
+button.tom { border-color: transparent; background: transparent; color: var(--text-svag); }
+button.tom:hover { background: var(--yta-3); color: var(--text); }
+button.liten, .knapp.liten { min-height: 22px; padding: 1px 7px; font-size: 11.5px; }
+.knapprad { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.segment { display: inline-flex; border: 1px solid var(--ram-stark); border-radius: var(--radie-s); overflow: hidden; }
+.segment button { border: 0; border-radius: 0; border-right: 1px solid var(--ram-stark); min-height: 26px; }
+.segment button:last-child { border-right: 0; }
+.segment button[aria-pressed='true'] { background: var(--blaa-mjuk); color: var(--blaa); font-weight: 600; }
+
+/* ---------- 7 Brickor, mätare, meddelanden ---------- */
+.bricka {
+  display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px;
+  border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap;
+  background: var(--yta-3); border: 1px solid var(--ram); color: var(--text-svag);
+}
+.bricka.bla { background: var(--blaa-mjuk); color: var(--blaa); border-color: transparent; }
+.bricka.gron { background: var(--gron-mjuk); color: var(--gron); border-color: transparent; }
+.bricka.gul { background: var(--gul-mjuk); color: var(--gul); border-color: transparent; }
+.bricka.rod { background: var(--rod-mjuk); color: var(--rod); border-color: transparent; }
+.bricka.natt { background: var(--natt-mjuk); color: var(--natt); border-color: transparent; }
+.bricka.lila { background: color-mix(in srgb, var(--lila) 16%, transparent); color: var(--lila); border-color: transparent; }
+.prick { width: 7px; height: 7px; border-radius: 99px; display: inline-block; background: currentColor; }
+.matare { height: 7px; border-radius: 99px; background: var(--yta-3); overflow: hidden; border: 1px solid var(--ram); }
+.matare > span { display: block; height: 100%; background: var(--blaa); }
+.matare.gron > span { background: var(--gron); }
+.matare.gul > span { background: var(--gul); }
+.matare.rod > span { background: var(--rod); }
+.stortal { font-family: var(--mono); font-size: 25px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
+.stortal small { font-size: 12px; font-weight: 500; color: var(--text-svag); margin-left: 2px; font-family: var(--sans); }
+.nyckeltal { display: flex; flex-direction: column; gap: 2px; }
+.nyckeltal .etikett { font-size: 11px; color: var(--text-svag); text-transform: uppercase; letter-spacing: .05em; }
+.meddelande { padding: 7px 10px; border-radius: var(--radie-s); border: 1px solid var(--ram); font-size: 12px; }
+.meddelande.fel { background: var(--rod-mjuk); border-color: color-mix(in srgb, var(--rod) 35%, transparent); color: var(--rod); }
+.meddelande.ok { background: var(--gron-mjuk); border-color: color-mix(in srgb, var(--gron) 35%, transparent); color: var(--gron); }
+.meddelande.info { background: var(--blaa-mjuk); border-color: color-mix(in srgb, var(--blaa) 30%, transparent); color: var(--blaa); }
+.meddelande.varning { background: var(--gul-mjuk); border-color: color-mix(in srgb, var(--gul) 35%, transparent); color: var(--gul); }
+.brodtext { font-size: 12.5px; white-space: pre-wrap; }
+
+/* Klartecken-panel */
+.klartecken { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.klartecken .lampa {
+  width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center;
+  font-family: var(--mono); font-size: 16px; font-weight: 700; border: 1px solid var(--ram-stark);
+}
+.klartecken.utmarkt .lampa, .klartecken.mycket_bra .lampa { background: var(--gron-mjuk); color: var(--gron); }
+.klartecken.bra .lampa, .klartecken.ok .lampa { background: var(--blaa-mjuk); color: var(--blaa); }
+.klartecken.marginellt .lampa { background: var(--gul-mjuk); color: var(--gul); }
+.klartecken.nej .lampa, .klartecken.okant .lampa { background: var(--rod-mjuk); color: var(--rod); }
+
+/* ---------- 8 Diagram ---------- */
+.stapel { display: flex; flex-direction: column; gap: 5px; }
+.stapel .post { display: grid; grid-template-columns: 130px 1fr 54px; gap: 8px; align-items: center; font-size: 12px; }
+.stapel .spar { height: 14px; background: var(--yta-3); border: 1px solid var(--ram); border-radius: 3px; overflow: hidden; }
+.stapel .spar > span { display: block; height: 100%; background: var(--blaa); }
+svg.graf { width: 100%; height: auto; display: block; }
+svg.graf .linje { fill: none; stroke: var(--blaa); stroke-width: 1.6; }
+svg.graf .linje2 { fill: none; stroke: var(--lila); stroke-width: 1.6; stroke-dasharray: 3 2; }
+svg.graf .yta { fill: color-mix(in srgb, var(--blaa) 14%, transparent); }
+svg.graf .axel { stroke: var(--ram); stroke-width: 1; }
+svg.graf text { fill: var(--text-svag); font-size: 9px; font-family: var(--mono); }
+svg.graf .noll { stroke: var(--ram-stark); stroke-dasharray: 2 2; }
+
+/* ---------- 9 Lådor, modal, inloggning, smått ---------- */
+.lada-bak {
+  position: fixed; inset: 0; background: rgba(10, 14, 20, .45);
+  display: grid; place-items: center; z-index: 60; padding: 16px;
+}
+.lada {
+  background: var(--yta-2); border: 1px solid var(--ram); border-radius: var(--radie);
+  box-shadow: 0 16px 48px rgba(0, 0, 0, .3); width: min(760px, 100%);
+  max-height: 90vh; display: flex; flex-direction: column;
+}
+.lada.bred { width: min(1100px, 100%); }
+.lada > header { padding: 10px 12px; border-bottom: 1px solid var(--ram); display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.lada > .kropp { padding: 12px; overflow: auto; display: flex; flex-direction: column; gap: 10px; }
+.lada > footer { padding: 10px 12px; border-top: 1px solid var(--ram); display: flex; gap: 8px; justify-content: flex-end; }
+
+.inlogg { display: grid; place-items: center; height: 100%; background: var(--yta); }
+.inlogg form { width: min(340px, 92vw); display: flex; flex-direction: column; gap: 10px; }
+.inlogg .marke { justify-content: center; font-size: 19px; margin-bottom: 4px; }
+.inlogg .hjalp { font-size: 11.5px; color: var(--text-svagar); text-align: center; }
+
+.lista { display: flex; flex-direction: column; }
+.lista > li, .lista > .post {
+  display: flex; gap: 8px; align-items: center; justify-content: space-between;
+  padding: 6px 10px; border-bottom: 1px solid var(--ram); list-style: none;
+}
+.lista > li:last-child, .lista > .post:last-child { border-bottom: 0; }
+ul.lista { margin: 0; padding: 0; }
+.punkt { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start; padding: 7px 10px; border-bottom: 1px solid var(--ram); }
+.punkt.avvikande { background: var(--gul-mjuk); }
+.punkt.klar { background: color-mix(in srgb, var(--gron-mjuk) 60%, transparent); }
+.punkt .text { display: flex; flex-direction: column; gap: 2px; }
+.punkt .hjalp { font-size: 11px; color: var(--text-svag); }
+.tidslinje { display: flex; flex-direction: column; gap: 0; }
+.tidslinje .handelse { display: grid; grid-template-columns: 112px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--ram); font-size: 12px; }
+.tidslinje .handelse:last-child { border-bottom: 0; }
+.chip { display: inline-flex; gap: 4px; align-items: center; padding: 1px 6px; border: 1px solid var(--ram-stark); border-radius: 99px; font-size: 11px; background: var(--yta-3); }
+.chip button { border: 0; background: transparent; padding: 0 0 0 2px; min-height: auto; color: var(--text-svag); }
+.flikar { display: flex; gap: 2px; border-bottom: 1px solid var(--ram); }
+.flikar button { border: 0; background: transparent; border-bottom: 2px solid transparent; border-radius: 0; color: var(--text-svag); }
+.flikar button[aria-selected='true'] { border-bottom-color: var(--blaa); color: var(--text); font-weight: 600; }
+.vanta { padding: 24px; text-align: center; color: var(--text-svagar); }
+.notis { position: fixed; right: 14px; bottom: 14px; z-index: 80; display: flex; flex-direction: column; gap: 6px; }
+.notis > div {
+  background: var(--yta-2); border: 1px solid var(--ram); border-left: 3px solid var(--blaa);
+  border-radius: var(--radie-s); box-shadow: var(--skugga); padding: 8px 12px; font-size: 12px;
+  max-width: 420px; animation: in .15s ease-out;
+}
+.notis > div.fel { border-left-color: var(--rod); }
+.notis > div.ok { border-left-color: var(--gron); }
+@keyframes in { from { opacity: 0; transform: translateY(6px); } }
+.tasta { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--ram-stark); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--yta-3); color: var(--text-svag); }
+
+@media (max-width: 720px) {
+  .topp { height: auto; flex-wrap: wrap; padding: 6px 10px; gap: 8px; }
+  .meny { width: 100%; order: 3; }
+  .innehall { padding: 10px; }
+  .stapel .post { grid-template-columns: 90px 1fr 46px; }
+}
+@media print {
+  .topp, .knapprad, .legend { display: none !important; }
+  .innehall { overflow: visible; }
+  .kort { break-inside: avoid; box-shadow: none; }
+}

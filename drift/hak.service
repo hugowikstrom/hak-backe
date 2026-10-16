@@ -1,0 +1,35 @@
+[Unit]
+Description=HAK Backe — snöläggning, checklistor, ärenden och bemanning
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hugo
+Group=hugo
+WorkingDirectory=/home/hugo/hak/backe
+Environment=NODE_ENV=production
+# Caddy kör med network_mode: host och når 127.0.0.1 direkt. Appen ska inte
+# ligga öppen på LAN:et vid sidan av den.
+Environment=HAK_VARD=127.0.0.1
+Environment=HAK_PORT=8120
+Environment=HAK_DB=/home/hugo/hak/backe/data/hak.db
+Environment=HAK_BAS_URL=https://hak.nattviken.com
+# Lokal Mailpit tar emot utskicken. Byt till klubbens SMTP när adresserna
+# är riktiga, och sätt HAK_EPOST_AV=0 för att stoppa all sändning.
+Environment=HAK_SMTP_HOST=127.0.0.1
+Environment=HAK_SMTP_PORT=1025
+Environment="HAK_EPOST_FRAN=HAK Backe <backe@nattviken.com>"
+ExecStart=/usr/bin/node /home/hugo/hak/backe/server/index.mjs
+Restart=on-failure
+RestartSec=3
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+# Enda stället appen skriver: databasen med WAL-filer.
+ReadWritePaths=/home/hugo/hak/backe/data
+
+[Install]
+WantedBy=multi-user.target

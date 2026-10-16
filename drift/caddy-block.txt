@@ -1,0 +1,31 @@
+# ===================================================================
+# HAK Backe — snöläggning och backadministration
+# ===================================================================
+#
+# `hak.service` lyssnar på 127.0.0.1:8120. All data ligger i SQLite under
+# /home/hugo/hak/backe/data och lämnar aldrig maskinen. Inloggning sker med
+# sessionskaka, så inget extra skal behövs — men inget indexeras heller:
+# allt utom inloggningssidan kräver session.
+
+hak.nattviken.com {
+	bind 192.168.68.88
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		X-Frame-Options "DENY"
+		# Appen behöver ingen av de känsliga webbfunktionerna.
+		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		-Server
+	}
+	@private path /.env /.env.* /.git /.git/* /data/* /node_modules/* /server/*
+	respond @private 404
+	request_body {
+		max_size 2MiB
+	}
+	reverse_proxy 127.0.0.1:8120 {
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
+}
