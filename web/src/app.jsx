@@ -1,7 +1,7 @@
 // Skalet: inloggning, navigering och sidval.
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api } from './api.js';
-import { Notiser, Vanta } from './delar/bitar.jsx';
+import { Marke, Notiser, Vanta } from './delar/bitar.jsx';
 import { minstRoll, ROLLNAMN } from './nytta.js';
 import { Inlogg } from './sidor/inlogg.jsx';
 import { Oversikt } from './sidor/oversikt.jsx';
@@ -82,7 +82,7 @@ export function App() {
           <div className="skal">
             <header className="topp">
               <div className="marke">
-                <span className="ikon" aria-hidden="true">⛷</span>
+                <Marke storlek={26} />
                 HAK&nbsp;Backe
               </div>
               <nav className="meny">

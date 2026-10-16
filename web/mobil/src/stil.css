@@ -96,7 +96,8 @@ a { color: var(--gron-mork); }
   position: sticky; top: 0; z-index: 20;
 }
 .topp .marke { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: -.02em; }
-.topp .marke svg { width: 30px; height: 30px; display: block; color: #fff; }
+.topp .marke svg { width: 30px; height: 30px; display: block; }
+.topp .marke { --marke-fond: #fff; --marke-motiv: var(--gron); }
 .topp .marke small { display: block; font-size: 11px; font-weight: 600; opacity: .75; letter-spacing: .04em; text-transform: uppercase; }
 .topp .slut { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .topp button {
@@ -266,6 +267,9 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .ark > footer { padding: 10px 16px 16px; display: flex; gap: 10px; border-top: 1px solid var(--ram); }
 .ark > footer > * { flex: 1 1 0; }
 
+/* Märket på vit yta: grön sköld med vitt motiv. */
+.marke-pa-vitt { --marke-fond: var(--gron); --marke-motiv: #fff; display: inline-flex; }
+
 /* ---------- 9 Smått ---------- */
 .meddelande { padding: 11px 13px; border-radius: var(--radie-s); font-size: 14px; }
 .meddelande.fel { background: var(--fara-mjuk); color: var(--fara); }
@@ -296,4 +300,5 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 }
 .inlogg .huvud { text-align: center; color: #15210a; display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .inlogg .huvud svg { width: 84px; height: 84px; }
+.inlogg .huvud { --marke-fond: #fff; --marke-motiv: var(--gron); }
 .inlogg form { background: var(--yta); border-radius: var(--radie-xl); padding: 18px; box-shadow: var(--skugga); display: flex; flex-direction: column; gap: 14px; }

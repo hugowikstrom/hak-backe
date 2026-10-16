@@ -109,6 +109,11 @@ Hållpunkter:
   Därför överlever en rond både dålig täckning och att appen stängs.
 - **Klubbgrönt `#8cc63f`** ur logotypen bär mobilappen. Grönt på vitt duger
   inte som textfärg – använd `--gron-mork` när det ska läsas.
+- **Märket** (`web/mobil/public/ikon.svg` och `Marke`-komponenten i båda
+  klienterna) är ritat efter klubbemblemet: sköld, vårdkasen och en åkare i
+  sväng. Under 36 px ritas en förenklad variant utan stegpinnar. Ikonerna i
+  `web/mobil/public/ikon-*.png` rasteriseras ur samma SVG – rita om SVG:n och
+  gör om PNG:erna, aldrig tvärtom.
 - `npm run verify` är grinden.
 
 ## Miljövariabler

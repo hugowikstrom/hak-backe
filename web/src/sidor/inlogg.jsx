@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
+import { Marke } from '../delar/bitar.jsx';
 
 export function Inlogg({ klar }) {
   const [anvandarnamn, sattAnv] = useState('');
@@ -25,7 +26,7 @@ export function Inlogg({ klar }) {
     <div className="inlogg">
       <form onSubmit={skicka}>
         <div className="marke">
-          <span className="ikon" aria-hidden="true">⛷</span> HAK Backe
+          <Marke storlek={30} /> HAK Backe
         </div>
         <p className="hjalp">Snöläggning, checklistor, ärenden och bemanning.</p>
         <label className="falt">

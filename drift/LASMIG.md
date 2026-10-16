@@ -31,6 +31,10 @@ gamla versionen – `halsa` säger alltså inte allt. Kör alltid `npm run build
 inte `build:webb` ensamt: bygget rensar `web/dist` först och mobilappen måste
 byggas efteråt.
 
+Appikonerna är rasteriserade ur `web/mobil/public/ikon.svg`. Ändras märket
+måste PNG:erna göras om, annars ligger det gamla kvar på telefonernas
+hemskärmar tills appen installeras om.
+
 Mobilappen är en PWA. Servicearbetaren (`/mobil/sw.js`) cachar appskalet, så
 en telefon kan ligga kvar på en gammal version tills den laddas om. Höj
 `CACHE`-namnet i `web/mobil/public/sw.js` när något i skalet måste ut direkt.

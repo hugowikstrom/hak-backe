@@ -22,7 +22,7 @@ export function Konto() {
       <h1>Konto</h1>
       <section className="kort">
         <div className="kropp rad">
-          <span style={{ color: 'var(--gron-mork)' }}><Marke storlek={44} /></span>
+          <span className="marke-pa-vitt"><Marke storlek={44} /></span>
           <div className="vaxa">
             <strong>{jag.namn}</strong>
             <div className="liten svag">{jag.anvandarnamn} · {ROLLNAMN[jag.roll]}</div>

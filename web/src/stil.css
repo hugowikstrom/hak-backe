@@ -96,7 +96,7 @@ p { margin: 0 0 8px; }
   position: sticky; top: 0; z-index: 40;
 }
 .marke { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.02em; }
-.marke span.ikon { font-size: 17px; }
+.marke .marke-svg { display: block; --marke-fond: #8cc63f; --marke-motiv: #fff; }
 .marke small { font-weight: 500; color: var(--text-svag); letter-spacing: 0; }
 .meny { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
 .meny::-webkit-scrollbar { display: none; }

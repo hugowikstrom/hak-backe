@@ -3,6 +3,53 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState } f
 import { createPortal } from 'react-dom';
 import { ARENDESTATUS, PRIORITET, procent } from '../nytta.js';
 
+/** Klubbmärket: sköld, vårdkasen och en åkare i sväng. */
+export const Marke = ({ storlek = 26 }) => {
+  // Under ~36 px försvinner vårdkasens stegpinnar. Då ritas en förenklad
+  // variant: skölden och åkaren, lite större och grövre.
+  if (storlek < 36)
+    return (
+      <svg viewBox="0 0 512 512" width={storlek} height={storlek} aria-hidden="true" className="marke-svg">
+        <path
+          d="M110 96 h268 a14 14 0 0 1 14 14 v146 c0 98 -62 160 -148 192 C 160 416, 96 354, 96 256 V 110 a14 14 0 0 1 14 -14 Z"
+          fill="var(--marke-fond, #8cc63f)"
+        />
+        <g stroke="var(--marke-motiv, #fff)" strokeLinecap="round" strokeLinejoin="round" fill="none">
+          <path d="M300 272 L252 300" strokeWidth="34" />
+          <path d="M252 300 L260 336" strokeWidth="32" />
+          <path d="M300 272 L240 234" strokeWidth="38" />
+          <path d="M240 234 L180 246" strokeWidth="24" />
+          <path d="M146 362 L312 320" strokeWidth="20" />
+        </g>
+        <circle cx="216" cy="210" r="28" fill="var(--marke-motiv, #fff)" />
+      </svg>
+    );
+
+  return (
+  <svg viewBox="0 0 512 512" width={storlek} height={storlek} aria-hidden="true" className="marke-svg">
+    <path
+      d="M110 96 h268 a14 14 0 0 1 14 14 v146 c0 98 -62 160 -148 192 C 160 416, 96 354, 96 256 V 110 a14 14 0 0 1 14 -14 Z"
+      fill="var(--marke-fond, #8cc63f)"
+    />
+    <g stroke="var(--marke-motiv, #fff)" strokeWidth="12" fill="none" strokeLinecap="round">
+      <path d="M148 286 L182 148 L216 286" />
+      <path d="M160 236 H204" />
+      <path d="M154 262 H210" />
+      <path d="M168 204 H196" />
+    </g>
+    <g stroke="var(--marke-motiv, #fff)" strokeLinecap="round" strokeLinejoin="round" fill="none">
+      <path d="M330 276 L296 296" strokeWidth="26" />
+      <path d="M296 296 L302 322" strokeWidth="24" />
+      <path d="M330 276 L286 248" strokeWidth="30" />
+      <path d="M286 248 L244 256" strokeWidth="18" />
+      <path d="M214 348 L336 318" strokeWidth="14" />
+      <path d="M222 364 L344 334" strokeWidth="14" />
+    </g>
+      <circle cx="268" cy="230" r="21" fill="var(--marke-motiv, #fff)" />
+    </svg>
+  );
+};
+
 export const Kort = ({ titel, verktyg, children, tat = false, undertext }) => (
   <section className="kort">
     {(titel || verktyg) && (
