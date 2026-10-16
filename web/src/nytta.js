@@ -34,7 +34,9 @@ export const initialer = (namn) =>
     .join('');
 
 export const tal = (v, decimaler = 1) =>
-  v == null || v === '' ? '–' : Number(v).toFixed(decimaler).replace('.', ',').replace(',0', '');
+  v == null || v === ''
+    ? '–'
+    : Number(v).toFixed(decimaler).replace('.', ',').replace(/,0+$/, '');
 export const heltal = (v) => (v == null ? '–' : Math.round(v).toString());
 export const grader = (v) => (v == null ? '–' : `${tal(v)} °C`);
 export const procent = (v) => (v == null ? '–' : `${Math.round(v)} %`);

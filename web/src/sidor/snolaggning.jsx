@@ -89,7 +89,7 @@ export function Snolaggning() {
     .filter((r) => r.vatkula != null)
     .slice(0, 60)
     .reverse()
-    .map((r) => ({ x: klockslag(r.tid), a: r.vatkula, b: r.vattenflode }));
+    .map((r) => ({ x: klockslag(r.tid), a: r.vatkula, b: r.lufttemp }));
 
   return (
     <>
@@ -170,7 +170,7 @@ export function Snolaggning() {
           {punkter.length > 1 && (
             <>
               <div className="skiljare" />
-              <Linjegraf punkter={punkter} etikett_a="våtkula °C" etikett_b="flöde l/s" />
+              <Linjegraf punkter={punkter} etikett_a="våtkula °C" etikett_b="lufttemp °C" />
             </>
           )}
         </Kort>

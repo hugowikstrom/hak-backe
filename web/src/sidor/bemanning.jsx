@@ -126,7 +126,7 @@ export function Bemanning() {
       <Kort tat>
         <Rutnat
           data={rutnat.data}
-          jagId={jag.id}
+          jag={jag}
           baraHal={baraHal}
           baraMina={baraMina}
           vidBokning={boka}
@@ -215,9 +215,16 @@ function sammanstall(pass, jagId) {
 }
 
 /** Själva rutnätet: rader = position och passtid, kolumner = datum. */
-function Rutnat({ data, jagId, baraHal, baraMina, vidBokning, vidOppna }) {
+function Rutnat({ data, jag, baraHal, baraMina, vidBokning, vidOppna }) {
   const ramp = useRef(null);
+  const jagId = jag.id;
   const [markerad, sattMarkerad] = useState(null);
+  // Positioner med rollkrav som jag inte uppfyller går inte att boka själv.
+  const obehorig = useMemo(() => {
+    const m = new Map();
+    for (const p of data.positioner) m.set(p.id, p.kravs_roll && !minstRoll(jag, p.kravs_roll) ? p.kravs_roll : null);
+    return m;
+  }, [data.positioner, jag]);
 
   const { rader, celler } = useMemo(() => {
     const celler = new Map();
@@ -312,16 +319,19 @@ function Rutnat({ data, jagId, baraHal, baraMina, vidBokning, vidOppna }) {
                     const min = bokade.find((b) => b.medlem_id === jagId);
                     const klass =
                       bokade.length >= p.behov ? 'full' : bokade.length ? 'delvis' : 'tom';
+                    const kravs = obehorig.get(p.position_id);
                     const ruta = `${ri}:${di}`;
                     return (
                       <td
                         key={d.datum}
-                        className={`cell ${klass}${d.helg ? ' helgdag' : ''}${min ? ' mitt' : ''}${markerad === ruta ? ' markerad' : ''}`}
+                        className={`cell ${klass}${d.helg ? ' helgdag' : ''}${min ? ' mitt' : ''}${kravs ? ' obehorig' : ''}${markerad === ruta ? ' markerad' : ''}`}
                       >
                         <button
                           className="cellknapp"
                           data-ruta={ruta}
-                          title={`${p.position} ${langDatum(p.datum)} ${p.start}–${p.slut}\n${bokade.map((b) => b.namn).join(', ') || 'ingen bokad'}\nKlicka för att ${min ? 'avboka' : 'boka'}, enter för att öppna`}
+                          title={`${p.position} ${langDatum(p.datum)} ${p.start}–${p.slut}\n${bokade.map((b) => b.namn).join(', ') || 'ingen bokad'}\n${
+                            kravs ? `Kräver rollen ${kravs} – enter visar passet` : `Klicka för att ${min ? 'avboka' : 'boka'}, enter för att öppna`
+                          }`}
                           onFocus={() => sattMarkerad(ruta)}
                           onClick={(e) => (e.shiftKey || e.altKey ? vidOppna(p) : vidBokning(p))}
                           onDoubleClick={() => vidOppna(p)}
@@ -346,6 +356,7 @@ function Rutnat({ data, jagId, baraHal, baraMina, vidBokning, vidOppna }) {
                           <span className="antal">
                             {bokade.length}/{p.behov}
                             {p.anteckning ? ' ✎' : ''}
+                            {kravs ? ' 🔒' : ''}
                           </span>
                         </button>
                       </td>
