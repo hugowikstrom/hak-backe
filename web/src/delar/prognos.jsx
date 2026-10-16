@@ -71,12 +71,12 @@ export function Prognos({ kompakt = false }) {
 }
 
 function Timmar({ h, data, kompakt }) {
-  const punkter = h.punkter.map((p) => ({ x: prognostimme(p.tid), a: p.vatkula, b: p.temp }));
+  const punkter = h.punkter.map((p) => ({ x: prognostimme(p.tid), a: p.wetbulb, b: p.temp }));
   return (
     <>
       <div className="rad gap-16 hopp" style={{ marginBottom: 10 }}>
         {data.nu && (
-          <Nyckeltal etikett="Just nu" varde={tal(data.nu.vatkula)} enhet="°C våtkula">
+          <Nyckeltal etikett="Just nu" varde={tal(data.nu.wetbulb)} enhet="°C wetbulb">
             <span className="liten svag">
               {tal(data.nu.temp)} °C · {data.nu.fukt} % · {tal(data.nu.vind)} m/s
             </span>
@@ -95,7 +95,7 @@ function Timmar({ h, data, kompakt }) {
 
       <Linjegraf
         punkter={punkter}
-        etikett_a="våtkula"
+        etikett_a="wetbulb"
         etikett_b="lufttemp"
         grans={-2.5}
         gransetikett="gräns för snöläggning"
@@ -106,13 +106,13 @@ function Timmar({ h, data, kompakt }) {
           {h.fonster.map((f) => (
             <div key={f.fran} className="meddelande ok">
               <strong>Produktionsfönster:</strong> {prognosstund(f.fran)} – {prognosstund(f.till)} ·{' '}
-              {f.timmar} h · ned till {tal(f.lagsta)} °C våtkula
+              {f.timmar} h · ned till {tal(f.lagsta)} °C wetbulb
             </div>
           ))}
         </div>
       ) : (
         <div className="meddelande varning" style={{ marginTop: 10 }}>
-          Inget produktionsfönster inom {h.timmar} timmar – våtkulan håller sig över −2,5 °C.
+          Inget produktionsfönster inom {h.timmar} timmar – wetbulbn håller sig över −2,5 °C.
         </div>
       )}
 
@@ -128,8 +128,8 @@ function Timmar({ h, data, kompakt }) {
               { falt: 'temp', rubrik: 'Temp', sifra: true, visa: (p) => `${tal(p.temp)} °C` },
               { falt: 'fukt', rubrik: 'Fukt', sifra: true, visa: (p) => `${p.fukt} %` },
               {
-                falt: 'vatkula', rubrik: 'Våtkula', sifra: true,
-                visa: (p) => <Bricka farg={farg(p.klartecken.niva)}>{tal(p.vatkula)} °C</Bricka>,
+                falt: 'wetbulb', rubrik: 'Wetbulb', sifra: true,
+                visa: (p) => <Bricka farg={farg(p.klartecken.niva)}>{tal(p.wetbulb)} °C</Bricka>,
               },
               { falt: 'klartecken', rubrik: 'Läge', visa: (p) => KLARTECKEN[p.klartecken.niva] },
               { falt: 'vatten', rubrik: 'Vatten', sifra: true, visa: (p) => (p.klartecken.vatten != null ? `${p.klartecken.vatten} %` : '–') },
@@ -137,9 +137,9 @@ function Timmar({ h, data, kompakt }) {
               { falt: 'nederbord', rubrik: 'Nederbörd', sifra: true, visa: (p) => (p.nederbord ? `${tal(p.nederbord)} mm` : '–') },
               {
                 falt: 'spridning', rubrik: 'Källor', sifra: true,
-                titel: 'Skillnad i våtkula mellan YR och SMHI',
+                titel: 'Skillnad i wetbulb mellan YR och SMHI',
                 visa: (p) => (
-                  <span className={p.spridning > 1.5 ? 'num' : 'num svag'} title={Object.entries(p.kallor).map(([k, v]) => `${k}: ${tal(v.vatkula)} °C`).join(' · ')}>
+                  <span className={p.spridning > 1.5 ? 'num' : 'num svag'} title={Object.entries(p.kallor).map(([k, v]) => `${k}: ${tal(v.wetbulb)} °C`).join(' · ')}>
                     ±{tal(p.spridning)}
                   </span>
                 ),
@@ -160,8 +160,8 @@ function Vecka({ data }) {
       <div className="rad gap-16 hopp" style={{ marginBottom: 10 }}>
         <Nyckeltal etikett="Produktionstimmar i veckan" varde={summa} enhet="h" farg={summa ? 'gron' : 'rod'} />
         <Nyckeltal
-          etikett="Kallaste våtkula"
-          varde={tal(Math.min(...dygn.map((d) => d.vatkula_min ?? 99).filter((v) => v < 90)))}
+          etikett="Kallaste wetbulb"
+          varde={tal(Math.min(...dygn.map((d) => d.wetbulb_min ?? 99).filter((v) => v < 90)))}
           enhet="°C"
         />
         <Nyckeltal etikett="Dygn med produktion" varde={dygn.filter((d) => d.produktionstimmar > 0).length} enhet={`/ ${dygn.length}`} />
@@ -176,16 +176,16 @@ function Vecka({ data }) {
           { falt: 'temp_min', rubrik: 'Temp min', sifra: true, visa: (d) => `${tal(d.temp_min)} °C` },
           { falt: 'temp_max', rubrik: 'Temp max', sifra: true, visa: (d) => `${tal(d.temp_max)} °C` },
           {
-            falt: 'vatkula_min', rubrik: 'Våtkula min', sifra: true,
+            falt: 'wetbulb_min', rubrik: 'Wetbulb min', sifra: true,
             visa: (d) => (
-              <Bricka farg={d.vatkula_min != null && d.vatkula_min < -2.5 ? 'gron' : 'rod'}>{tal(d.vatkula_min)} °C</Bricka>
+              <Bricka farg={d.wetbulb_min != null && d.wetbulb_min < -2.5 ? 'gron' : 'rod'}>{tal(d.wetbulb_min)} °C</Bricka>
             ),
           },
           {
             falt: 'produktionstimmar', rubrik: 'Produktion', sifra: true,
             visa: (d) => (d.produktionstimmar ? `${d.produktionstimmar} h` : '–'),
           },
-          { falt: 'bra_timmar', rubrik: 'Varav bra', sifra: true, titel: 'Timmar med våtkula under −5 °C', visa: (d) => (d.bra_timmar ? `${d.bra_timmar} h` : '–') },
+          { falt: 'bra_timmar', rubrik: 'Varav bra', sifra: true, titel: 'Timmar med wetbulb under −5 °C', visa: (d) => (d.bra_timmar ? `${d.bra_timmar} h` : '–') },
           { falt: 'nederbord', rubrik: 'Nederbörd', sifra: true, visa: (d) => (d.nederbord ? `${tal(d.nederbord)} mm` : '–') },
           {
             falt: 'tackning', rubrik: 'Underlag',

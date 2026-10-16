@@ -42,7 +42,7 @@ export function snorapport(fran, till) {
       volym += flode * h * 3600 / 1000; // l/s * s -> m3
     }
     const temp = g.rader.map((r) => r.lufttemp).filter((v) => v != null);
-    const vk = g.rader.map((r) => r.vatkula).filter((v) => v != null);
+    const vk = g.rader.map((r) => r.wetbulb).filter((v) => v != null);
     const fl = g.rader.map((r) => r.vattenflode).filter((v) => v != null);
     return {
       utrustning_id: id || null,
@@ -53,8 +53,8 @@ export function snorapport(fran, till) {
       temp_min: temp.length ? Math.min(...temp) : null,
       temp_medel: medel(temp),
       temp_max: temp.length ? Math.max(...temp) : null,
-      vatkula_medel: medel(vk),
-      vatkula_min: vk.length ? Math.min(...vk) : null,
+      wetbulb_medel: medel(vk),
+      wetbulb_min: vk.length ? Math.min(...vk) : null,
       flode_medel: medel(fl),
       flode_max: fl.length ? Math.max(...fl) : null,
       drifttimmar: Math.round(timmar * 10) / 10,
@@ -79,8 +79,8 @@ export function snorapport(fran, till) {
       matningar: rader.length,
       drifttimmar: Math.round(per.reduce((a, b) => a + b.drifttimmar, 0) * 10) / 10,
       vattenvolym_m3: per.reduce((a, b) => a + b.vattenvolym_m3, 0),
-      kallaste_vatkula: per.map((p) => p.vatkula_min).filter((v) => v != null).length
-        ? Math.min(...per.map((p) => p.vatkula_min).filter((v) => v != null))
+      kallaste_vatkula: per.map((p) => p.wetbulb_min).filter((v) => v != null).length
+        ? Math.min(...per.map((p) => p.wetbulb_min).filter((v) => v != null))
         : null,
       snopass: pass.length,
     },
@@ -216,7 +216,7 @@ export const rutter = [
       { falt: 'utrustning', rubrik: 'Utrustning' }, { falt: 'omrade', rubrik: 'Område' },
       { falt: 'antal_matningar', rubrik: 'Mätningar' }, { falt: 'drifttimmar', rubrik: 'Drifttimmar' },
       { falt: 'vattenvolym_m3', rubrik: 'Vatten m³' }, { falt: 'temp_min', rubrik: 'Temp min' },
-      { falt: 'temp_medel', rubrik: 'Temp medel' }, { falt: 'vatkula_medel', rubrik: 'Våtkula medel' },
+      { falt: 'temp_medel', rubrik: 'Temp medel' }, { falt: 'wetbulb_medel', rubrik: 'Wetbulb medel' },
       { falt: 'flode_medel', rubrik: 'Flöde medel l/s' }, { falt: 'flode_max', rubrik: 'Flöde max l/s' },
       { falt: 'senaste', rubrik: 'Senaste mätning' },
     ]), 'text/csv; charset=utf-8', { 'content-disposition': 'attachment; filename="snorapport.csv"' });

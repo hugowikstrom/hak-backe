@@ -1,0 +1,137 @@
+/* Fiket och uthyrningen – stora ytor, klubbens gröna, fungerar med vantar på. */
+:root {
+  --gron: #8cc63f;
+  --gron-mork: #4f8a24;
+  --gron-mjuk: #f1f8e7;
+  --gron-ram: #d6e9bd;
+  --yta: #ffffff;
+  --bak: #f5f7f2;
+  --bak-2: #eceee8;
+  --ram: #dfe4d8;
+  --text: #1b2116;
+  --text-svag: #6c7466;
+  --text-svagare: #98a092;
+  --fara: #c23b24;
+  --fara-mjuk: #fbe6e1;
+  --varning: #b8761a;
+  --varning-mjuk: #fdf2dd;
+  --radie: 16px;
+  --radie-s: 10px;
+  --skugga: 0 1px 2px rgba(27,33,22,.06), 0 10px 28px rgba(27,33,22,.08);
+  --botten: env(safe-area-inset-bottom, 0px);
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gron: #9ad44f; --gron-mork: #a9dd63; --gron-mjuk: #1b2614; --gron-ram: #33471f;
+    --yta: #171c13; --bak: #0f130c; --bak-2: #1d2318; --ram: #2b3324;
+    --text: #e9efe3; --text-svag: #9aa492; --text-svagare: #6f7a68;
+    --fara: #f08f7a; --fara-mjuk: #2d1711; --varning: #e0ae55; --varning-mjuk: #2a2112;
+  }
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body, #rot { height: 100%; }
+body { margin: 0; font: 16px/1.45 var(--sans); background: var(--bak); color: var(--text); }
+h1, h2, h3 { margin: 0; letter-spacing: -.02em; }
+h1 { font-size: 24px; }
+h2 { font-size: 18px; }
+p { margin: 0 0 10px; }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.svag { color: var(--text-svag); }
+.liten { font-size: 13px; }
+.mitten { text-align: center; }
+.rad { display: flex; align-items: center; gap: 10px; }
+.rad-mellan { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.kolumn { display: flex; flex-direction: column; gap: 12px; }
+.vaxa { flex: 1 1 auto; min-width: 0; }
+
+.skal { min-height: 100%; display: flex; flex-direction: column; }
+.topp {
+  background: var(--gron); color: #15210a; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10;
+}
+.topp svg { width: 34px; height: 34px; }
+.topp .namn { font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
+.topp .under { font-size: 12px; font-weight: 600; opacity: .8; text-transform: uppercase; letter-spacing: .05em; }
+.topp a, .topp button {
+  margin-left: auto; background: rgba(255,255,255,.3); border: 0; color: #15210a;
+  border-radius: 999px; padding: 8px 16px; font: inherit; font-weight: 700; text-decoration: none;
+}
+.innehall { flex: 1 1 auto; padding: 16px; max-width: 980px; width: 100%; margin: 0 auto; }
+
+.flikar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 10px; scrollbar-width: none; }
+.flikar::-webkit-scrollbar { display: none; }
+.flikar button {
+  flex: 0 0 auto; border: 1px solid var(--ram); background: var(--yta); color: var(--text-svag);
+  border-radius: 999px; padding: 9px 18px; font: inherit; font-weight: 600;
+}
+.flikar button[aria-pressed='true'] { background: var(--gron); border-color: var(--gron); color: #15210a; }
+
+.varor { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+.vara {
+  background: var(--yta); border: 1px solid var(--ram); border-radius: var(--radie);
+  box-shadow: var(--skugga); padding: 14px; display: flex; flex-direction: column; gap: 8px;
+}
+.vara.slut { opacity: .5; }
+.vara .ikon { font-size: 30px; line-height: 1; }
+.vara .namn { font-weight: 700; font-size: 16px; }
+.vara .pris { font-family: var(--mono); font-weight: 700; font-size: 17px; }
+.vara .knappar { display: flex; align-items: center; gap: 10px; margin-top: auto; }
+.vara button {
+  width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--ram);
+  background: var(--bak-2); font: inherit; font-size: 22px; font-weight: 700; color: var(--text);
+}
+.vara button.lagg { flex: 1 1 auto; width: auto; background: var(--gron); border-color: var(--gron); color: #15210a; font-size: 16px; }
+.vara .antal { font-family: var(--mono); font-size: 19px; font-weight: 700; min-width: 28px; text-align: center; }
+
+.kundvagn {
+  position: sticky; bottom: 0; background: var(--yta); border-top: 1px solid var(--ram);
+  box-shadow: 0 -8px 28px rgba(27,33,22,.12); padding: 12px 16px calc(12px + var(--botten));
+  display: flex; align-items: center; gap: 14px; z-index: 10;
+}
+.kundvagn .summa { font-family: var(--mono); font-size: 22px; font-weight: 800; }
+.kundvagn button {
+  margin-left: auto; background: var(--gron); border: 0; color: #15210a; font: inherit;
+  font-weight: 800; font-size: 17px; padding: 16px 26px; border-radius: 14px;
+}
+.kundvagn button:disabled { opacity: .4; }
+
+.kort { background: var(--yta); border: 1px solid var(--ram); border-radius: var(--radie); box-shadow: var(--skugga); padding: 16px; }
+.kort + .kort { margin-top: 14px; }
+.rader { display: flex; flex-direction: column; }
+.rader > div { display: flex; justify-content: space-between; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--ram); }
+.rader > div:last-child { border-bottom: 0; }
+
+label.falt { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }
+label.falt > span { font-size: 13px; font-weight: 600; color: var(--text-svag); }
+input, textarea, select {
+  font: inherit; color: var(--text); background: var(--yta); border: 1px solid var(--ram);
+  border-radius: var(--radie-s); padding: 13px; width: 100%; min-height: 50px;
+}
+input:focus, textarea:focus { outline: 2px solid var(--gron); outline-offset: -1px; }
+button.stor {
+  width: 100%; min-height: 56px; border-radius: 14px; border: 0; background: var(--gron);
+  color: #15210a; font: inherit; font-weight: 800; font-size: 17px;
+}
+button.andra { background: var(--bak-2); color: var(--text); border: 1px solid var(--ram); }
+button.lank { background: none; border: 0; color: var(--gron-mork); font: inherit; font-weight: 600; text-decoration: underline; padding: 0; min-height: 0; }
+
+.ordernummer {
+  font-family: var(--mono); font-size: 64px; font-weight: 800; letter-spacing: -.03em;
+  color: var(--gron-mork); line-height: 1;
+}
+.qr { background: #fff; padding: 14px; border-radius: var(--radie); display: inline-block; }
+.qr svg { width: 230px; height: 230px; display: block; }
+.steg { display: flex; gap: 8px; margin: 14px 0; }
+.steg > div { flex: 1 1 0; height: 6px; border-radius: 999px; background: var(--bak-2); }
+.steg > div.klar { background: var(--gron); }
+.bricka { display: inline-flex; padding: 4px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; background: var(--bak-2); color: var(--text-svag); }
+.bricka.gron { background: var(--gron-mjuk); color: var(--gron-mork); }
+.bricka.gul { background: var(--varning-mjuk); color: var(--varning); }
+.meddelande { padding: 12px 14px; border-radius: var(--radie-s); font-size: 14px; margin-bottom: 12px; }
+.meddelande.fel { background: var(--fara-mjuk); color: var(--fara); }
+.meddelande.ok { background: var(--gron-mjuk); color: var(--gron-mork); }
+.meddelande.info { background: var(--bak-2); color: var(--text-svag); }
+.tomt { text-align: center; color: var(--text-svagare); padding: 40px 16px; }
+.fot { text-align: center; color: var(--text-svagare); font-size: 12px; padding: 20px; }

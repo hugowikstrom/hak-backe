@@ -1,7 +1,7 @@
 // Väderprognos för backen från två källor: YR (met.no) och SMHI.
 // Tolkningen är ren och testbar; hämtningen cachas, för båda tjänsterna
 // ber uttryckligen om att man inte frågar oftare än prognosen uppdateras.
-import { klartecken, vatkula } from './snoteknik.mjs';
+import { klartecken, wetbulb } from './snoteknik.mjs';
 
 /** Vårdkasbacken i Härnösand. Går att flytta med HAK_PLATS=lat,lon,hojd. */
 export const PLATS = (() => {
@@ -97,7 +97,7 @@ const medel = (v) => {
 const avrunda = (v, d = 1) => (v == null ? null : Math.round(v * 10 ** d) / 10 ** d);
 
 /**
- * Slår ihop källorna timme för timme och räknar våtkula på varje.
+ * Slår ihop källorna timme för timme och räknar wetbulb på varje.
  * Finns båda källorna blir samlingsvärdet medelvärdet av dem.
  */
 export function slaIhop(serier) {
@@ -105,7 +105,7 @@ export function slaIhop(serier) {
   for (const [kalla, punkter] of Object.entries(serier)) {
     for (const p of punkter) {
       if (!timmar.has(p.tid)) timmar.set(p.tid, { tid: p.tid, kallor: {} });
-      timmar.get(p.tid).kallor[kalla] = { ...p, vatkula: vatkula(p.temp, p.fukt, p.tryck ?? undefined) };
+      timmar.get(p.tid).kallor[kalla] = { ...p, wetbulb: wetbulb(p.temp, p.fukt, p.tryck ?? undefined) };
     }
   }
   return [...timmar.values()]
@@ -115,7 +115,7 @@ export function slaIhop(serier) {
       const temp = avrunda(medel(lista.map((k) => k.temp)));
       const fukt = avrunda(medel(lista.map((k) => k.fukt)), 0);
       const tryck = avrunda(medel(lista.map((k) => k.tryck)), 0);
-      const vk = avrunda(medel(lista.map((k) => k.vatkula)));
+      const vk = avrunda(medel(lista.map((k) => k.wetbulb)));
       return {
         tid: t.tid,
         temp,
@@ -125,27 +125,27 @@ export function slaIhop(serier) {
         vindriktning: avrunda(medel(lista.map((k) => k.vindriktning)), 0),
         nederbord: avrunda(medel(lista.map((k) => k.nederbord)), 1),
         symbol: lista[0]?.symbol ?? null,
-        vatkula: vk,
+        wetbulb: vk,
         klartecken: klartecken(vk),
         // Hur mycket källorna skiljer sig – stor spridning betyder osäker prognos.
-        spridning: lista.length > 1 ? avrunda(Math.max(...lista.map((k) => k.vatkula)) - Math.min(...lista.map((k) => k.vatkula))) : 0,
+        spridning: lista.length > 1 ? avrunda(Math.max(...lista.map((k) => k.wetbulb)) - Math.min(...lista.map((k) => k.wetbulb))) : 0,
         kallor: Object.fromEntries(
-          Object.entries(t.kallor).map(([k, v]) => [k, { temp: v.temp, fukt: v.fukt, vatkula: avrunda(v.vatkula), vind: v.vind }])
+          Object.entries(t.kallor).map(([k, v]) => [k, { temp: v.temp, fukt: v.fukt, wetbulb: avrunda(v.wetbulb), vind: v.vind }])
         ),
       };
     });
 }
 
-/** Sammanhängande perioder där våtkulan tillåter produktion. */
+/** Sammanhängande perioder där wetbulbn tillåter produktion. */
 export function produktionsfonster(punkter, gran = -2.5) {
   const ut = [];
   let nu = null;
   for (const p of punkter) {
-    const duger = p.vatkula != null && p.vatkula < gran;
-    if (duger && !nu) nu = { fran: p.tid, till: p.tid, lagsta: p.vatkula, timmar: 1 };
+    const duger = p.wetbulb != null && p.wetbulb < gran;
+    if (duger && !nu) nu = { fran: p.tid, till: p.tid, lagsta: p.wetbulb, timmar: 1 };
     else if (duger) {
       nu.till = p.tid;
-      nu.lagsta = Math.min(nu.lagsta, p.vatkula);
+      nu.lagsta = Math.min(nu.lagsta, p.wetbulb);
       nu.timmar += 1;
     } else if (nu) {
       ut.push(nu);
@@ -166,16 +166,16 @@ export function dygnssammanfattning(punkter) {
   }
   return [...dagar.values()].map((d) => {
     const temp = d.punkter.map((p) => p.temp).filter((v) => v != null);
-    const vk = d.punkter.map((p) => p.vatkula).filter((v) => v != null);
-    const produktion = d.punkter.filter((p) => p.vatkula != null && p.vatkula < -2.5).length;
-    const bra = d.punkter.filter((p) => p.vatkula != null && p.vatkula < -5).length;
+    const vk = d.punkter.map((p) => p.wetbulb).filter((v) => v != null);
+    const produktion = d.punkter.filter((p) => p.wetbulb != null && p.wetbulb < -2.5).length;
+    const bra = d.punkter.filter((p) => p.wetbulb != null && p.wetbulb < -5).length;
     return {
       datum: d.datum,
       timmar: d.punkter.length,
       temp_min: temp.length ? Math.min(...temp) : null,
       temp_max: temp.length ? Math.max(...temp) : null,
-      vatkula_min: vk.length ? avrunda(Math.min(...vk)) : null,
-      vatkula_medel: avrunda(medel(vk)),
+      wetbulb_min: vk.length ? avrunda(Math.min(...vk)) : null,
+      wetbulb_medel: avrunda(medel(vk)),
       produktionstimmar: produktion,
       bra_timmar: bra,
       nederbord: avrunda(d.punkter.reduce((a, b) => a + (b.nederbord || 0), 0), 1),
@@ -228,8 +228,8 @@ export async function prognos({ tvinga = false } = {}) {
       timmar,
       punkter: del,
       fonster: produktionsfonster(del),
-      produktionstimmar: del.filter((p) => p.vatkula != null && p.vatkula < -2.5).length,
-      kallast: del.length ? Math.min(...del.map((p) => p.vatkula ?? 99)) : null,
+      produktionstimmar: del.filter((p) => p.wetbulb != null && p.wetbulb < -2.5).length,
+      kallast: del.length ? Math.min(...del.map((p) => p.wetbulb ?? 99)) : null,
     };
   };
 

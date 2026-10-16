@@ -71,8 +71,12 @@ export const INTERVALL = {
   veckovis: 'Veckovis', sasong: 'Säsong',
 };
 export const ROLLNAMN = {
-  medlem: 'Medlem', backansvarig: 'Backansvarig',
-  anlaggningsansvarig: 'Anläggningsansvarig', admin: 'Administratör',
+  medlem: 'Medlem',
+  volontar: 'Volontär',
+  tranare: 'Tränare',
+  backansvarig: 'Backansvarig',
+  anlaggningsansvarig: 'Anläggningsansvarig',
+  admin: 'Administratör',
 };
 export const PASSLAG = { dag: 'Dag', kvall: 'Kväll', natt: 'Natt' };
 export const KLARTECKEN = {
@@ -82,8 +86,11 @@ export const KLARTECKEN = {
 export const INSATSSLAG = {
   pass: 'Pass', snolaggning: 'Snöläggning', arbetsdag: 'Arbetsdag', ovrigt: 'Övrigt',
 };
-export const RANG = { medlem: 1, backansvarig: 2, anlaggningsansvarig: 3, admin: 4 };
-export const minstRoll = (medlem, roll) => (RANG[medlem?.roll] ?? 0) >= RANG[roll];
+export const RANG = {
+  medlem: 1, volontar: 1, tranare: 2, backansvarig: 3, anlaggningsansvarig: 4, admin: 5,
+};
+export const far = (medlem, behorighet) => (medlem?.behorigheter || []).includes(behorighet);
+export const minstRoll = (medlem, roll) => (RANG[medlem?.roll] ?? 0) >= (RANG[roll] ?? 99);
 
 /** "2026-12-01 20:00" -> "20:00". Prognosen levereras i svensk lokaltid. */
 export const prognostimme = (tid) => (tid ? String(tid).slice(11, 16) : '');
@@ -112,10 +119,10 @@ export const gruppera = (lista, nyckel) => {
 };
 
 /**
- * Våtkula för direkt återkoppling i formulär. Samma psykrometerekvation som
+ * Wetbulb för direkt återkoppling i formulär. Samma psykrometerekvation som
  * `server/snoteknik.mjs`; servern räknar om och äger det sparade värdet.
  */
-export function vatkulaLokalt(temp, fukt, lufttryck_hPa = 1013.25) {
+export function wetbulbLokalt(temp, fukt, lufttryck_hPa = 1013.25) {
   if (temp === '' || fukt === '' || temp == null || fukt == null) return null;
   const T = Number(temp);
   const R = Math.min(100, Math.max(0.5, Number(fukt)));

@@ -12,13 +12,24 @@ import { Bemanning } from './sidor/bemanning.jsx';
 import { Mina } from './sidor/mina.jsx';
 import { Rapporter } from './sidor/rapporter.jsx';
 import { Register } from './sidor/register.jsx';
+import { Kassa } from './sidor/kassa.jsx';
+import { Ekonomi } from './sidor/ekonomi.jsx';
+import { Forening } from './sidor/forening.jsx';
+import { Traning } from './sidor/traning.jsx';
+import { Ideer } from './sidor/ideer.jsx';
 
+// Menyn visar bara det inloggningen faktiskt får använda.
 const SIDOR = [
   { stig: '/', text: 'Översikt', komp: Oversikt },
   { stig: '/snolaggning', text: 'Snöläggning', komp: Snolaggning },
   { stig: '/checklistor', text: 'Checklistor', komp: Checklistor },
   { stig: '/arenden', text: 'Ärenden', komp: Arenden },
   { stig: '/bemanning', text: 'Bemanning', komp: Bemanning },
+  { stig: '/kassa', text: 'Kassa', komp: Kassa, behorighet: 'kassa' },
+  { stig: '/traning', text: 'Träning', komp: Traning, behorighet: 'traning' },
+  { stig: '/forening', text: 'Föreningen', komp: Forening },
+  { stig: '/ekonomi', text: 'Ekonomi', komp: Ekonomi, behorighet: 'ekonomi_las' },
+  { stig: '/ideer', text: 'Idélådan', komp: Ideer },
   { stig: '/mina', text: 'Mina sidor', komp: Mina },
   { stig: '/rapporter', text: 'Rapporter', komp: Rapporter },
   { stig: '/register', text: 'Register', komp: Register, roll: 'backansvarig' },
@@ -66,7 +77,11 @@ export function App() {
   if (medlem === undefined) return <Vanta />;
   if (!medlem) return <Inlogg klar={(m) => sattMedlem(m)} />;
 
-  const synliga = SIDOR.filter((s) => !s.roll || minstRoll(medlem, s.roll));
+  const synliga = SIDOR.filter(
+    (s) =>
+      (!s.roll || minstRoll(medlem, s.roll)) &&
+      (!s.behorighet || (medlem.behorigheter || []).includes(s.behorighet))
+  );
   const aktiv = synliga.find((s) => s.stig === stig) || synliga[0];
   const Sida = aktiv.komp;
 

@@ -7,14 +7,16 @@
     "dev": "node scripts/dev.mjs",
     "dev:server": "node --watch server/index.mjs",
     "dev:web": "vite --config web/vite.config.js",
-    "build": "node scripts/rensa-dist.mjs && npm run build:webb && npm run build:mobil",
+    "build": "node scripts/rensa-dist.mjs && npm run build:webb && npm run build:mobil && npm run build:kiosk",
     "start": "node server/index.mjs",
     "fro": "node server/fro.mjs",
     "test": "node --test tests/*.test.mjs",
     "verify": "npm test && npm run build",
     "build:webb": "vite build --config web/vite.config.js",
     "build:mobil": "vite build --config web/mobil/vite.config.js",
-    "dev:mobil": "vite --config web/mobil/vite.config.js"
+    "dev:mobil": "vite --config web/mobil/vite.config.js",
+    "build:kiosk": "vite build --config web/kiosk/vite.config.js",
+    "dev:kiosk": "vite --config web/kiosk/vite.config.js"
   },
   "dependencies": {
     "nodemailer": "^7.0.7"

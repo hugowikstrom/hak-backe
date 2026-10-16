@@ -1,10 +1,10 @@
 // Snöläggning: pass, mätningar och nuläge.
 import { alla, en, spara, uppdatera } from '../db.mjs';
-import { kompletteraMatning, klartecken, vatkula } from '../snoteknik.mjs';
+import { kompletteraMatning, klartecken, wetbulb } from '../snoteknik.mjs';
 import { csv, ettAv, fel, heltal, num, rutt, svar, text, txt } from '../http.mjs';
 
 const MATFALT = [
-  'lufttemp', 'luftfukt', 'vatkula', 'vattenflode', 'vattentryck',
+  'lufttemp', 'luftfukt', 'wetbulb', 'vattenflode', 'vattentryck',
   'lufttryck', 'barometer', 'vind_styrka',
 ];
 
@@ -47,7 +47,7 @@ export function nulage() {
     senaste,
     senasteMatning: generellt ? kompletteraMatning(generellt) : null,
     klartecken: generellt
-      ? klartecken(generellt.vatkula ?? vatkula(generellt.lufttemp, generellt.luftfukt))
+      ? klartecken(generellt.wetbulb ?? wetbulb(generellt.lufttemp, generellt.luftfukt))
       : klartecken(null),
   };
 }
@@ -74,7 +74,7 @@ export const rutter = [
     text(res, 200, csv(rader, [
       { falt: 'tid', rubrik: 'Tid' }, { falt: 'utrustning', rubrik: 'Utrustning' },
       { falt: 'omrade', rubrik: 'Område' }, { falt: 'lufttemp', rubrik: 'Lufttemp °C' },
-      { falt: 'luftfukt', rubrik: 'Fukt %' }, { falt: 'vatkula', rubrik: 'Våtkula °C' },
+      { falt: 'luftfukt', rubrik: 'Fukt %' }, { falt: 'wetbulb', rubrik: 'Wetbulb °C' },
       { falt: 'vattenflode', rubrik: 'Vattenflöde l/s' }, { falt: 'vattentryck', rubrik: 'Vattentryck bar' },
       { falt: 'lufttryck', rubrik: 'Lufttryck bar' }, { falt: 'barometer', rubrik: 'Barometer hPa' },
       { falt: 'vind_styrka', rubrik: 'Vind m/s' }, { falt: 'vind_riktning', rubrik: 'Vindriktning' },
@@ -128,8 +128,8 @@ export const rutter = [
     svar(res, 200, en('SELECT * FROM snopass WHERE id=?', p.id));
   }),
 
-  rutt('POST', '/api/sno/vatkula', 'medlem', ({ res, kropp }) => {
-    const vk = vatkula(num(kropp.lufttemp), num(kropp.luftfukt));
-    svar(res, 200, { vatkula: vk, klartecken: klartecken(vk) });
+  rutt('POST', '/api/sno/wetbulb', 'medlem', ({ res, kropp }) => {
+    const vk = wetbulb(num(kropp.lufttemp), num(kropp.luftfukt));
+    svar(res, 200, { wetbulb: vk, klartecken: klartecken(vk) });
   }),
 ];

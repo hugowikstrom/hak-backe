@@ -5,6 +5,7 @@ rapporter. Kör som en enda Node-process med SQLite, byggd klient i `web/dist`.
 
 Drift: <https://hak.nattviken.com> (systemd-tjänsten `hak`, 127.0.0.1:8120).
 Mobilappen för checklistor: <https://hak.nattviken.com/mobil/>.
+Fiket och uthyrningen för gästerna: <https://hak.nattviken.com/fik/> (öppen, ingen inloggning).
 
 ## Kom igång
 
@@ -20,14 +21,19 @@ Inloggningar i grunddatat (alla har lösenordet `hak`):
 
 | Inloggning | Roll | Ser |
 | --- | --- | --- |
-| `jonas` | anläggningsansvarig | allt, inklusive rapporter och säsonger |
+| `jonas` | anläggningsansvarig | backen, rapporter, läser ekonomin |
+| `ordforande` | anläggningsansvarig + uppdrag ordförande | allt, inklusive bokföring |
+| `kassor` | medlem + uppdrag kassör | ekonomi och medlemsregister, inte backen |
+| `admin` | administratör | allt |
 | `annika`, `per` | backansvarig | schemaläggning, mallar, register, ärenden |
+| `kiosk`, `uthyrning` | medlem (volontär) | kassan och uthyrningen |
+| `tranare`, `freeski`, `fis` | tränare | träningsgrupper, närvaro, aktivitetsstöd |
 | `medlem` och övriga | medlem | boka pass, rapportera mätningar och ärenden |
 
 ## Så hänger delarna ihop
 
 **Snöläggning.** Varje mätning sparar lufttemperatur, fukt, vattenflöde,
-vatten- och lufttryck, barometer och vind. Våtkulan räknas fram ur
+vatten- och lufttryck, barometer och vind. Wetbulbn räknas fram ur
 psykrometerekvationen (`server/snoteknik.mjs`) om den inte rapporterats, och
 ger ett klartecken med rekommenderad vattenmängd. Mätningar kan knytas till en
 lans, fläkt eller pumpstation och till ett pågående snöpass.
@@ -71,11 +77,15 @@ insatser mot kvoten. CSV-export och utskriftsvänlig vy.
 
 ```
 server/            API och logik, inga ramverk
+  bokforing.mjs    verifikationer, rättelser, SIE-export
+  behorighet.mjs   roller, uppdrag och vem som får vad
+  stod.mjs         aktivitetsstödets villkor som data
+  swish.mjs        betalnings-QR  ·  sms.mjs  46elks  ·  tal.mjs  tal till text
   index.mjs        HTTP-server, routing, statiska filer
   schema.sql       hela databasen, körs idempotent vid start
   db.mjs           node:sqlite, små hjälpare (spara/uppdatera/transaktion)
   auth.mjs         scrypt-hash, sessionskakor, rollrang
-  snoteknik.mjs    våtkula och klartecken – rena funktioner
+  snoteknik.mjs    wetbulb och klartecken – rena funktioner
   autoplan.mjs     rättvis fördelning – ren funktion över inlästa data
   tid.mjs          passtider, nattpass, helg, veckonummer
   epost.mjs        SMTP via nodemailer, allt loggas
@@ -86,6 +96,7 @@ web/src/           Webbklienten: React + Vite, en formgivningsfil
   delar/           återanvända byggstenar och datatabellen
   sidor/           översikt, snöläggning, checklistor, ärenden, bemanning,
                    mina sidor, rapporter, register
+web/kiosk/         Fiket och uthyrningen för gästerna, på /fik/ – ingen inloggning
 web/mobil/         HAK Rond: mobilklienten på /mobil/
   public/          manifest, servicearbetare och ikoner
   src/ko.js        ronder i telefonen och synken mot servern
@@ -104,6 +115,14 @@ Hållpunkter:
 - **En CSS-fil**, `web/src/stil.css`, med sektioner. Inga komponentbibliotek.
 - `undefined` i indata betyder "fältet skickades inte", `null` betyder "töm
   fältet". Därför kan en delvis uppdatering aldrig nolla en titel.
+- **Bokföringen är orörbar.** Verifikationer, deras rader och
+  behandlingshistoriken har triggrar som vägrar UPDATE och DELETE. Ska något
+  bort bokförs en rättelse. `npm run fro -- --nollstall` bygger därför om hela
+  databasfilen i stället för att radera rader.
+- **Priser sätts av servern.** Klienten skickar artikel-id och antal, aldrig
+  belopp. Det gäller både kiosken och uthyrningen.
+- **Behörighet före roll.** Rutter som rör ekonomi, träning eller
+  medlemsregister kräver en behörighet (`@ekonomi`), inte en rollnivå.
 - **Mobilens ronder är dokument, inte köade anrop.** `web/mobil/src/ko.js`
   sparar hela ronden i telefonen och spelar upp den mot API:et när det går.
   Därför överlever en rond både dålig täckning och att appen stängs.
@@ -128,6 +147,13 @@ Hållpunkter:
 | `HAK_SMTP_USER` / `HAK_SMTP_LOSEN` | – | sätts bara om servern kräver det |
 | `HAK_EPOST_FRAN` | `HAK Backe <backe@nattviken.com>` | avsändare |
 | `HAK_EPOST_AV` | på | `0` loggar utskick utan att skicka |
+| `HAK_SWISH_NUMMER` | – | klubbens swishnummer; utan det hänvisas gästen till luckan |
+| `HAK_46ELKS_ANVANDARE` / `HAK_46ELKS_LOSEN` | – | sms via 46elks; utan dem loggas breven bara |
+| `HAK_SMS_FRAN` | HAKbacken | avsändare på sms |
+| `HAK_STT_URL` | husets STT-router | tal till text för idélådan |
+| `HAK_BACKLOG` / `HAK_BACKLOG_PROJEKT` | backlog-CLI:t / `inbox` | dit idéerna skickas |
+| `HAK_PLATS` | 62.627,17.914,170 | koordinater för väderprognosen |
+| `HAK_FORENING` / `HAK_ORGNR` | – | står i SIE-filen |
 
 Bilder på avvikelser sparas som filer under `data/bilder/` och nås via
 `/api/bilder/<namn>` för inloggade. Telefonen skalar ned dem före uppladdning.

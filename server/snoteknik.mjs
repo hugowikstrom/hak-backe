@@ -1,15 +1,15 @@
-// Snöläggningsteknik: våtkula och klartecken. Rena funktioner, inga sidoeffekter.
+// Snöläggningsteknik: wetbulb och klartecken. Rena funktioner, inga sidoeffekter.
 
 /** Mättnadstryck över vatten, hPa (Magnus, giltig ca −45…60 °C). */
 const mattnadstryck = (T) => 6.112 * Math.exp((17.62 * T) / (243.12 + T));
 
 /**
- * Våtkulatemperatur (°C) ur lufttemperatur (°C) och relativ fuktighet (%).
+ * Wetbulbtemperatur (°C) ur lufttemperatur (°C) och relativ fuktighet (%).
  * Löser psykrometerekvationen e = es(Tw) − A·P·(T − Tw) med halvering.
  * Monotont i både temperatur och fuktighet, vilket Stulls polynom inte är
  * i de torra lägen vi ofta snölägger i.
  */
-export function vatkula(temp, fukt, lufttryck_hPa = 1013.25) {
+export function wetbulb(temp, fukt, lufttryck_hPa = 1013.25) {
   if (temp == null || fukt == null || temp === '' || fukt === '') return null;
   const T = Number(temp);
   const R = Math.min(100, Math.max(0.5, Number(fukt)));
@@ -37,15 +37,15 @@ const TRAPPA = [
   { gran: Infinity, niva: 'nej', text: 'För varmt för snöläggning. Stäng av vattnet.', vatten: 0 },
 ];
 
-/** Klartecken för snöläggning utifrån våtkula (°C). */
+/** Klartecken för snöläggning utifrån wetbulb (°C). */
 export function klartecken(vk) {
-  if (vk == null) return { niva: 'okant', text: 'Saknar mätvärden.', vatten: null, vatkula: null };
+  if (vk == null) return { niva: 'okant', text: 'Saknar mätvärden.', vatten: null, wetbulb: null };
   const t = TRAPPA.find((r) => vk < r.gran) ?? TRAPPA.at(-1);
-  return { niva: t.niva, text: t.text, vatten: t.vatten, vatkula: vk };
+  return { niva: t.niva, text: t.text, vatten: t.vatten, wetbulb: vk };
 }
 
-/** Kompletterar en mätning med framräknad våtkula när den inte rapporterats. */
+/** Kompletterar en mätning med framräknad wetbulb när den inte rapporterats. */
 export function kompletteraMatning(m) {
-  const vk = m.vatkula ?? vatkula(m.lufttemp, m.luftfukt);
-  return { ...m, vatkula: vk, vatkula_beraknad: m.vatkula == null && vk != null, klartecken: klartecken(vk) };
+  const vk = m.wetbulb ?? wetbulb(m.lufttemp, m.luftfukt);
+  return { ...m, wetbulb: vk, wetbulb_beraknad: m.wetbulb == null && vk != null, klartecken: klartecken(vk) };
 }

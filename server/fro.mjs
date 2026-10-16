@@ -1,18 +1,39 @@
 // Frö: grunddata för HAK:s backe. Kör med --nollstall för att börja om.
-import { alla, db, en, kor, spara, transaktion } from './db.mjs';
-import { hasha } from './auth.mjs';
-import { passSlag, plusDagar, veckodag } from './tid.mjs';
+//
+// Nollställningen tar bort hela databasfilen och bygger upp den på nytt.
+// Bokföringen går med flit inte att tömma rad för rad – verifikationer och
+// behandlingshistorik har triggrar som vägrar både UPDATE och DELETE.
+import { existsSync, rmSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const nollstall = process.argv.includes('--nollstall');
+const sokvag = process.env.HAK_DB || join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'hak.db');
+
+if (nollstall && sokvag !== ':memory:') {
+  for (const fil of [sokvag, `${sokvag}-wal`, `${sokvag}-shm`])
+    if (existsSync(fil)) {
+      rmSync(fil);
+      console.log(`Tog bort ${fil}`);
+    }
+}
+
+const { alla, db, en, kor, spara, transaktion } = await import('./db.mjs');
+const { hasha } = await import('./auth.mjs');
+const { passSlag, plusDagar, veckodag } = await import('./tid.mjs');
+
 const fanns = en('SELECT count(*) AS n FROM medlem').n;
 if (fanns && !nollstall) {
   console.log(`Databasen har redan ${fanns} medlemmar. Kör med --nollstall för att skriva om.`);
   process.exit(0);
 }
-if (nollstall) {
-  for (const t of ['checklistsvar', 'checklistkorning', 'checklistpunkt', 'checklistmall', 'arendehandelse',
+if (false) {
+  for (const t of ['narvaro', 'traningstillfalle', 'gruppmedlem', 'traningsgrupp', 'uppdrag', 'sektion',
+    'medlemsavgift',
+    'checklistsvar', 'checklistkorning', 'checklistpunkt', 'checklistmall', 'arendehandelse',
     'arende', 'matning', 'snopass', 'insats', 'bokning', 'otillganglighet', 'pass', 'position',
-    'utrustning', 'omrade', 'sasong', 'session', 'medlem', 'epostlogg'])
+    'utrustning', 'omrade', 'sasong', 'session', 'medlem', 'epostlogg',
+    'orderrad', 'kundorder', 'artikel', 'hyresrad', 'hyresavtal', 'hyrespris', 'smslogg'])
     kor(`DELETE FROM ${t}`);
 }
 
@@ -37,6 +58,15 @@ transaktion(() => {
     ['helena', 'Helena Strand', 'medlem', 'helena@example.com', 12, ['fik', 'uthyrning']],
     ['anders', 'Anders Molin', 'medlem', 'anders@example.com', null, ['snolaggning', 'bandet']],
     ['ingrid', 'Ingrid Sjöberg', 'medlem', 'ingrid@example.com', null, []],
+    // Funktionskonton: en inloggning per uppdrag i klubben.
+    ['ordforande', 'Ordförande', 'anlaggningsansvarig', 'ordforande@example.com', 0, []],
+    ['kassor', 'Kassör', 'medlem', 'kassor@example.com', 0, []],
+    ['admin', 'Administratör', 'admin', 'admin@example.com', 0, []],
+    ['kiosk', 'Kiosken', 'medlem', 'kiosk@example.com', 0, ['fik']],
+    ['uthyrning', 'Skiduthyrningen', 'medlem', 'uthyrning@example.com', 0, ['uthyrning']],
+    ['tranare', 'Tränare U10', 'tranare', 'u10@example.com', 0, []],
+    ['freeski', 'Tränare Freeski', 'tranare', 'freeski@example.com', 0, []],
+    ['fis', 'Tränare FIS', 'tranare', 'fis@example.com', 0, []],
   ];
   const mid = {};
   for (const [anv, namn, roll, epost, kvot, komp] of medlemmar)
@@ -78,9 +108,9 @@ transaktion(() => {
 
   // ---------- Checklistor ----------
   let mallordning = 0;
-  const mall = (namn, omfattning, nyckel, intervall, beskrivning, punkter) => {
+  const mall = (namn, omfattning, nyckel, intervall, beskrivning, punkter, position_nyckel = null) => {
     const id = spara('checklistmall', {
-      namn, omfattning, intervall, beskrivning,
+      namn, omfattning, intervall, beskrivning, position_nyckel,
       utrustningstyp: omfattning === 'utrustningstyp' ? nyckel : null,
       omrade_id: omfattning === 'omrade' ? omr[nyckel] : null,
       ordning: mallordning++,
@@ -96,7 +126,7 @@ transaktion(() => {
 
   mall('Lans – start av snöläggning', 'utrustningstyp', 'lans', 'vid_start',
     'Gå igenom innan vatten släpps på lansen.', [
-      ['Våtkulan tillåter produktion (kontrollera i appen)', 'bock', null, 'Under −2,5 °C våtkula. Rapportera mätningen först.'],
+      ['Wetbulb tillåter produktion (kontrollera i appen)', 'bock', null, 'Under −2,5 °C wetbulb. Rapportera mätningen först.'],
       ['Lansen är riktad rätt efter vindriktningen', 'bock'],
       ['Slangar och kopplingar är hela och utan läckage', 'bock'],
       ['Dräneringsventilen är stängd', 'bock'],
@@ -106,7 +136,7 @@ transaktion(() => {
       ['Området runt lansen är avspärrat från åkande', 'bock'],
       ['Elanslutning och kabel är oskadad', 'bock'],
       ['Anteckning om läge och inställning', 'text', null, null, false],
-    ]);
+    ], 'snolaggning');
 
   mall('Lans – tillsyn under drift', 'utrustningstyp', 'lans', 'per_pass',
     'Varannan timme under pågående pass.', [
@@ -117,11 +147,11 @@ transaktion(() => {
       ['Vattenflöde', 'varde', 'l/s'],
       ['Inga läckage vid kopplingar', 'bock'],
       ['Snöhögen behöver flyttas av pistmaskin', 'bock', null, 'Bocka om pistmaskinen behöver kallas in.', false],
-    ]);
+    ], 'snolaggning');
 
   mall('Fläkt – start av snöläggning', 'utrustningstyp', 'flakt', 'vid_start',
     'Startrutin för fläktkanon.', [
-      ['Våtkulan tillåter produktion', 'bock'],
+      ['Wetbulbn tillåter produktion', 'bock'],
       ['Fläkten står stabilt och är uppriktad', 'bock'],
       ['Oscilleringen går fritt i hela rörelsen', 'bock'],
       ['Vattenfilter är rengjort', 'bock'],
@@ -130,7 +160,7 @@ transaktion(() => {
       ['Vattenflöde vid start', 'varde', 'l/s'],
       ['Elkabel och jordfelsbrytare kontrollerad', 'bock'],
       ['Inga åkande i kastriktningen', 'bock'],
-    ]);
+    ], 'snolaggning');
 
   mall('Fläkt – daglig tillsyn', 'utrustningstyp', 'flakt', 'dagligen',
     'Görs en gång per dygn under snöläggningssäsong.', [
@@ -139,7 +169,7 @@ transaktion(() => {
       ['Smörjning kontrollerad', 'bock'],
       ['Driftstimmar', 'varde', 'h', null, false],
       ['Avvikelser att rapportera', 'text', null, null, false],
-    ]);
+    ], 'snolaggning');
 
   mall('Pumpstation – start och tillsyn', 'utrustningstyp', 'pumpstation', 'vid_start', null, [
     ['Vattennivå i dammen är tillräcklig', 'bock'],
@@ -149,7 +179,7 @@ transaktion(() => {
     ['Inga larm på styrskåpet', 'bock'],
     ['Ingen läckage i pumphuset', 'bock'],
     ['Frostskydd av ledningar kontrollerat', 'bock'],
-  ]);
+  ], 'snolaggning');
 
   mall('Lift – kontroll före öppning', 'utrustningstyp', 'lift', 'dagligen',
     'Säkerhetskritisk. Liften får inte öppna förrän alla punkter är klara.', [
@@ -160,7 +190,7 @@ transaktion(() => {
       ['Provkörning utan last genomförd', 'bock'],
       ['Kommunikationsradio fungerar', 'bock'],
       ['Liftvärd har genomgått instruktion', 'bock'],
-    ]);
+    ], 'backansvarig');
 
   mall('Bandet – daglig säkerhetskontroll', 'utrustningstyp', 'band', 'dagligen', null, [
     ['Nödstopp testat', 'bock'],
@@ -168,7 +198,7 @@ transaktion(() => {
     ['Sidoskydd och galler sitter fast', 'bock'],
     ['Instruktionsskylt vid påstigning finns', 'bock'],
     ['Provkörning genomförd', 'bock'],
-  ]);
+  ], 'bandet');
 
   mall('Backansvarig – öppning av backen', 'allmant', null, 'dagligen',
     'Backansvarigs rutin innan backen öppnar för allmänheten.', [
@@ -180,7 +210,7 @@ transaktion(() => {
       ['Bemanning på plats enligt schema', 'bock'],
       ['Snödjup representativt mätvärde', 'varde', 'cm', null, false],
       ['Information till åkande uppdaterad (skyltar/webb)', 'bock', null, null, false],
-    ]);
+    ], 'backansvarig');
 
   mall('Backansvarig – stängning', 'allmant', null, 'dagligen', null, [
     ['Backen avsökt, inga åkande kvar', 'bock'],
@@ -188,7 +218,7 @@ transaktion(() => {
     ['Avspärrningar inför natten på plats', 'bock'],
     ['Incidenter rapporterade som ärenden', 'bock'],
     ['Pistningsbehov anmält', 'bock', null, null, false],
-  ]);
+  ], 'backansvarig');
 
   mall('Fiket – öppning', 'omrade', 'Fiket', 'dagligen', null, [
     ['Kyl- och frystemperatur kontrollerad', 'varde', '°C'],
@@ -197,7 +227,7 @@ transaktion(() => {
     ['Växelkassa räknad', 'bock'],
     ['Varor påfyllda', 'bock'],
     ['Brandsläckare och utrymningsväg fria', 'bock'],
-  ]);
+  ], 'fik');
 
   mall('Fiket – stängning', 'omrade', 'Fiket', 'dagligen', null, [
     ['Kassa räknad och avstämd', 'bock'],
@@ -205,7 +235,7 @@ transaktion(() => {
     ['Diskat och avtorkat', 'bock'],
     ['Sopor utkastade', 'bock'],
     ['Lås och larm', 'bock'],
-  ]);
+  ], 'fik');
 
   mall('Skiduthyrningen – öppning', 'omrade', 'Skiduthyrningen', 'dagligen', null, [
     ['Utrustning uppräknad mot utlåningslistan', 'bock'],
@@ -213,7 +243,7 @@ transaktion(() => {
     ['Bindningstestare kalibrerad', 'bock'],
     ['Hjälmar kontrollerade', 'bock'],
     ['Kassa och hyreskontrakt framme', 'bock'],
-  ]);
+  ], 'uthyrning');
 
   // ---------- Positioner ----------
   const pos = {};
@@ -395,9 +425,393 @@ transaktion(() => {
     `UPDATE arende SET skapad=?, stangd=?, uppdaterad=? WHERE id=?`,
     `${plusDagar(IDAG, -9)} 18:00`, `${plusDagar(IDAG, -6)} 12:00`, `${plusDagar(IDAG, -6)} 12:00`, stangt
   );
+
+  // ---------- Kioskens sortiment ----------
+  // Priser är klubbens egna och ska stämmas av mot kassan före säsongsstart.
+  let artikelordning = 0;
+  const artikel = (namn, kategori, kronor, emoji, beskrivning = null) =>
+    spara('artikel', {
+      namn, kategori, pris_ore: Math.round(kronor * 100), emoji, beskrivning,
+      ordning: artikelordning++,
+    });
+
+  for (const [namn, kronor, emoji, bes] of [
+    ['Varmkorv med bröd', 30, '🌭', null],
+    ['Varmkorv med bröd och mos', 45, '🌭', 'Potatismos och rostad lök'],
+    ['Dubbel varmkorv', 50, '🌭', 'Två korvar, ett bröd'],
+    ['Varm macka ost och skinka', 55, '🥪', 'Grillad i kontaktgrill'],
+    ['Toast special', 65, '🥪', 'Skinka, ost, ananas'],
+    ['Billys panpizza', 45, '🍕', 'Original eller kebab'],
+    ['Nudlar', 35, '🍜', 'Kyckling eller grönsak'],
+    ['Dagens soppa med bröd', 60, '🥣', 'Fråga i luckan vilken sort'],
+  ])
+    artikel(namn, 'mat', kronor, emoji, bes);
+
+  for (const [namn, kronor, emoji, bes] of [
+    ['Kaffe', 25, '☕', null],
+    ['Te', 25, '🍵', null],
+    ['Varm choklad', 30, '🍫', null],
+    ['Varm choklad med grädde', 35, '🍫', null],
+    ['Läsk 33 cl', 25, '🥤', null],
+    ['Vatten 50 cl', 20, '💧', null],
+    ['Energidryck', 35, '⚡', null],
+    ['Saft', 15, '🧃', null],
+  ])
+    artikel(namn, 'dryck', kronor, emoji, bes);
+
+  for (const [namn, kronor, emoji, bes] of [
+    ['Kanelbulle', 25, '🥐', null],
+    ['Chokladboll', 20, '🍪', null],
+    ['Våffla med sylt och grädde', 45, '🧇', 'Serveras lördag och söndag'],
+    ['Mazarin', 25, '🧁', null],
+  ])
+    artikel(namn, 'fika', kronor, emoji, bes);
+
+  for (const [namn, kronor, emoji] of [
+    ['Lösgodis 100 g', 20, '🍬'],
+    ['Chokladbit', 20, '🍫'],
+    ['Chips', 25, '🥔'],
+    ['Glass', 25, '🍦'],
+  ])
+    artikel(namn, 'godis', kronor, emoji, null);
+
+  for (const [namn, kronor, bes] of [
+    ['Dagkort vuxen', 270, '18–64 år'],
+    ['Dagkort ungdom/senior', 250, '8–17 år och 65+'],
+    ['Eftermiddagskort vuxen', 140, 'Efter kl 13.30'],
+    ['Eftermiddagskort ungdom/senior', 120, 'Efter kl 13.30'],
+    ['Kvällskort vuxen', 180, null],
+    ['Kvällskort ungdom/senior', 155, null],
+    ['Barnbacken', 150, 'Gäller barnbacken hela dagen'],
+    ['Barnbacken efter 13.30 och kväll', 90, null],
+  ])
+    artikel(namn, 'liftkort', kronor, '🎟️', bes);
+
+  // ---------- Uthyrningens prislista ----------
+  // Hämtad från harnosandsalpina.se/skiduthyrningen. Stäm av före säsongen.
+  let hyresordning = 0;
+  const TIDER = ['halvdag', 'heldag', 'tvadagar', 'tredagar', 'vecka'];
+  const hyra = (grupp, namn, aldersgrupp, kronor) =>
+    TIDER.forEach((tid, i) =>
+      spara('hyrespris', {
+        grupp, namn, aldersgrupp, tid,
+        pris_ore: Math.round(kronor[i] * 100),
+        ordning: hyresordning++,
+      })
+    );
+
+  hyra('paket', 'Paket slalom/snowboard', 'vuxen', [170, 220, 330, 550, 880]);
+  hyra('paket', 'Paket slalom/snowboard', 'ungdom', [110, 170, 220, 330, 660]);
+  hyra('paket', 'Paket slalom/snowboard', 'barn', [90, 110, 200, 280, 440]);
+  hyra('utrustning', 'Skidor eller snowboard', 'vuxen', [110, 170, 220, 330, 660]);
+  hyra('utrustning', 'Skidor eller snowboard', 'ungdom', [90, 110, 170, 280, 440]);
+  hyra('utrustning', 'Skidor eller snowboard', 'barn', [60, 90, 130, 220, 330]);
+  hyra('utrustning', 'Pjäxor eller boots', 'alla', [70, 90, 150, 200, 275]);
+  hyra('tillbehor', 'Hjälm', 'alla', [50, 60, 80, 100, 120]);
+  hyra('tillbehor', 'Stavar', 'alla', [50, 60, 80, 100, 120]);
+  hyra('tillbehor', 'Skidglasögon', 'alla', [50, 60, 80, 100, 120]);
+
+  // ---------- Föreningen: sektioner, grupper och uppdrag ----------
+  const sektion = {};
+  for (const [i, [nyckel, namn, beskrivning]] of [
+    ['alpint', 'Alpint', 'Träning och tävling i slalom, storslalom och super-G'],
+    ['freeride', 'Freeride', 'Friåkning, hopp och park'],
+    ['minialpina', 'Minialpina', 'Skidlek och första kurvorna för de yngsta'],
+    ['anlaggning', 'Anläggning', 'Backen, liftarna och snöläggningen'],
+  ].entries())
+    sektion[nyckel] = spara('sektion', { nyckel, namn, beskrivning, ordning: i });
+
+  const grupp = {};
+  for (const [i, [namn, sekt, aldersspann, dag, tid]] of [
+    ['Minialpina 4–6 år', 'minialpina', '4–6 år', 'Söndag', '10:00–11:30'],
+    ['U8', 'alpint', '7–8 år', 'Tisdag och söndag', '17:30–19:30'],
+    ['U10', 'alpint', '9–10 år', 'Tisdag och torsdag', '17:30–19:30'],
+    ['U12', 'alpint', '11–12 år', 'Tisdag, torsdag och lördag', '17:30–19:30'],
+    ['U14/U16', 'alpint', '13–16 år', 'Måndag, onsdag och lördag', '17:30–20:00'],
+    ['Freeridegruppen', 'freeride', '13 år och uppåt', 'Fredag', '17:00–20:00'],
+    ['Freeski', 'freeride', '13 år och uppåt', 'Lördag', '10:00–13:00'],
+    ['FIS', 'alpint', '16 år och uppåt', 'Måndag, onsdag och lördag', '17:00–20:00'],
+  ].entries())
+    grupp[namn] = spara('traningsgrupp', {
+      namn, sektion_id: sektion[sekt], aldersspann, dag, tid, ordning: i,
+    });
+
+  // Tränare och aktiva i grupperna.
+  const iGrupp = (gruppnamn, anv, roll = 'aktiv') =>
+    spara('gruppmedlem', { grupp_id: grupp[gruppnamn], medlem_id: mid[anv], roll });
+  iGrupp('U12', 'annika', 'tranare');
+  iGrupp('U12', 'johan', 'hjalptranare');
+  iGrupp('U10', 'per', 'tranare');
+  iGrupp('U8', 'karin', 'tranare');
+  iGrupp('Minialpina 4–6 år', 'lotta', 'tranare');
+  iGrupp('Freeridegruppen', 'stefan', 'tranare');
+  iGrupp('U14/U16', 'per', 'tranare');
+
+  // Uppdrag: styrelse, tränare och volontärer.
+  const uppdrag = (anv, slag, extra = {}) =>
+    spara('uppdrag', { medlem_id: mid[anv], slag, fran: '2026-09-01', ...extra });
+  uppdrag('annika', 'ordforande');
+  uppdrag('karin', 'kassor');
+  uppdrag('lotta', 'sekreterare');
+  uppdrag('mikael', 'ledamot');
+  uppdrag('emma', 'suppleant');
+  uppdrag('jonas', 'anlaggningsansvarig');
+  uppdrag('per', 'backansvarig');
+  uppdrag('stefan', 'sektionsansvarig', { sektion_id: sektion.freeride });
+  uppdrag('tobias', 'volontar');
+  uppdrag('anders', 'volontar');
+  uppdrag('ingrid', 'revisor');
+  uppdrag('ordforande', 'ordforande');
+  uppdrag('kassor', 'kassor');
+  uppdrag('kiosk', 'volontar');
+  uppdrag('uthyrning', 'volontar');
+  iGrupp('U10', 'tranare', 'tranare');
+  iGrupp('Freeski', 'freeski', 'tranare');
+  iGrupp('FIS', 'fis', 'tranare');
+  uppdrag('freeski', 'sektionsansvarig', { sektion_id: sektion.freeride });
+
+  // Kassören och tränarna ska komma åt sina delar.
+  kor("UPDATE medlem SET roll='tranare' WHERE anvandarnamn IN ('lotta','stefan','johan')");
+
+  // ---------- Matrikeln ----------
+  const matrikel = {
+    jonas: ['1972-03-14', 'ledare', 'Storgatan 4', '871 30', 'Härnösand'],
+    medlem: ['1988-07-02', 'aktiv', 'Skolgatan 11', '871 31', 'Härnösand'],
+    annika: ['1979-11-23', 'ledare', 'Brännavägen 8', '871 33', 'Härnösand'],
+    per: ['1975-01-30', 'ledare', 'Murbergsvägen 2', '871 60', 'Härnösand'],
+    karin: ['1983-05-19', 'ledare', 'Nybrogatan 9', '871 31', 'Härnösand'],
+    stefan: ['1990-09-08', 'aktiv', 'Gånsviksvägen 14', '871 62', 'Härnösand'],
+    lotta: ['1986-02-11', 'ledare', 'Köpmangatan 3', '871 31', 'Härnösand'],
+    mikael: ['1981-12-05', 'aktiv', 'Hamngatan 21', '871 30', 'Härnösand'],
+    sara: ['1995-06-27', 'aktiv', 'Nattviksgatan 6', '871 45', 'Härnösand'],
+    tobias: ['1992-04-16', 'aktiv', 'Varvsgatan 2', '871 45', 'Härnösand'],
+    emma: ['1993-08-30', 'aktiv', 'Franzéngatan 5', '871 31', 'Härnösand'],
+    johan: ['1984-10-12', 'ledare', 'Bergsgatan 17', '871 33', 'Härnösand'],
+    helena: ['1998-01-25', 'aktiv', 'Södra Vägen 44', '871 52', 'Härnösand'],
+    anders: ['1968-03-03', 'stod', 'Tullportsgatan 7', '871 30', 'Härnösand'],
+    ingrid: ['1961-07-21', 'heders', 'Brunnshusgatan 12', '871 31', 'Härnösand'],
+    hugo: ['1980-05-05', 'aktiv', null, null, 'Härnösand'],
+  };
+  let medlemsnummer = 1000;
+  for (const [anv, [fodelsedatum, kategori, adress, postnummer, ort]] of Object.entries(matrikel)) {
+    const m = en('SELECT * FROM medlem WHERE anvandarnamn=?', anv);
+    if (!m) continue;
+    const delar = m.namn.split(' ');
+    kor(
+      `UPDATE medlem SET medlemsnummer=?, fornamn=?, efternamn=?, fodelsedatum=?, kategori=?,
+         adress=?, postnummer=?, ort=?, intradesdatum=?, samtycke_bild=1, samtycke_tid=datetime('now')
+       WHERE id=?`,
+      String(++medlemsnummer), delar[0], delar.slice(1).join(' '), fodelsedatum, kategori,
+      adress, postnummer, ort, '2020-09-01', m.id
+    );
+  }
+
+  // Några barn i grupperna, utan inloggning – de är bara medlemmar.
+  const barn = [
+    ['Elsa Sund', '2014-04-12', 'U12', 'annika'],
+    ['Viggo Sund', '2016-08-03', 'U10', 'annika'],
+    ['Alma Åkerlund', '2015-02-20', 'U12', 'per'],
+    ['Noel Holm', '2017-11-11', 'U8', 'karin'],
+    ['Tuva Berg', '2013-06-30', 'U14/U16', 'stefan'],
+    ['Liv Nyberg', '2019-03-09', 'Minialpina 4–6 år', 'lotta'],
+    ['Melker Ek', '2015-09-17', 'U12', 'mikael'],
+    ['Signe Dahl', '2016-01-28', 'U10', 'emma'],
+    ['Ville Vikner', '2012-05-14', 'U14/U16', 'johan'],
+    ['Ester Lund', '2018-07-07', 'Minialpina 4–6 år', 'sara'],
+    ['Hugo Molin', '2014-10-02', 'U12', 'anders'],
+    ['Maja Strand', '2015-12-19', 'U12', 'helena'],
+    ['Olle Sjöberg', '2016-03-22', 'U10', 'ingrid'],
+    ['Wilma Nord', '2016-06-08', 'U10', 'tobias'],
+    ['Edvin Holm', '2017-02-14', 'U8', 'karin'],
+    ['Nova Berg', '2017-09-26', 'U8', 'stefan'],
+    ['Alvin Dahl', '2018-04-30', 'U8', 'emma'],
+    ['Saga Vikner', '2013-01-17', 'U14/U16', 'johan'],
+    ['Leo Åkerlund', '2012-11-05', 'U14/U16', 'per'],
+    ['Iris Sund', '2011-08-23', 'U14/U16', 'annika'],
+    ['Folke Ek', '2019-05-12', 'Minialpina 4–6 år', 'mikael'],
+    ['Stina Lund', '2020-02-29', 'Minialpina 4–6 år', 'sara'],
+    ['Milo Nyberg', '2013-07-18', 'Freeridegruppen', 'lotta'],
+    ['Ruth Molin', '2011-04-04', 'Freeridegruppen', 'anders'],
+    ['Nils Sund', '2010-02-08', 'FIS', 'annika'],
+    ['Agnes Åkerlund', '2009-10-21', 'FIS', 'per'],
+    ['Hampus Berg', '2008-12-02', 'FIS', 'stefan'],
+    ['Tindra Holm', '2010-07-15', 'Freeski', 'karin'],
+    ['Loke Nord', '2011-09-29', 'Freeski', 'tobias'],
+    ['Juni Dahl', '2012-03-18', 'Freeski', 'emma'],
+  ];
+  for (const [namn, fodelsedatum, gruppnamn, forelder] of barn) {
+    const foraldern = en('SELECT * FROM medlem WHERE anvandarnamn=?', forelder);
+    const delar = namn.split(' ');
+    const id = spara('medlem', {
+      anvandarnamn: `${delar[0].toLowerCase()}${fodelsedatum.slice(2, 4)}`,
+      namn,
+      fornamn: delar[0],
+      efternamn: delar.slice(1).join(' '),
+      fodelsedatum,
+      kategori: 'aktiv',
+      roll: 'medlem',
+      kvot_timmar: 0,
+      losenordshash: hasha(Math.random().toString(36).slice(2)),
+      kompetens: '[]',
+      medlemsnummer: String(++medlemsnummer),
+      intradesdatum: '2024-09-01',
+      malsman_namn: foraldern?.namn ?? null,
+      malsman_telefon: foraldern?.telefon ?? null,
+      malsman_epost: foraldern?.epost ?? null,
+      ort: 'Härnösand',
+      samtycke_bild: 1,
+    });
+    spara('gruppmedlem', { grupp_id: grupp[gruppnamn], medlem_id: id, roll: 'aktiv' });
+  }
+
+  // ---------- Träningstillfällen med närvaro ----------
+  const grupptranare = (gruppnamn) =>
+    alla(
+      "SELECT medlem_id FROM gruppmedlem WHERE grupp_id=? AND roll IN ('tranare','hjalptranare')",
+      grupp[gruppnamn]
+    );
+  const gruppaktiva = (gruppnamn) =>
+    alla("SELECT medlem_id FROM gruppmedlem WHERE grupp_id=? AND roll='aktiv'", grupp[gruppnamn]);
+
+  for (const gruppnamn of ['U8', 'U10', 'U12', 'U14/U16', 'Minialpina 4–6 år', 'Freeridegruppen', 'Freeski', 'FIS']) {
+    for (let v = 1; v <= 6; v++) {
+      const datum = plusDagar(IDAG, -v * 7 + 1);
+      const id = spara('traningstillfalle', {
+        grupp_id: grupp[gruppnamn],
+        datum,
+        start: '17:30',
+        slut: '19:30',
+        plats: 'Vårdkasbacken',
+        slag: 'traning',
+        rubrik: `${gruppnamn} träning`,
+        av_id: mid.annika,
+      });
+      for (const l of grupptranare(gruppnamn))
+        spara('narvaro', { tillfalle_id: id, medlem_id: l.medlem_id, roll: 'ledare', narvarande: 1 });
+      for (const a of gruppaktiva(gruppnamn))
+        spara('narvaro', { tillfalle_id: id, medlem_id: a.medlem_id, roll: 'deltagare', narvarande: v % 5 === 0 ? 0 : 1 });
+    }
+  }
+
+  // ---------- Såld fika och uthyrning några dagar bakåt ----------
+  const artiklar = alla('SELECT * FROM artikel WHERE kategori IN (\'mat\',\'dryck\',\'fika\',\'godis\')');
+  const hyrpaket = alla("SELECT * FROM hyrespris WHERE grupp='paket'");
+  let ordernr = 0;
+  for (let d = 7; d >= 1; d--) {
+    const datum = plusDagar(IDAG, -d);
+    for (let o = 0; o < 3 + (d % 3); o++) {
+      const valda = artiklar.filter(() => Math.random() < 0.25).slice(0, 3);
+      if (!valda.length) continue;
+      const belopp = valda.reduce((a, x) => a + x.pris_ore, 0);
+      const betalsatt = o % 3 === 0 ? 'kontant' : o % 3 === 1 ? 'swish' : 'kort';
+      const id = spara('kundorder', {
+        nummer: `K${++ordernr}`,
+        kanal: o % 2 ? 'kassa' : 'qr',
+        status: 'hamtad',
+        belopp_ore: belopp,
+        betalsatt,
+        betald_tid: `${datum} 12:0${o}`,
+        skapad: `${datum} 12:0${o}`,
+        uppdaterad: `${datum} 12:3${o}`,
+        hamtad_tid: `${datum} 12:3${o}`,
+        av_id: mid.karin,
+      });
+      for (const x of valda)
+        spara('orderrad', { order_id: id, artikel_id: x.id, namn: x.namn, styckpris_ore: x.pris_ore, antal: 1 });
+    }
+    // En uthyrning om dagen.
+    const paket = hyrpaket[d % hyrpaket.length];
+    const hid = spara('hyresavtal', {
+      nummer: `U${d}`,
+      namn: ['Familjen Lind', 'Erik Dahl', 'Moa Sjöberg', 'Team Åkerlund'][d % 4],
+      status: 'aterlamnad',
+      belopp_ore: paket.pris_ore * 2,
+      betalsatt: 'kort',
+      betald_tid: `${datum} 10:15`,
+      utlamnad_tid: `${datum} 10:20`,
+      retur_tid: `${datum} 16:05`,
+      skapad: `${datum} 10:10`,
+      av_id: mid.mikael,
+    });
+    spara('hyresrad', { avtal_id: hid, hyrespris_id: paket.id, namn: `${paket.namn} · heldag`, pris_ore: paket.pris_ore, antal: 2, aterlamnad: 1 });
+  }
+
+  // ---------- Medlemsavgifter ----------
+  for (const m of alla("SELECT id, kategori FROM medlem WHERE aktiv=1")) {
+    const belopp = m.kategori === 'stod' ? 20000 : m.kategori === 'heders' ? 0 : 45000;
+    if (!belopp) continue;
+    spara('medlemsavgift', {
+      medlem_id: m.id,
+      sasong: '2026/27',
+      belopp_ore: belopp,
+      status: m.id % 4 === 0 ? 'obetald' : 'betald',
+      betald_tid: m.id % 4 === 0 ? null : `${plusDagar(IDAG, -40)} 12:00`,
+      betalsatt: m.id % 4 === 0 ? null : 'swish',
+    });
+  }
 });
 
+// ---------- Bokföring av det som sålts ----------
+// Verifikationerna skapas utanför transaktionen: de har triggrar som
+// vägrar ändringar, och ska bokföras i samma ordning som affärerna skedde.
+{
+  const bok = await import('./bokforing.mjs');
+  bok.sakerstallKontoplan();
+  const kassorska = en("SELECT * FROM medlem WHERE anvandarnamn='karin'");
+  const kassor = en("SELECT * FROM medlem WHERE anvandarnamn='kassor'");
+
+  for (const o of alla("SELECT * FROM kundorder WHERE betald_tid IS NOT NULL ORDER BY skapad")) {
+    const rader = alla('SELECT r.*, a.kategori FROM orderrad r LEFT JOIN artikel a ON a.id=r.artikel_id WHERE r.order_id=?', o.id);
+    bok.bokforAffar({
+      serie: 'K',
+      datum: o.skapad.slice(0, 10),
+      beskrivning: `Kioskorder ${o.nummer}`,
+      motpart: 'Kontantkund',
+      rader: rader.map((r) => ({
+        konto: r.kategori === 'liftkort' ? bok.INTAKTSKONTON.liftkort : bok.INTAKTSKONTON.kiosk,
+        belopp_ore: r.styckpris_ore * r.antal,
+      })),
+      betalmedel: o.betalsatt,
+      referens_slag: 'order',
+      referens_id: o.id,
+      av: kassorska,
+    });
+  }
+
+  for (const h of alla("SELECT * FROM hyresavtal WHERE betald_tid IS NOT NULL ORDER BY skapad")) {
+    const rader = alla('SELECT * FROM hyresrad WHERE avtal_id=?', h.id);
+    bok.bokforAffar({
+      serie: 'U',
+      datum: h.skapad.slice(0, 10),
+      beskrivning: `Uthyrning ${h.nummer}`,
+      motpart: h.namn,
+      rader: rader.map((r) => ({ konto: bok.INTAKTSKONTON.uthyrning, belopp_ore: r.pris_ore * r.antal })),
+      betalmedel: h.betalsatt,
+      referens_slag: 'hyresavtal',
+      referens_id: h.id,
+      av: kassorska,
+    });
+  }
+
+  for (const a of alla("SELECT a.*, m.namn FROM medlemsavgift a JOIN medlem m ON m.id=a.medlem_id WHERE a.status='betald'")) {
+    bok.bokforForsaljning({
+      serie: 'M',
+      datum: a.betald_tid.slice(0, 10),
+      beskrivning: `Medlemsavgift ${a.sasong} ${a.namn}`,
+      motpart: a.namn,
+      belopp_ore: a.belopp_ore,
+      intaktskonto: bok.INTAKTSKONTON.medlemsavgift,
+      betalmedel: a.betalsatt || 'swish',
+      referens_slag: 'medlemsavgift',
+      referens_id: a.medlem_id,
+      av: kassor,
+    });
+  }
+}
+
 console.log('Frö klart:');
-for (const t of ['medlem', 'omrade', 'utrustning', 'checklistmall', 'checklistpunkt', 'position', 'pass', 'bokning', 'matning', 'arende', 'insats'])
+for (const t of ['medlem', 'omrade', 'utrustning', 'checklistmall', 'checklistpunkt', 'position',
+  'pass', 'bokning', 'matning', 'arende', 'insats', 'artikel', 'hyrespris',
+  'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift'])
   console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
 db.close();

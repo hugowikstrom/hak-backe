@@ -7,7 +7,7 @@ import { Tabell } from '../delar/tabell.jsx';
 import { Prognos } from '../delar/prognos.jsx';
 import {
   grader, initialer, KLARTECKEN, klarteckenLokalt, klockslag, minstRoll, sedan, tal,
-  tidpunkt, UTRUSTNINGSTYP, vatkulaLokalt,
+  tidpunkt, UTRUSTNINGSTYP, wetbulbLokalt,
 } from '../nytta.js';
 
 const TOM = {
@@ -27,7 +27,7 @@ export function Snolaggning() {
   const [nyttArende, sattNyttArende] = useState(null);
 
   const satt = (f) => (v) => sattForm((g) => ({ ...g, [f]: v }));
-  const vk = vatkulaLokalt(form.lufttemp, form.luftfukt);
+  const vk = wetbulbLokalt(form.lufttemp, form.luftfukt);
   const niva = klarteckenLokalt(vk);
 
   const snokanoner = useMemo(
@@ -47,7 +47,7 @@ export function Snolaggning() {
       const kropp = { ...form, snopass_id: nulage.data?.pass?.id };
       for (const k of Object.keys(kropp)) if (kropp[k] === '') delete kropp[k];
       const m = await api.skapa('/api/sno/matningar', kropp);
-      notis(`Mätning sparad. Våtkula ${tal(m.vatkula)} °C – ${KLARTECKEN[m.klartecken.niva].toLowerCase()}.`);
+      notis(`Mätning sparad. Wetbulb ${tal(m.wetbulb)} °C – ${KLARTECKEN[m.klartecken.niva].toLowerCase()}.`);
       sattForm((g) => ({ ...TOM, utrustning_id: g.utrustning_id }));
       nulage.uppdatera();
       matningar.uppdatera();
@@ -87,10 +87,10 @@ export function Snolaggning() {
   const kt = nulage.data.klartecken;
   const rader = (matningar.data || []).slice(0, visaAllt ? 120 : 25);
   const punkter = (matningar.data || [])
-    .filter((r) => r.vatkula != null)
+    .filter((r) => r.wetbulb != null)
     .slice(0, 60)
     .reverse()
-    .map((r) => ({ x: klockslag(r.tid), a: r.vatkula, b: r.lufttemp }));
+    .map((r) => ({ x: klockslag(r.tid), a: r.wetbulb, b: r.lufttemp }));
 
   return (
     <>
@@ -110,7 +110,7 @@ export function Snolaggning() {
       </div>
 
       <div className="tva">
-        <Kort titel="Ny mätning" undertext="Temperatur och fukt räknas om till våtkula direkt">
+        <Kort titel="Ny mätning" undertext="Temperatur och fukt räknas om till wetbulb direkt">
           <form onSubmit={skicka} className="kolumn">
             <div className="faltrad">
               <Val
@@ -150,7 +150,7 @@ export function Snolaggning() {
             <div className={`klartecken ${niva}`}>
               <div className="lampa">{vk != null ? tal(vk) : '?'}</div>
               <div className="kolumn" style={{ gap: 0 }}>
-                <strong>Våtkula {vk != null ? `${tal(vk)} °C` : '– °C'}</strong>
+                <strong>Wetbulb {vk != null ? `${tal(vk)} °C` : '– °C'}</strong>
                 <span className="liten svag">{KLARTECKEN[niva]} – räknas om när du sparar</span>
               </div>
               <button className="primar" style={{ marginLeft: 'auto' }} disabled={sparar}>
@@ -162,7 +162,7 @@ export function Snolaggning() {
 
         <Kort titel="Nuläge" undertext={nulage.data.senasteMatning ? `Senaste mätning ${sedan(nulage.data.senasteMatning.tid)}` : 'Ingen mätning ännu'}>
           <div className={`klartecken ${kt.niva}`}>
-            <div className="lampa">{kt.vatkula != null ? tal(kt.vatkula) : '?'}</div>
+            <div className="lampa">{kt.wetbulb != null ? tal(kt.wetbulb) : '?'}</div>
             <div className="kolumn" style={{ gap: 2 }}>
               <strong>{KLARTECKEN[kt.niva]}</strong>
               <span className="liten svag">{kt.text}</span>
@@ -171,7 +171,7 @@ export function Snolaggning() {
           {punkter.length > 1 && (
             <>
               <div className="skiljare" />
-              <Linjegraf punkter={punkter} etikett_a="våtkula °C" etikett_b="lufttemp °C" />
+              <Linjegraf punkter={punkter} etikett_a="wetbulb °C" etikett_b="lufttemp °C" />
             </>
           )}
         </Kort>
@@ -211,12 +211,12 @@ export function Snolaggning() {
               ),
             },
             {
-              falt: 'vatkula', rubrik: 'Våtkula', sifra: true, sortlos: true,
+              falt: 'wetbulb', rubrik: 'Wetbulb', sifra: true, sortlos: true,
               visa: (u) => {
                 const m = senastePer.get(u.id);
-                return m?.vatkula != null ? (
+                return m?.wetbulb != null ? (
                   <Bricka farg={m.klartecken.niva === 'nej' ? 'rod' : m.klartecken.niva === 'marginellt' ? 'gul' : 'gron'}>
-                    {tal(m.vatkula)} °C
+                    {tal(m.wetbulb)} °C
                   </Bricka>
                 ) : '–';
               },
@@ -253,11 +253,11 @@ export function Snolaggning() {
             { falt: 'lufttemp', rubrik: 'Temp °C', sifra: true, ...faltRedigering('lufttemp', matningar, jag) },
             { falt: 'luftfukt', rubrik: 'Fukt %', sifra: true, ...faltRedigering('luftfukt', matningar, jag) },
             {
-              falt: 'vatkula', rubrik: 'Våtkula', sifra: true,
+              falt: 'wetbulb', rubrik: 'Wetbulb', sifra: true,
               visa: (r) => (
-                <span title={r.vatkula_beraknad ? 'Framräknad ur temp och fukt' : 'Rapporterad'}>
-                  {tal(r.vatkula)}
-                  {r.vatkula_beraknad ? '*' : ''}
+                <span title={r.wetbulb_beraknad ? 'Framräknad ur temp och fukt' : 'Rapporterad'}>
+                  {tal(r.wetbulb)}
+                  {r.wetbulb_beraknad ? '*' : ''}
                 </span>
               ),
             },

@@ -13,11 +13,39 @@ if (sokvag !== ':memory:') mkdirSync(dirname(sokvag), { recursive: true });
 export const db = new DatabaseSync(sokvag);
 db.exec(readFileSync(join(harDenna, 'schema.sql'), 'utf8'));
 
+// Kolumnen hette vatkula innan branschordet wetbulb slog igenom i appen.
+if (db.prepare('PRAGMA table_info(matning)').all().some((k) => k.name === 'vatkula'))
+  db.exec('ALTER TABLE matning RENAME COLUMN vatkula TO wetbulb');
+
 // Kolumner som tillkommit efter första versionen. CREATE TABLE IF NOT EXISTS
 // rör inte befintliga tabeller, så de måste läggas till här.
 for (const [tabell, kolumn, typ] of [
   ['checklistsvar', 'bild', 'TEXT'],
   ['checklistkorning', 'kalla', "TEXT NOT NULL DEFAULT 'webb'"],
+  ['checklistmall', 'position_nyckel', 'TEXT'],
+  ['kundorder', 'kod', 'TEXT'],
+  // Matrikeln: personuppgifter ligger kvar i medlemstabellen men läses bara
+  // av den som har behörigheten medlemsregister.
+  ['medlem', 'medlemsnummer', 'TEXT'],
+  ['medlem', 'fornamn', 'TEXT'],
+  ['medlem', 'efternamn', 'TEXT'],
+  ['medlem', 'fodelsedatum', 'TEXT'],
+  ['medlem', 'adress', 'TEXT'],
+  ['medlem', 'postnummer', 'TEXT'],
+  ['medlem', 'ort', 'TEXT'],
+  ['medlem', 'kategori', "TEXT NOT NULL DEFAULT 'aktiv'"],
+  ['medlem', 'intradesdatum', 'TEXT'],
+  ['medlem', 'utradesdatum', 'TEXT'],
+  ['medlem', 'malsman_namn', 'TEXT'],
+  ['medlem', 'malsman_telefon', 'TEXT'],
+  ['medlem', 'malsman_epost', 'TEXT'],
+  ['medlem', 'nodkontakt_namn', 'TEXT'],
+  ['medlem', 'nodkontakt_telefon', 'TEXT'],
+  ['medlem', 'licens', 'TEXT'],
+  ['medlem', 'licens_till', 'TEXT'],
+  ['medlem', 'samtycke_bild', 'INTEGER'],
+  ['medlem', 'samtycke_tid', 'TEXT'],
+  ['medlem', 'belastningsregister_visat', 'TEXT'],
 ]) {
   const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
   if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);

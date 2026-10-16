@@ -1,6 +1,7 @@
 // Inloggning: användarnamn + lösenord, scrypt, sessionskaka. Inga externa beroenden.
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { alla, en, kor, spara } from './db.mjs';
+import { behorigheterFor, RANG as RANGER, uppdragFor } from './behorighet.mjs';
 
 const KAKA = 'hak_sess';
 const DYGN = 86400e3;
@@ -18,8 +19,8 @@ export function stammer(losenord, hash) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-export const RANG = { medlem: 1, backansvarig: 2, anlaggningsansvarig: 3, admin: 4 };
-export const minstRoll = (medlem, roll) => (RANG[medlem?.roll] ?? 0) >= RANG[roll];
+export const RANG = RANGER;
+export const minstRoll = (medlem, roll) => (RANG[medlem?.roll] ?? 0) >= (RANG[roll] ?? 99);
 
 export function loggaIn(anvandarnamn, losenord) {
   const namn = String(anvandarnamn || '').trim().toLowerCase();
@@ -59,8 +60,10 @@ export const rensaKaka = () => `${KAKA}=; Path=/; HttpOnly; SameSite=Lax; Max-Ag
 
 export const stadaSessioner = () => kor(`DELETE FROM session WHERE giltig_t <= datetime('now')`);
 
-export const publikMedlem = (m) =>
-  m && {
+export const publikMedlem = (m) => {
+  if (!m) return null;
+  const uppdrag = uppdragFor(m.id);
+  return {
     id: m.id,
     anvandarnamn: m.anvandarnamn,
     namn: m.namn,
@@ -71,7 +74,10 @@ export const publikMedlem = (m) =>
     kvot_timmar: m.kvot_timmar,
     kompetens: JSON.parse(m.kompetens || '[]'),
     anteckning: m.anteckning,
+    uppdrag,
+    behorigheter: behorigheterFor({ ...m, uppdrag }),
   };
+};
 
 export const allaMedlemmar = () =>
   alla('SELECT * FROM medlem ORDER BY aktiv DESC, namn').map(publikMedlem);

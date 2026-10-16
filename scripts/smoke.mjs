@@ -21,7 +21,7 @@ await kolla('GET', '/api/oversikt');
 await kolla('GET', '/api/sno/nulage');
 await kolla('GET', '/api/sno/matningar?antal=3');
 const m = await kolla('POST', '/api/sno/matningar', { lufttemp: -6.5, luftfukt: 65, vattenflode: 7, utrustning_id: 2 });
-console.log('   våtkula:', m.vatkula, m.klartecken?.niva);
+console.log('   wetbulb:', m.wetbulb, m.klartecken?.niva);
 await kolla('GET', '/api/checklistor/mallar');
 const mallar = await kolla('GET', '/api/checklistor/for?utrustning_id=1');
 const k = await kolla('POST', '/api/checklistor/korningar', { mall_id: mallar[0].id, utrustning_id: 1 });

@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { medlemAvKaka, RANG, stadaSessioner } from './auth.mjs';
+import { far, uppdragFor } from './behorighet.mjs';
 import { fel, HttpFel, lasKropp, matcha, svar } from './http.mjs';
 import { ROT } from './db.mjs';
 
@@ -16,8 +17,14 @@ import { rutter as rapport } from './api/rapport.mjs';
 import { rutter as oversikt } from './api/oversikt.mjs';
 import { rutter as bilder } from './api/bilder.mjs';
 import { rutter as vader } from './api/vader.mjs';
+import { rutter as fik } from './api/fik.mjs';
+import { rutter as uthyrning } from './api/uthyrning.mjs';
+import { rutter as bokforing } from './api/bokforing.mjs';
+import { rutter as forening } from './api/forening.mjs';
+import { rutter as traning } from './api/traning.mjs';
+import { rutter as ide } from './api/ide.mjs';
 
-const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder, ...vader];
+const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder, ...vader, ...fik, ...uthyrning, ...bokforing, ...forening, ...traning, ...ide];
 
 const PORT = Number(process.env.HAK_PORT || 8120);
 const VARD = process.env.HAK_VARD || '127.0.0.1';
@@ -50,10 +57,16 @@ export const server = createServer(async (req, res) => {
       if (!traff) throw fel(404, `Okänd slutpunkt: ${req.method} ${stig}`);
       const { rutt: r, param } = traff;
 
-      const medlem = medlemAvKaka(req.headers.cookie);
+      const grundmedlem = medlemAvKaka(req.headers.cookie);
+      // Uppdragen följer med, så att behörighetsprövningen slipper läsa om dem.
+      const medlem = grundmedlem ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id) } : null;
       if (r.roll !== 'oppen') {
         if (!medlem) throw fel(401, 'Inte inloggad');
-        if (!(RANG[medlem.roll] >= RANG[r.roll])) throw fel(403, `Kräver rollen ${r.roll}`);
+        if (r.roll.startsWith('@')) {
+          if (!far(medlem, r.roll.slice(1))) throw fel(403, `Kräver behörigheten ${r.roll.slice(1)}`);
+        } else if (!(RANG[medlem.roll] >= RANG[r.roll])) {
+          throw fel(403, `Kräver rollen ${r.roll}`);
+        }
       }
       // Enkelt CSRF-skydd: skrivningar måste komma från klienten.
       if (req.method !== 'GET' && req.headers['x-hak'] !== '1')
@@ -68,8 +81,13 @@ export const server = createServer(async (req, res) => {
 
     if (req.method === 'GET' || req.method === 'HEAD') {
       if (statisk(res, stig)) return;
-      // Mobilappen är en egen klient under /mobil/ med egen startsida.
-      const skal = stig === '/mobil' || stig.startsWith('/mobil/') ? '/mobil/index.html' : '/index.html';
+      // Mobilappen och kiosken är egna klienter med egna startsidor.
+      const skal =
+        stig === '/mobil' || stig.startsWith('/mobil/')
+          ? '/mobil/index.html'
+          : stig === '/fik' || stig.startsWith('/fik/')
+            ? '/fik/index.html'
+            : '/index.html';
       if (statisk(res, skal)) return;
       return svar(res, 404, { fel: 'Klienten är inte byggd. Kör npm run build.' });
     }

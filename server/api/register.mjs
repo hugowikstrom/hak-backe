@@ -1,6 +1,7 @@
 // Register: medlemmar, områden, utrustning, positioner, säsonger.
 import { alla, en, kor, spara, uppdatera } from '../db.mjs';
 import { allaMedlemmar, hasha, publikMedlem, RANG } from '../auth.mjs';
+import { far } from '../behorighet.mjs';
 import { bool, datum, ettAv, fel, heltal, kravTxt, num, rutt, svar, txt } from '../http.mjs';
 
 const ROLLER = Object.keys(RANG);
@@ -44,7 +45,34 @@ export const rutter = [
     if (!m) throw fel(404, 'Medlemmen finns inte');
     if (kropp.roll && RANG[kropp.roll] > RANG[medlem.roll])
       throw fel(403, 'Du kan inte sätta en högre roll än din egen');
+    // Personuppgifterna i matrikeln rörs bara av medlemsansvariga.
+    const matrikel = far(medlem, 'medlemsregister')
+      ? {
+          medlemsnummer: txt(kropp.medlemsnummer, 20),
+          fornamn: txt(kropp.fornamn, 60),
+          efternamn: txt(kropp.efternamn, 60),
+          fodelsedatum: kropp.fodelsedatum === undefined ? undefined : datum(kropp.fodelsedatum, 'Födelsedatum'),
+          adress: txt(kropp.adress, 120),
+          postnummer: txt(kropp.postnummer, 10),
+          ort: txt(kropp.ort, 60),
+          kategori: ettAv(kropp.kategori, ['aktiv', 'stod', 'familj', 'heders', 'ledare', 'provapa'], 'Kategori'),
+          intradesdatum: kropp.intradesdatum === undefined ? undefined : datum(kropp.intradesdatum, 'Inträde'),
+          utradesdatum: kropp.utradesdatum === undefined ? undefined : datum(kropp.utradesdatum, 'Utträde'),
+          malsman_namn: txt(kropp.malsman_namn, 80),
+          malsman_telefon: txt(kropp.malsman_telefon, 40),
+          malsman_epost: txt(kropp.malsman_epost, 120),
+          nodkontakt_namn: txt(kropp.nodkontakt_namn, 80),
+          nodkontakt_telefon: txt(kropp.nodkontakt_telefon, 40),
+          licens: txt(kropp.licens, 60),
+          licens_till: kropp.licens_till === undefined ? undefined : datum(kropp.licens_till, 'Licens till'),
+          samtycke_bild: kropp.samtycke_bild === undefined ? undefined : kropp.samtycke_bild ? 1 : 0,
+          samtycke_tid: kropp.samtycke_bild ? new Date().toISOString().slice(0, 19).replace('T', ' ') : undefined,
+          belastningsregister_visat:
+            kropp.belastningsregister_visat === undefined ? undefined : datum(kropp.belastningsregister_visat, 'Datum'),
+        }
+      : {};
     uppdatera('medlem', m.id, {
+      ...matrikel,
       namn: txt(kropp.namn, 120),
       epost: txt(kropp.epost, 160),
       telefon: txt(kropp.telefon, 40),

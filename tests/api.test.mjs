@@ -129,9 +129,9 @@ test('medlem kommer inte åt registret', async () => {
   assert.equal(r.status, 403);
 });
 
-test('mätning sparas med framräknad våtkula', async () => {
+test('mätning sparas med framräknad wetbulb', async () => {
   const m = await ok('POST', '/api/sno/matningar', { lufttemp: -5, luftfukt: 50, vattenflode: 6, utrustning_id: 1 });
-  assert.equal(m.vatkula, -7.2);
+  assert.equal(m.wetbulb, -7.2);
   assert.equal(m.klartecken.niva, 'mycket_bra'); // −7,2 °C är kallare än gränsen −7
   const nulage = await ok('GET', '/api/sno/nulage');
   assert.equal(nulage.senasteMatning.id, m.id);

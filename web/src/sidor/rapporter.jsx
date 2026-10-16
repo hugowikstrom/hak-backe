@@ -68,7 +68,7 @@ function SnoRapport({ r, period }) {
           <Nyckeltal etikett="Snöpass" varde={r.summa.snopass} />
           <Nyckeltal etikett="Drifttimmar" varde={tal(r.summa.drifttimmar)} enhet="h" />
           <Nyckeltal etikett="Vatten" varde={r.summa.vattenvolym_m3.toLocaleString('sv-SE')} enhet="m³" />
-          <Nyckeltal etikett="Kallaste våtkula" varde={tal(r.summa.kallaste_vatkula)} enhet="°C" />
+          <Nyckeltal etikett="Kallaste wetbulb" varde={tal(r.summa.kallaste_vatkula)} enhet="°C" />
         </div>
         <p className="liten svag" style={{ marginTop: 8 }}>
           Drifttid och vattenvolym räknas ur mätserierna: varje mätvärde antas gälla fram till nästa mätning,
@@ -90,7 +90,7 @@ function SnoRapport({ r, period }) {
             { falt: 'vattenvolym_m3', rubrik: 'Vatten m³', sifra: true, visa: (x) => x.vattenvolym_m3.toLocaleString('sv-SE') },
             { falt: 'temp_min', rubrik: 'Temp min', sifra: true, visa: (x) => tal(x.temp_min) },
             { falt: 'temp_medel', rubrik: 'Temp medel', sifra: true, visa: (x) => tal(x.temp_medel) },
-            { falt: 'vatkula_medel', rubrik: 'Våtkula medel', sifra: true, visa: (x) => tal(x.vatkula_medel) },
+            { falt: 'wetbulb_medel', rubrik: 'Wetbulb medel', sifra: true, visa: (x) => tal(x.wetbulb_medel) },
             { falt: 'flode_medel', rubrik: 'Flöde medel', sifra: true, visa: (x) => tal(x.flode_medel) },
             { falt: 'flode_max', rubrik: 'Flöde max', sifra: true, visa: (x) => tal(x.flode_max) },
             { falt: 'senaste', rubrik: 'Senaste', visa: (x) => <span className="liten svag">{tidpunkt(x.senaste)}</span> },

@@ -27,13 +27,13 @@ test('tomt eller trasigt svar ger tom serie i stället för undantag', () => {
   assert.deepEqual(tolkaYr({ properties: { timeseries: [{ time: 'x', data: {} }] } }), []);
 });
 
-test('källorna slås ihop till medelvärde med våtkula', () => {
+test('källorna slås ihop till medelvärde med wetbulb', () => {
   const ihop = slaIhop({ yr: YR, smhi: SMHI });
   assert.equal(ihop.length, 6);
   const f = ihop[0];
   assert.equal(f.temp, -1);
   assert.equal(Object.keys(f.kallor).length, 2);
-  assert.ok(f.vatkula < f.temp, 'våtkulan ska vara lägre än lufttemperaturen');
+  assert.ok(f.wetbulb < f.temp, 'wetbulbn ska vara lägre än lufttemperaturen');
   assert.ok(f.spridning >= 0 && f.spridning < 1, 'källorna ligger nära varandra');
   assert.equal(f.klartecken.niva, 'nej');
   assert.equal(ihop.at(-2).klartecken.niva, 'mycket_bra');
@@ -63,7 +63,7 @@ test('dygnssammanfattningen räknar produktionstimmar', () => {
   assert.equal(d.length, 2);
   assert.equal(d[0].datum, '2026-12-01');
   assert.equal(d[0].produktionstimmar + d[1].produktionstimmar, 5);
-  assert.equal(d[0].bra_timmar + d[1].bra_timmar, 4, 'våtkula under −5 °C i fyra av timmarna');
+  assert.equal(d[0].bra_timmar + d[1].bra_timmar, 4, 'wetbulb under −5 °C i fyra av timmarna');
   assert.equal(d[0].tackning, 'gles', 'sex timmar är inte ett helt dygn');
   assert.ok(d[0].temp_min <= d[0].temp_max);
 });

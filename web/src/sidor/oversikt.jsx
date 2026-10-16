@@ -21,10 +21,10 @@ export function Oversikt() {
   const m = data.sno.senasteMatning;
   const lage = data.mitt_lage;
   const punkter = (serie.data || [])
-    .filter((r) => r.vatkula != null)
+    .filter((r) => r.wetbulb != null)
     .slice(0, 48)
     .reverse()
-    .map((r) => ({ x: klockslag(r.tid), a: r.vatkula, b: r.lufttemp }));
+    .map((r) => ({ x: klockslag(r.tid), a: r.wetbulb, b: r.lufttemp }));
 
   return (
     <>
@@ -42,7 +42,7 @@ export function Oversikt() {
       <div className="rutor bred">
         <Kort titel="Snöläggning – klartecken" undertext={m ? `Senaste mätning ${sedan(m.tid)}` : 'Ingen mätning rapporterad'}>
           <div className={`klartecken ${kt.niva}`}>
-            <div className="lampa">{kt.vatkula != null ? tal(kt.vatkula) : '?'}</div>
+            <div className="lampa">{kt.wetbulb != null ? tal(kt.wetbulb) : '?'}</div>
             <div className="kolumn" style={{ gap: 2 }}>
               <strong>{KLARTECKEN[kt.niva]}</strong>
               <span className="liten svag">{kt.text}</span>
@@ -58,7 +58,7 @@ export function Oversikt() {
                 <Nyckeltal etikett="Flöde" varde={tal(m.vattenflode)} enhet="l/s" />
                 <Nyckeltal etikett="Vattentryck" varde={tal(m.vattentryck)} enhet="bar" />
               </div>
-              {punkter.length > 1 && <Linjegraf punkter={punkter} etikett_a="våtkula" etikett_b="lufttemp" />}
+              {punkter.length > 1 && <Linjegraf punkter={punkter} etikett_a="wetbulb" etikett_b="lufttemp" />}
             </>
           )}
           {data.sno.pass && (
@@ -158,7 +158,7 @@ export function Oversikt() {
           {vader.data && (
             <>
               <div className="rad gap-16 hopp">
-                <Nyckeltal etikett="Våtkula nu" varde={tal(vader.data.nu?.vatkula)} enhet="°C" />
+                <Nyckeltal etikett="Wetbulb nu" varde={tal(vader.data.nu?.wetbulb)} enhet="°C" />
                 <Nyckeltal etikett="Lufttemp" varde={tal(vader.data.nu?.temp)} enhet="°C" />
                 <Nyckeltal
                   etikett="Produktion 48 h"
@@ -181,9 +181,9 @@ export function Oversikt() {
               {vader.data.h48.punkter.length > 1 && (
                 <div style={{ marginTop: 8 }}>
                   <Linjegraf
-                    punkter={vader.data.h48.punkter.map((p) => ({ x: prognostimme(p.tid), a: p.vatkula, b: p.temp }))}
+                    punkter={vader.data.h48.punkter.map((p) => ({ x: prognostimme(p.tid), a: p.wetbulb, b: p.temp }))}
                     hojd={110}
-                    etikett_a="våtkula"
+                    etikett_a="wetbulb"
                     etikett_b="lufttemp"
                     grans={-2.5}
                   />
