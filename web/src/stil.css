@@ -112,6 +112,10 @@ p { margin: 0 0 8px; }
 .meny a:hover { background: var(--yta-3); color: var(--text); text-decoration: none; }
 .meny a[aria-current='page'] { background: var(--klubb-mjuk); color: var(--klubb); }
 .toppslut { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+.ytval {
+  width: auto; min-height: 28px; padding: 3px 8px; font-size: 12.5px; font-weight: 600;
+  background: var(--klubb-mjuk); color: var(--klubb); border-color: transparent;
+}
 .innehall { overflow: auto; padding: 14px; }
 .sida { max-width: 1680px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
 .sidhuvud { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; }

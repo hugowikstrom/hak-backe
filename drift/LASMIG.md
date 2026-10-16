@@ -39,6 +39,18 @@ Mobilappen är en PWA. Servicearbetaren (`/mobil/sw.js`) cachar appskalet, så
 en telefon kan ligga kvar på en gammal version tills den laddas om. Höj
 `CACHE`-namnet i `web/mobil/public/sw.js` när något i skalet måste ut direkt.
 
+## Pengar
+
+- **Swish** är satt i enheten (`HAK_SWISH_NUMMER`). QR-koderna hämtas från
+  Swish öppna QR-tjänst och fylls i med belopp och meddelande `HAK <nummer>`.
+  Servern får aldrig veta att betalningen gått igenom – kassan kvitterar. Med
+  ett Swish Handel-avtal kan kvittensen bytas mot deras callback.
+- **Plånboken** är klubbens skuld till medlemmen (konto 2420) tills hen
+  handlar. Kassan fyller på under Kassa → Plånböcker, kassören kan betala
+  tillbaka. Rabattsatsen ligger i tabellen `installning`.
+- **Bokföringen** kan inte ändras i efterhand. Ska något bort bokförs en
+  rättelse, och `npm run fro -- --nollstall` bygger om hela databasfilen.
+
 ## Säkerhetsläge
 
 - Allt utom inloggning kräver session. Skrivningar kräver dessutom headern

@@ -72,8 +72,13 @@ export function uppdatera(tabell, id, data) {
   return Number(kor(sql, ...nycklar.map((k) => ivarde(data[k])), id).changes);
 }
 
+// Transaktioner kan ligga i varandra: en försäljning som bokförs öppnar en
+// inre transaktion. Bara den yttersta gör BEGIN och COMMIT.
+let djup = 0;
 export function transaktion(fn) {
+  if (djup > 0) return fn();
   db.exec('BEGIN');
+  djup = 1;
   try {
     const r = fn();
     db.exec('COMMIT');
@@ -81,5 +86,7 @@ export function transaktion(fn) {
   } catch (e) {
     db.exec('ROLLBACK');
     throw e;
+  } finally {
+    djup = 0;
   }
 }

@@ -25,6 +25,7 @@ const BETALSATT = [
   { varde: 'swish', text: 'Swish' },
   { varde: 'kort', text: 'Kort' },
   { varde: 'kontant', text: 'Kontant' },
+  { varde: 'planbok', text: 'Plånbok' },
   { varde: 'ej_betald', text: 'Ej betald' },
 ];
 
@@ -45,11 +46,14 @@ export function Kassa() {
         flikar={[
           { nyckel: 'fik', text: 'Fiket' },
           { nyckel: 'uthyrning', text: 'Uthyrning' },
+          { nyckel: 'planbok', text: 'Plånböcker' },
         ]}
         aktiv={flik}
         satt={sattFlik}
       />
-      {flik === 'fik' ? <Fiket /> : <UthyrningsKassa />}
+      {flik === 'fik' && <Fiket />}
+      {flik === 'uthyrning' && <UthyrningsKassa />}
+      {flik === 'planbok' && <Planbocker />}
     </>
   );
 }
@@ -235,14 +239,29 @@ function Fiket() {
 
 function SaljLada({ meny, stang, klar }) {
   const notis = useNotis();
+  const medlemmar = useHamta(() => api.hamta('/api/medlemmar'));
   const [vagn, sattVagn] = useState({});
   const [betalsatt, sattBetalsatt] = useState('kontant');
+  const [kund, sattKund] = useState('');
+  const [planbok, sattPlanbok] = useState(null);
   const [sok, sattSok] = useState('');
+
+  // Saldot hämtas när en medlem väljs, så kassan ser om pengarna räcker.
+  useEffect(() => {
+    if (!kund) return sattPlanbok(null);
+    api.hamta(`/api/planbok/medlem/${kund}`).then(sattPlanbok).catch(() => sattPlanbok(null));
+  }, [kund]);
   const rader = Object.entries(vagn)
     .filter(([, a]) => a > 0)
     .map(([id, antal]) => ({ artikel: meny.find((m) => m.id === Number(id)), antal }))
     .filter((r) => r.artikel);
   const summa = rader.reduce((a, r) => a + r.artikel.pris_ore * r.antal, 0);
+  // Medlemsrabatten gäller fika och mat, inte liftkort.
+  const rabatterbart = rader
+    .filter((r) => ['mat', 'dryck', 'fika', 'godis'].includes(r.artikel.kategori))
+    .reduce((a, r) => a + r.artikel.pris_ore * r.antal, 0);
+  const rabatt = betalsatt === 'planbok' && planbok ? Math.round((rabatterbart * (planbok.rabatt_procent || 0)) / 100) : 0;
+  const attBetala = summa - rabatt;
   const lista = sok ? meny.filter((m) => m.namn.toLowerCase().includes(sok.toLowerCase())) : meny;
 
   return (
@@ -252,17 +271,21 @@ function SaljLada({ meny, stang, klar }) {
       stang={stang}
       fot={
         <>
-          <span className="vaxa stortal" style={{ fontSize: 20 }}>{(summa / 100).toLocaleString('sv-SE')} kr</span>
+          <span className="vaxa">
+            <span className="stortal" style={{ fontSize: 20 }}>{(attBetala / 100).toLocaleString('sv-SE')} kr</span>
+            {rabatt > 0 && <span className="liten svag"> (−{(rabatt / 100).toLocaleString('sv-SE')} kr medlemsrabatt)</span>}
+          </span>
           <button onClick={stang}>Avbryt</button>
           <button
             className="primar"
-            disabled={!rader.length}
+            disabled={!rader.length || (betalsatt === 'planbok' && (!kund || (planbok && planbok.saldo_ore < attBetala)))}
             onClick={async () => {
               try {
                 klar(
                   await api.skapa('/api/fik/kassa/order', {
                     rader: rader.map((r) => ({ artikel_id: r.artikel.id, antal: r.antal })),
                     betalsatt,
+                    medlem_id: betalsatt === 'planbok' ? kund : undefined,
                   })
                 );
               } catch (e) {
@@ -278,7 +301,22 @@ function SaljLada({ meny, stang, klar }) {
       <div className="faltrad">
         <Text etikett="Sök vara" varde={sok} satt={sattSok} autoFocus />
         <Val etikett="Betalsätt" varde={betalsatt} satt={sattBetalsatt} tomtext={null} poster={BETALSATT} />
+        {betalsatt === 'planbok' && (
+          <Val
+            etikett="Vem betalar"
+            varde={kund}
+            satt={sattKund}
+            tomtext="– välj medlem –"
+            poster={(medlemmar.data || []).filter((m) => m.aktiv).map((m) => ({ varde: m.id, text: m.namn }))}
+          />
+        )}
       </div>
+      {betalsatt === 'planbok' && planbok && (
+        <div className={`meddelande ${planbok.saldo_ore < attBetala ? 'fel' : 'ok'}`}>
+          {planbok.namn}: {planbok.saldo} i plånboken · {planbok.rabatt_procent} % medlemsrabatt
+          {planbok.saldo_ore < attBetala ? ' — räcker inte till köpet' : ''}
+        </div>
+      )}
       <div className="knapprad">
         {lista.map((a) => (
           <button key={a.id} className="liten" onClick={() => sattVagn((v) => ({ ...v, [a.id]: (v[a.id] || 0) + 1 }))}>
@@ -303,6 +341,94 @@ function SaljLada({ meny, stang, klar }) {
         </>
       )}
     </Lada>
+  );
+}
+
+function Planbocker() {
+  const jag = useJag();
+  const notis = useNotis();
+  const oversikt = useHamta(() => api.hamta('/api/planbok'));
+  const medlemmar = useHamta(() => api.hamta('/api/medlemmar'));
+  const [kund, sattKund] = useState('');
+  const [belopp, sattBelopp] = useState('500');
+  const [betalmedel, sattBetalmedel] = useState('swish');
+
+  if (oversikt.laddar && !oversikt.data) return <Vanta />;
+  if (oversikt.fel) return <div className="meddelande fel">{oversikt.fel}</div>;
+
+  return (
+    <>
+      <div className="rutor">
+        <Kort>
+          <div className="rad gap-16 hopp">
+            <Nyckeltal etikett="Klubbens skuld till medlemmar" varde={oversikt.data.totalt} />
+            <Nyckeltal etikett="Plånböcker med pengar" varde={oversikt.data.saldon.length} />
+            <Nyckeltal etikett="Medlemsrabatt" varde={`${oversikt.data.rabatt_procent} %`} />
+          </div>
+          <p className="liten svag" style={{ marginTop: 8, marginBottom: 0 }}>
+            Påfyllningen bokförs som en skuld till medlemmen (konto 2420). Först när medlemmen handlar blir
+            det en intäkt. Rabatten gäller fika och mat, inte liftkort.
+          </p>
+        </Kort>
+      </div>
+
+      <Kort titel="Fyll på en plånbok" undertext="En påfyllning, många köp – i stället för en swishavgift per korv">
+        <div className="faltrad">
+          <Val
+            etikett="Medlem"
+            varde={kund}
+            satt={sattKund}
+            tomtext="– välj –"
+            poster={(medlemmar.data || []).filter((m) => m.aktiv).map((m) => ({ varde: m.id, text: m.namn }))}
+          />
+          <Text etikett="Belopp (kr)" varde={belopp} satt={sattBelopp} />
+          <Val
+            etikett="Betalt med"
+            varde={betalmedel}
+            satt={sattBetalmedel}
+            tomtext={null}
+            poster={[
+              { varde: 'swish', text: 'Swish' },
+              { varde: 'kort', text: 'Kort' },
+              { varde: 'kontant', text: 'Kontant' },
+            ]}
+          />
+          <button
+            className="primar"
+            disabled={!kund}
+            onClick={async () => {
+              try {
+                const r = await api.skapa('/api/planbok/insattning', {
+                  medlem_id: kund,
+                  belopp_ore: Math.round(Number(String(belopp).replace(',', '.')) * 100),
+                  betalmedel,
+                });
+                notis(`Påfyllt. Nytt saldo: ${r.saldo}.`);
+                oversikt.uppdatera();
+              } catch (e) {
+                notis(e.message, 'fel');
+              }
+            }}
+          >
+            Fyll på
+          </button>
+        </div>
+      </Kort>
+
+      <Kort titel="Plånböcker" tat>
+        <Tabell
+          rader={oversikt.data.saldon}
+          nyckel={(r) => r.id}
+          maxhojd="45vh"
+          tomtext="Ingen har fyllt på ännu."
+          kolumner={[
+            { falt: 'medlemsnummer', rubrik: 'Nr', visa: (r) => <span className="num">{r.medlemsnummer || '–'}</span> },
+            { falt: 'namn', rubrik: 'Medlem' },
+            { falt: 'saldo', rubrik: 'Saldo', sifra: true },
+          ]}
+        />
+      </Kort>
+    </>
   );
 }
 

@@ -10,11 +10,12 @@ import { kronor, normaliseraMobil } from '../pengar.mjs';
 import { betalning, qrkod, swishPa, swishnummer } from '../swish.mjs';
 import { skickaSms, smsPa } from '../sms.mjs';
 import { bokforAffar, INTAKTSKONTON, revidera, verifikationFor } from '../bokforing.mjs';
+import { betalaMedPlanbok, medRabatt, rabattsats, saldo } from '../planbok.mjs';
 import { csv, ettAv, fel, heltal, kravTxt, rutt, svar, text, txt } from '../http.mjs';
 import { idag, nu } from '../tid.mjs';
 
 const STATUSAR = ['ny', 'betald', 'tillagas', 'klar', 'hamtad', 'avbruten'];
-const BETALSATT = ['swish', 'kort', 'kontant', 'ej_betald'];
+const BETALSATT = ['swish', 'kort', 'kontant', 'planbok', 'ej_betald'];
 const OPPNA = ['ny', 'betald', 'tillagas', 'klar'];
 
 // Enkel spärr mot den som råkar hålla inne knappen eller vill busa.
@@ -91,15 +92,34 @@ export function skapaOrder({ rader, mobil, plats, anteckning, kanal = 'qr', av =
 }
 
 /** Bokför ordern när betalningen är kvitterad. Körs en gång per order. */
-export function bokforOrder(order, { betalmedel, av }) {
+export function bokforOrder(order, { betalmedel, av, medlem_id }) {
   if (verifikationFor('order', order.id)) return verifikationFor('order', order.id);
   const rader = order.rader.map((r) => {
     const artikel = r.artikel_id ? en('SELECT kategori FROM artikel WHERE id=?', r.artikel_id) : null;
     return {
+      kategori: artikel?.kategori || 'ovrigt',
       konto: artikel?.kategori === 'liftkort' ? INTAKTSKONTON.liftkort : INTAKTSKONTON.kiosk,
       belopp_ore: r.styckpris_ore * r.antal,
     };
   });
+
+  // Plånboken: medlemsrabatt och betalning ur den egna kassan.
+  if (betalmedel === 'planbok') {
+    const kund = en('SELECT * FROM medlem WHERE id=?', medlem_id);
+    if (!kund) throw fel(400, 'Välj vilken medlem som betalar med plånboken');
+    const { rader: rabatterade } = medRabatt(rader);
+    const { verifikation } = betalaMedPlanbok({
+      medlem: kund,
+      rader: rabatterade,
+      beskrivning: `Kioskorder ${order.nummer}`,
+      serie: 'K',
+      referens_slag: 'order',
+      referens_id: order.id,
+      av,
+    });
+    return verifikation;
+  }
+
   return bokforAffar({
     serie: 'K',
     datum: String(order.skapad).slice(0, 10),
@@ -121,6 +141,17 @@ const publikOrder = (o) => ({
   anteckning: o.anteckning,
   rader: o.rader.map((r) => ({ namn: r.namn, antal: r.antal, styckpris_ore: r.styckpris_ore, anteckning: r.anteckning })),
 });
+
+/** Vad ordern kostar om medlemmen betalar ur plånboken. */
+export function planbokspris(rader) {
+  const med = rader.map((r) => ({ ...r, kategori: r.kategori || 'ovrigt' }));
+  const { rader: rabatterade, rabatt_ore, sats } = medRabatt(med);
+  return {
+    belopp_ore: rabatterade.reduce((a, r) => a + r.belopp_ore, 0),
+    rabatt_ore,
+    rabatt_procent: Math.round(sats * 100),
+  };
+}
 
 export const rutter = [
   // ---------- publikt ----------
@@ -201,26 +232,35 @@ export const rutter = [
       ).map((r) => ({ ...r, summa: kronor(r.summa_ore) })),
       swish: swishPa() ? { nummer: swishnummer() } : null,
       sms: smsPa(),
+      rabatt_procent: Math.round(rabattsats() * 100),
     });
   }),
 
   rutt('POST', '/api/fik/kassa/order', 'medlem', ({ res, kropp, medlem }) => {
     const betalsatt = ettAv(kropp.betalsatt, BETALSATT, 'Betalsätt') || 'kontant';
-    const order = skapaOrder({
-      rader: kropp.rader,
-      mobil: kropp.mobil,
-      plats: kropp.plats,
-      anteckning: kropp.anteckning,
-      kanal: 'kassa',
-      av: medlem,
-      betalsatt,
+    const kund_id = heltal(kropp.medlem_id);
+    if (betalsatt === 'planbok' && !kund_id) throw fel(400, 'Välj vilken medlem som betalar');
+    // Order och betalning hör ihop: går betalningen inte igenom ska ingen
+    // order bli kvar som betald.
+    const { order, verifikation } = transaktion(() => {
+      const skapad = skapaOrder({
+        rader: kropp.rader,
+        mobil: kropp.mobil,
+        plats: kropp.plats,
+        anteckning: kropp.anteckning,
+        kanal: 'kassa',
+        av: medlem,
+        betalsatt,
+      });
+      const ver =
+        betalsatt === 'ej_betald'
+          ? null
+          : bokforOrder(skapad, { betalmedel: betalsatt, av: medlem, medlem_id: kund_id });
+      return { order: skapad, verifikation: ver };
     });
-    let verifikation = null;
-    if (betalsatt !== 'ej_betald') {
-      verifikation = bokforOrder(order, { betalmedel: betalsatt, av: medlem });
+    if (verifikation)
       revidera({ medlem, handelse: 'sålde i kassan', objekt: order.nummer, detalj: { belopp_ore: order.belopp_ore, betalsatt } });
-    }
-    svar(res, 201, { ...order, verifikation });
+    svar(res, 201, { ...order, verifikation, planbokssaldo: kund_id ? saldo(kund_id) : null });
   }),
 
   rutt('PUT', '/api/fik/kassa/order/:id', 'medlem', async ({ res, param, kropp, medlem }) => {
@@ -241,7 +281,11 @@ export const rutter = [
     let verifikation = null;
     const nuBetald = betalsatt && betalsatt !== 'ej_betald';
     if (nuBetald && !verifikationFor('order', o.id)) {
-      verifikation = bokforOrder(hamtaOrder(o.id), { betalmedel: betalsatt, av: medlem });
+      verifikation = bokforOrder(hamtaOrder(o.id), {
+        betalmedel: betalsatt,
+        av: medlem,
+        medlem_id: heltal(kropp.medlem_id),
+      });
       revidera({ medlem, handelse: 'kvitterade betalning', objekt: o.nummer, detalj: { belopp_ore: o.belopp_ore, betalsatt } });
     }
     if (status && status !== o.status)

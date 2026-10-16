@@ -147,7 +147,7 @@ Hållpunkter:
 | `HAK_SMTP_USER` / `HAK_SMTP_LOSEN` | – | sätts bara om servern kräver det |
 | `HAK_EPOST_FRAN` | `HAK Backe <backe@nattviken.com>` | avsändare |
 | `HAK_EPOST_AV` | på | `0` loggar utskick utan att skicka |
-| `HAK_SWISH_NUMMER` | – | klubbens swishnummer; utan det hänvisas gästen till luckan |
+| `HAK_SWISH_NUMMER` | 1234567890 | klubbens swishnummer; utan det hänvisas gästen till luckan |
 | `HAK_46ELKS_ANVANDARE` / `HAK_46ELKS_LOSEN` | – | sms via 46elks; utan dem loggas breven bara |
 | `HAK_SMS_FRAN` | HAKbacken | avsändare på sms |
 | `HAK_STT_URL` | husets STT-router | tal till text för idélådan |

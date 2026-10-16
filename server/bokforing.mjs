@@ -14,6 +14,7 @@ export const STANDARDKONTON = [
   ['1510', 'Kundfordringar', 'tillgang'],
   ['1910', 'Kassa', 'tillgang'],
   ['1930', 'Bankkonto (kort och Swish)', 'tillgang'],
+  ['2420', 'Förskott från medlemmar (plånbok)', 'skuld'],
   ['2611', 'Utgående moms 25 %', 'skuld'],
   ['2621', 'Utgående moms 12 %', 'skuld'],
   ['2631', 'Utgående moms 6 %', 'skuld'],
@@ -32,6 +33,8 @@ export const BETALKONTON = {
   kort: '1930',
   kontant: '1910',
   faktura: '1510',
+  // Plånboken är redan inbetald – köpet minskar klubbens skuld i stället.
+  planbok: '2420',
 };
 
 export const SERIER = {

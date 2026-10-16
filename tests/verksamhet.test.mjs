@@ -324,3 +324,98 @@ test('tom idé avvisas', async () => {
   const r = await anrop('POST', '/api/ideer', { kategori: 'ovrigt' });
   assert.equal(r.status, 400);
 });
+
+// ---------- plånboken ----------
+
+test('plånboken fylls på och bokförs som skuld till medlemmen', async () => {
+  await loggaIn('kassor');
+  const medlemmar = await ok('GET', '/api/medlemmar');
+  const kund = medlemmar.find((m) => m.anvandarnamn === 'medlem');
+
+  const tom = await ok('GET', `/api/planbok/medlem/${kund.id}`);
+  assert.equal(tom.saldo_ore, 0);
+
+  const fyllt = await ok('POST', '/api/planbok/insattning', {
+    medlem_id: kund.id, belopp_ore: 50000, betalmedel: 'swish',
+  });
+  assert.equal(fyllt.saldo_efter_ore, 50000);
+  assert.equal(fyllt.slag, 'insattning');
+
+  // Påfyllningen är ingen intäkt – den är en skuld tills medlemmen handlar.
+  const ver = await ok('GET', '/api/bokforing/verifikationer');
+  const paafyllning = ver.verifikationer.find((v) => v.referens_slag === 'planbok');
+  assert.ok(paafyllning, 'påfyllningen ska finnas som verifikation');
+  assert.equal(paafyllning.rader.find((r) => r.konto === '2420').kredit_ore, 50000);
+  assert.equal(paafyllning.rader.find((r) => r.konto === '1930').debet_ore, 50000);
+});
+
+test('köp ur plånboken ger medlemsrabatt och flyttar skulden till intäkt', async () => {
+  await loggaIn('kassor');
+  const kund = (await ok('GET', '/api/medlemmar')).find((m) => m.anvandarnamn === 'medlem');
+
+  await loggaIn('kiosk');
+  // Varmkorv 30 kr (rabatteras) + dagkort 270 kr (rabatteras inte).
+  const order = await ok('POST', '/api/fik/kassa/order', {
+    rader: [{ artikel_id: 1, antal: 1 }, { artikel_id: 3, antal: 1 }],
+    betalsatt: 'planbok',
+    medlem_id: kund.id,
+  });
+  assert.equal(order.belopp_ore, 30000, 'ordern visar ordinarie pris');
+  // 10 % på korven, inget på liftkortet.
+  assert.equal(order.verifikation.belopp_ore, 29700);
+  assert.equal(order.verifikation.rader.find((r) => r.konto === '2420').debet_ore, 29700);
+  assert.equal(order.verifikation.rader.find((r) => r.konto === '3010').kredit_ore, 2700);
+  assert.equal(order.verifikation.rader.find((r) => r.konto === '3030').kredit_ore, 27000);
+  assert.equal(order.planbokssaldo, 50000 - 29700);
+});
+
+test('plånboken kan inte övertrasseras och ingen spökorder blir kvar', async () => {
+  await loggaIn('kiosk');
+  const kund = (await ok('GET', '/api/medlemmar')).find((m) => m.anvandarnamn === 'medlem');
+  const fore = await ok('GET', '/api/fik/kassa');
+
+  const nekad = await anrop('POST', '/api/fik/kassa/order', {
+    rader: [{ artikel_id: 3, antal: 10 }],
+    betalsatt: 'planbok',
+    medlem_id: kund.id,
+  });
+  assert.equal(nekad.status, 409);
+  assert.match(nekad.kropp.fel, /räcker inte/);
+
+  const efter = await ok('GET', '/api/fik/kassa');
+  assert.equal(efter.antal, fore.antal, 'ordern rullades tillbaka med betalningen');
+
+  const utanMedlem = await anrop('POST', '/api/fik/kassa/order', {
+    rader: [{ artikel_id: 1, antal: 1 }], betalsatt: 'planbok',
+  });
+  assert.equal(utanMedlem.status, 400);
+});
+
+test('plånbokstransaktioner går inte att ändra eller ta bort', async () => {
+  const rad = db.en('SELECT * FROM planbokstransaktion ORDER BY id DESC LIMIT 1');
+  assert.throws(() => db.kor('UPDATE planbokstransaktion SET belopp_ore=0 WHERE id=?', rad.id), /får inte ändras/);
+  assert.throws(() => db.kor('DELETE FROM planbokstransaktion WHERE id=?', rad.id), /får inte tas bort/);
+});
+
+test('medlemmen ser sin egen plånbok men inte andras', async () => {
+  await loggaIn('medlem');
+  const min = await ok('GET', '/api/planbok/min');
+  assert.ok(min.saldo_ore > 0);
+  assert.equal(min.rabatt_procent, 10);
+  assert.ok(min.historik.length >= 2);
+
+  const kassorId = (await ok('GET', '/api/medlemmar')).find((m) => m.anvandarnamn === 'kassor').id;
+  const annans = await anrop('GET', `/api/planbok/medlem/${kassorId}`);
+  assert.equal(annans.status, 403);
+  const oversikt = await anrop('GET', '/api/planbok');
+  assert.equal(oversikt.status, 403, 'bara de som står i kassan ser allas plånböcker');
+});
+
+test('rabattsatsen går att ändra av kassören', async () => {
+  await loggaIn('kassor');
+  const nya = await ok('PUT', '/api/planbok/installningar', { medlemsrabatt_procent: '15' });
+  assert.equal(nya.medlemsrabatt_procent, '15');
+  const min = await ok('GET', '/api/planbok/min');
+  assert.equal(min.rabatt_procent, 15);
+  await ok('PUT', '/api/planbok/installningar', { medlemsrabatt_procent: '10' });
+});

@@ -1,7 +1,7 @@
 // Inloggning: användarnamn + lösenord, scrypt, sessionskaka. Inga externa beroenden.
 import { randomBytes, scryptSync, timingSafeEqual } from 'node:crypto';
 import { alla, en, kor, spara } from './db.mjs';
-import { behorigheterFor, RANG as RANGER, uppdragFor } from './behorighet.mjs';
+import { ARBETSYTOR, arbetsytorFor, behorigheterFor, RANG as RANGER, uppdragFor } from './behorighet.mjs';
 
 const KAKA = 'hak_sess';
 const DYGN = 86400e3;
@@ -76,6 +76,7 @@ export const publikMedlem = (m) => {
     anteckning: m.anteckning,
     uppdrag,
     behorigheter: behorigheterFor({ ...m, uppdrag }),
+    arbetsytor: arbetsytorFor({ ...m, uppdrag }).map((n) => ({ nyckel: n, ...ARBETSYTOR[n] })),
   };
 };
 

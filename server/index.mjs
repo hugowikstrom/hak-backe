@@ -23,8 +23,9 @@ import { rutter as bokforing } from './api/bokforing.mjs';
 import { rutter as forening } from './api/forening.mjs';
 import { rutter as traning } from './api/traning.mjs';
 import { rutter as ide } from './api/ide.mjs';
+import { rutter as planbok } from './api/planbok.mjs';
 
-const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder, ...vader, ...fik, ...uthyrning, ...bokforing, ...forening, ...traning, ...ide];
+const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder, ...vader, ...fik, ...uthyrning, ...bokforing, ...forening, ...traning, ...ide, ...planbok];
 
 const PORT = Number(process.env.HAK_PORT || 8120);
 const VARD = process.env.HAK_VARD || '127.0.0.1';

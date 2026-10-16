@@ -4,6 +4,7 @@ import { api } from './api.js';
 import { Marke, Notiser, Vanta } from './delar/bitar.jsx';
 import { minstRoll, ROLLNAMN } from './nytta.js';
 import { Inlogg } from './sidor/inlogg.jsx';
+import { Start } from './sidor/start.jsx';
 import { Oversikt } from './sidor/oversikt.jsx';
 import { Snolaggning } from './sidor/snolaggning.jsx';
 import { Checklistor } from './sidor/checklistor.jsx';
@@ -18,21 +19,23 @@ import { Forening } from './sidor/forening.jsx';
 import { Traning } from './sidor/traning.jsx';
 import { Ideer } from './sidor/ideer.jsx';
 
-// Menyn visar bara det inloggningen faktiskt får använda.
+// Menyn visar bara det inloggningen faktiskt får använda, och bara det som
+// hör till arbetsytan man står i.
 const SIDOR = [
-  { stig: '/', text: 'Översikt', komp: Oversikt },
-  { stig: '/snolaggning', text: 'Snöläggning', komp: Snolaggning },
-  { stig: '/checklistor', text: 'Checklistor', komp: Checklistor },
-  { stig: '/arenden', text: 'Ärenden', komp: Arenden },
-  { stig: '/bemanning', text: 'Bemanning', komp: Bemanning },
-  { stig: '/kassa', text: 'Kassa', komp: Kassa, behorighet: 'kassa' },
-  { stig: '/traning', text: 'Träning', komp: Traning, behorighet: 'traning' },
-  { stig: '/forening', text: 'Föreningen', komp: Forening },
-  { stig: '/ekonomi', text: 'Ekonomi', komp: Ekonomi, behorighet: 'ekonomi_las' },
-  { stig: '/ideer', text: 'Idélådan', komp: Ideer },
-  { stig: '/mina', text: 'Mina sidor', komp: Mina },
-  { stig: '/rapporter', text: 'Rapporter', komp: Rapporter },
-  { stig: '/register', text: 'Register', komp: Register, roll: 'backansvarig' },
+  { stig: '/', text: 'Start', komp: Start, nyckel: 'start' },
+  { stig: '/oversikt', text: 'Hela läget', komp: Oversikt, nyckel: 'oversikt' },
+  { nyckel: 'snolaggning', stig: '/snolaggning', text: 'Snöläggning', komp: Snolaggning },
+  { nyckel: 'checklistor', stig: '/checklistor', text: 'Checklistor', komp: Checklistor },
+  { nyckel: 'arenden', stig: '/arenden', text: 'Ärenden', komp: Arenden },
+  { nyckel: 'bemanning', stig: '/bemanning', text: 'Bemanning', komp: Bemanning },
+  { nyckel: 'kassa', stig: '/kassa', text: 'Kassa', komp: Kassa, behorighet: 'kassa' },
+  { nyckel: 'traning', stig: '/traning', text: 'Träning', komp: Traning, behorighet: 'traning' },
+  { nyckel: 'forening', stig: '/forening', text: 'Föreningen', komp: Forening },
+  { nyckel: 'ekonomi', stig: '/ekonomi', text: 'Ekonomi', komp: Ekonomi, behorighet: 'ekonomi_las' },
+  { nyckel: 'ideer', stig: '/ideer', text: 'Idélådan', komp: Ideer },
+  { nyckel: 'mina', stig: '/mina', text: 'Mina sidor', komp: Mina },
+  { nyckel: 'rapporter', stig: '/rapporter', text: 'Rapporter', komp: Rapporter },
+  { nyckel: 'register', stig: '/register', text: 'Register', komp: Register, roll: 'backansvarig' },
 ];
 
 const Jag = createContext(null);
@@ -53,6 +56,7 @@ export function App() {
   const [medlem, sattMedlem] = useState(undefined);
   const [stig, sattStig] = useState(window.location.pathname);
   const [tema, sattTema] = useState(() => localStorage.getItem('hak-tema') || 'ljust');
+  const [yta, sattYta] = useState(() => localStorage.getItem('hak-yta') || null);
 
   useEffect(() => {
     api.hamta('/api/jag').then((d) => sattMedlem(d.medlem)).catch(() => sattMedlem(null));
@@ -77,10 +81,20 @@ export function App() {
   if (medlem === undefined) return <Vanta />;
   if (!medlem) return <Inlogg klar={(m) => sattMedlem(m)} />;
 
+  // Arbetsytan styr både startsidan och menyn.
+  const ytor = medlem.arbetsytor?.length ? medlem.arbetsytor : [{ nyckel: 'medlem', namn: 'Medlem', sidor: [] }];
+  const aktivYta = ytor.find((y) => y.nyckel === yta) || ytor[0];
+  const bytYta = (nyckel) => {
+    sattYta(nyckel);
+    localStorage.setItem('hak-yta', nyckel);
+    ga('/');
+  };
+
   const synliga = SIDOR.filter(
     (s) =>
       (!s.roll || minstRoll(medlem, s.roll)) &&
-      (!s.behorighet || (medlem.behorigheter || []).includes(s.behorighet))
+      (!s.behorighet || (medlem.behorigheter || []).includes(s.behorighet)) &&
+      (s.nyckel === 'start' || (aktivYta.sidor || []).includes(s.nyckel))
   );
   const aktiv = synliga.find((s) => s.stig === stig) || synliga[0];
   const Sida = aktiv.komp;
@@ -113,6 +127,18 @@ export function App() {
                 ))}
               </nav>
               <div className="toppslut">
+                {ytor.length > 1 && (
+                  <select
+                    className="ytval"
+                    value={aktivYta.nyckel}
+                    onChange={(e) => bytYta(e.target.value)}
+                    title="Byt arbetsyta"
+                  >
+                    {ytor.map((y) => (
+                      <option key={y.nyckel} value={y.nyckel}>{y.namn}</option>
+                    ))}
+                  </select>
+                )}
                 <button className="tom liten" onClick={() => sattTema(tema === 'morkt' ? 'ljust' : 'morkt')} title="Byt tema">
                   {tema === 'morkt' ? '☀' : '☾'}
                 </button>
@@ -124,7 +150,7 @@ export function App() {
             </header>
             <main className="innehall">
               <div className="sida">
-                <Sida />
+                <Sida yta={aktivYta.nyckel} />
               </div>
             </main>
           </div>

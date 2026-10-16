@@ -36,6 +36,8 @@ ReadWritePaths=/home/hugo/.backlog
 Environment=HAK_STT_URL=http://127.0.0.1:8115/v1/audio/transcriptions
 Environment=HAK_BACKLOG=/home/hugo/.local/bin/backlog
 Environment=HAK_BACKLOG_PROJEKT=inbox
+# Klubbens swishnummer. Utan det hänvisas gästen till att betala i luckan.
+Environment=HAK_SWISH_NUMMER=1234567890
 
 [Install]
 WantedBy=multi-user.target

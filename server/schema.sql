@@ -561,3 +561,37 @@ CREATE TABLE IF NOT EXISTS ide (
   skickad_av      TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_ide_status ON ide(status, skapad);
+
+-- ---------- Medlemmarnas plånbok ----------
+-- Pengar som klubben håller åt medlemmen. En skuld i bokföringen, och
+-- transaktionerna är lika orörbara som verifikationerna.
+CREATE TABLE IF NOT EXISTS planbokstransaktion (
+  id              INTEGER PRIMARY KEY,
+  medlem_id       INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  slag            TEXT NOT NULL,                 -- insattning | kop | aterbetalning | justering
+  belopp_ore      INTEGER NOT NULL,              -- plus in, minus ut
+  saldo_efter_ore INTEGER NOT NULL,
+  referens_slag   TEXT,
+  referens_id     INTEGER,
+  verifikation_id INTEGER REFERENCES verifikation(id),
+  beskrivning     TEXT,
+  skapad          TEXT NOT NULL DEFAULT (datetime('now')),
+  av_id           INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  av              TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_planbok_medlem ON planbokstransaktion(medlem_id, id);
+
+CREATE TRIGGER IF NOT EXISTS planbok_far_inte_andras
+BEFORE UPDATE ON planbokstransaktion
+BEGIN SELECT RAISE(ABORT, 'En plånbokstransaktion får inte ändras. Bokför en justering i stället.'); END;
+
+CREATE TRIGGER IF NOT EXISTS planbok_far_inte_raderas
+BEFORE DELETE ON planbokstransaktion
+BEGIN SELECT RAISE(ABORT, 'En plånbokstransaktion får inte tas bort.'); END;
+
+-- Klubbens inställningar: rabattsats och annat som ska gå att ändra utan kod.
+CREATE TABLE IF NOT EXISTS installning (
+  nyckel      TEXT PRIMARY KEY,
+  varde       TEXT NOT NULL,
+  beskrivning TEXT
+);
