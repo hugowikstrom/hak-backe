@@ -92,7 +92,7 @@ export function Bemanning() {
         <Kort>
           <div className="rad gap-16 hopp">
             <Nyckeltal etikett="Platser" varde={`${summa.bokade}/${summa.behov}`} />
-            <Nyckeltal etikett="Saknas" varde={summa.hal} farg={summa.hal ? 'rod' : 'gron'} />
+            <Nyckeltal etikett="Saknas" varde={summa.hal} farg={summa.hal ? 'fara' : 'ok'} />
             <Nyckeltal etikett="Mina pass" varde={summa.mina} />
             {mittLage && !mittLage.undantagen && (
               <div className="nyckeltal vaxa">
@@ -153,7 +153,7 @@ export function Bemanning() {
                   </div>
                 ),
               },
-              { falt: 'kvar', rubrik: 'Kvar h', sifra: true, visa: (l) => (l.kvar ? <Bricka farg="gul">{tal(l.kvar)}</Bricka> : <Bricka farg="gron">klar</Bricka>) },
+              { falt: 'kvar', rubrik: 'Kvar h', sifra: true, visa: (l) => (l.kvar ? <Bricka farg="varning">{tal(l.kvar)}</Bricka> : <Bricka farg="ok">klar</Bricka>) },
               { falt: 'antal_pass', rubrik: 'Pass', sifra: true },
               { falt: 'natt', rubrik: 'Natt', sifra: true },
               { falt: 'helg', rubrik: 'Helg', sifra: true },
@@ -424,7 +424,7 @@ function PassLada({ pass, far, jag, medlemmar, stang, uppdaterat }) {
       }
     >
       <div className="rad hopp">
-        <Bricka farg={bokningar.length >= aktuellt.behov ? 'gron' : bokningar.length ? 'gul' : 'rod'}>
+        <Bricka farg={bokningar.length >= aktuellt.behov ? 'ok' : bokningar.length ? 'varning' : 'fara'}>
           {bokningar.length}/{aktuellt.behov} platser
         </Bricka>
         <Bricka farg={aktuellt.slag === 'natt' ? 'natt' : ''}>{PASSLAG[aktuellt.slag]}</Bricka>
@@ -677,7 +677,7 @@ function AutoplanLada({ fran, till, positioner, stang, klar }) {
         <>
           <div className="rad gap-16 hopp">
             <Nyckeltal etikett="Tilldelningar" varde={forslag.tilldelningar.length} />
-            <Nyckeltal etikett="Kvar obemannat" varde={forslag.otillsatta.length} farg={forslag.otillsatta.length ? 'gul' : 'gron'} />
+            <Nyckeltal etikett="Kvar obemannat" varde={forslag.otillsatta.length} farg={forslag.otillsatta.length ? 'varning' : 'ok'} />
             <Nyckeltal etikett="Spridning kvot" varde={tal(forslag.spridning.andel_std, 2)} />
             <Nyckeltal etikett="Nattspann" varde={forslag.spridning.natt_spann} />
             <Nyckeltal etikett="Helgspann" varde={forslag.spridning.helg_spann} />
@@ -778,7 +778,7 @@ function UtskickLada({ fran, till, stang }) {
               { falt: 'epost', rubrik: 'E-post' },
               {
                 falt: 'skickad', rubrik: 'Status',
-                visa: (r) => (r.skickad ? <Bricka farg="gron">Skickad</Bricka> : <Bricka farg="rod">{r.fel || 'Fel'}</Bricka>),
+                visa: (r) => (r.skickad ? <Bricka farg="ok">Skickad</Bricka> : <Bricka farg="fara">{r.fel || 'Fel'}</Bricka>),
               },
             ]}
           />

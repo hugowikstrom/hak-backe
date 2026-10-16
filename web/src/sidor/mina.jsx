@@ -51,7 +51,7 @@ export function Mina() {
                 <Nyckeltal etikett="Timmar totalt" varde={tal(lage.timmar)} enhet={`/ ${tal(lage.kvot)}`} />
                 <Nyckeltal etikett="Utfört" varde={tal(lage.utfort)} enhet="h" />
                 <Nyckeltal etikett="Planerat" varde={tal(lage.planerat)} enhet="h" />
-                <Nyckeltal etikett="Kvar" varde={tal(lage.kvar)} enhet="h" farg={lage.kvar > 0 ? 'gul' : 'gron'} />
+                <Nyckeltal etikett="Kvar" varde={tal(lage.kvar)} enhet="h" farg={lage.kvar > 0 ? 'varning' : 'ok'} />
               </div>
               <div style={{ marginTop: 10 }}>
                 <Matare andel={lage.andel} />
@@ -77,7 +77,7 @@ export function Mina() {
               { falt: 'datum', rubrik: 'Datum', visa: (p) => <span className="num">{langDatum(p.datum)}</span> },
               { falt: 'start', rubrik: 'Tid', visa: (p) => <span className="num">{p.start}–{p.slut}</span> },
               { falt: 'position', rubrik: 'Position' },
-              { falt: 'saknas', rubrik: 'Saknas', sifra: true, visa: (p) => <Bricka farg="rod">{p.saknas}</Bricka> },
+              { falt: 'saknas', rubrik: 'Saknas', sifra: true, visa: (p) => <Bricka farg="fara">{p.saknas}</Bricka> },
               {
                 falt: 'boka', rubrik: '', sortlos: true,
                 visa: (p) => (
@@ -103,7 +103,7 @@ export function Mina() {
             { falt: 'datum', rubrik: 'Datum', visa: (p) => <span className="num">{langDatum(p.datum)}</span> },
             { falt: 'start', rubrik: 'Tid', visa: (p) => <span className="num">{p.start}–{p.slut}</span> },
             { falt: 'position', rubrik: 'Position', visa: (p) => <strong>{p.position}</strong> },
-            { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'tilldelad' ? 'lila' : 'klubb'}>{p.status}</Bricka> },
+            { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'tilldelad' ? 'lila' : 'info'}>{p.status}</Bricka> },
           ]}
         />
       </Kort>
@@ -200,7 +200,7 @@ export function Mina() {
               { falt: 'datum', rubrik: 'Datum', visa: (p) => <span className="num">{langDatum(p.datum)}</span> },
               { falt: 'start', rubrik: 'Tid', visa: (p) => <span className="num">{p.start}–{p.slut}</span> },
               { falt: 'position', rubrik: 'Position' },
-              { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'narvarande' ? 'gron' : ''}>{p.status}</Bricka> },
+              { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'narvarande' ? 'ok' : ''}>{p.status}</Bricka> },
             ]}
           />
         </Kort>

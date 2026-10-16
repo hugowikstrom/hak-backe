@@ -84,7 +84,7 @@ function Tillfallen({ jag }) {
             {
               falt: 'installt', rubrik: 'Status',
               visa: (t) =>
-                t.installt ? <Bricka farg="rod">Inställt</Bricka> : t.deltagare ? <Bricka farg="gron">Närvaro tagen</Bricka> : <Bricka farg="gul">Ingen närvaro</Bricka>,
+                t.installt ? <Bricka farg="fara">Inställt</Bricka> : t.deltagare ? <Bricka farg="ok">Närvaro tagen</Bricka> : <Bricka farg="varning">Ingen närvaro</Bricka>,
             },
           ]}
         />
@@ -143,9 +143,9 @@ function NarvaroLada({ id, jag, stang }) {
       }
     >
       <div className="rad hopp">
-        <Bricka farg="klubb">{SLAG[t.slag]}</Bricka>
+        <Bricka farg="info">{SLAG[t.slag]}</Bricka>
         {t.plats && <Bricka>{t.plats}</Bricka>}
-        {t.installt && <Bricka farg="rod">Inställt</Bricka>}
+        {t.installt && <Bricka farg="fara">Inställt</Bricka>}
         <span className="liten svag">{t.start}–{t.slut}</span>
       </div>
 
@@ -178,7 +178,7 @@ function NarvaroLada({ id, jag, stang }) {
             <span className="vaxa">
               <strong>{d.namn}</strong>
               {d.fodelsedatum && <span className="liten svag"> · {d.fodelsedatum.slice(0, 4)}</span>}
-              {d.roll === 'ledare' && <Bricka farg="klubb">ledare</Bricka>}
+              {d.roll === 'ledare' && <Bricka farg="info">ledare</Bricka>}
             </span>
             <div className="knapprad">
               <button
@@ -298,7 +298,7 @@ function Stod({ jag }) {
           <Nyckeltal etikett="Sammankomster" varde={data.sammankomster} />
           <Nyckeltal etikett="Deltagartillfällen" varde={data.deltagartillfallen} />
           <Nyckeltal etikett="Ledartillfällen" varde={data.ledartillfallen} />
-          <Nyckeltal etikett="Underkända" varde={data.underkanda.length} farg={data.underkanda.length ? 'gul' : 'gron'} />
+          <Nyckeltal etikett="Underkända" varde={data.underkanda.length} farg={data.underkanda.length ? 'varning' : 'ok'} />
         </div>
         <p className="liten svag" style={{ marginTop: 8 }}>
           Villkor: deltagare {data.regel.alder_min}–{data.regel.alder_max} år, minst {data.regel.min_deltagare} deltagare
@@ -356,7 +356,7 @@ function Medlemsrapport({ jag }) {
         <div className="rad gap-16 hopp">
           <Nyckeltal etikett="Medlemmar" varde={data.totalt} />
           <Nyckeltal etikett="Licenser" varde={data.licenser?.antal ?? 0} />
-          <Nyckeltal etikett="Saknar födelsedatum" varde={data.saknar_fodelsedatum} farg={data.saknar_fodelsedatum ? 'gul' : 'gron'} />
+          <Nyckeltal etikett="Saknar födelsedatum" varde={data.saknar_fodelsedatum} farg={data.saknar_fodelsedatum ? 'varning' : 'ok'} />
         </div>
       </Kort>
       <div className="rutor bred">

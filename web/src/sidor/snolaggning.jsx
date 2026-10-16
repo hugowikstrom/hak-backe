@@ -215,7 +215,7 @@ export function Snolaggning() {
               visa: (u) => {
                 const m = senastePer.get(u.id);
                 return m?.wetbulb != null ? (
-                  <Bricka farg={m.klartecken.niva === 'nej' ? 'rod' : m.klartecken.niva === 'marginellt' ? 'gul' : 'gron'}>
+                  <Bricka farg={m.klartecken.niva === 'nej' ? 'fara' : m.klartecken.niva === 'marginellt' ? 'varning' : 'ok'}>
                     {tal(m.wetbulb)} °C
                   </Bricka>
                 ) : '–';
@@ -265,7 +265,7 @@ export function Snolaggning() {
             { falt: 'vattentryck', rubrik: 'Vatten bar', sifra: true, ...faltRedigering('vattentryck', matningar, jag) },
             { falt: 'lufttryck', rubrik: 'Luft bar', sifra: true, ...faltRedigering('lufttryck', matningar, jag) },
             { falt: 'vind_styrka', rubrik: 'Vind', sifra: true, visa: (r) => `${tal(r.vind_styrka)} ${r.vind_riktning || ''}` },
-            { falt: 'snokvalitet', rubrik: 'Snö', visa: (r) => (r.snokvalitet ? <Bricka farg={r.snokvalitet === 'blot' ? 'gul' : ''}>{r.snokvalitet}</Bricka> : '–') },
+            { falt: 'snokvalitet', rubrik: 'Snö', visa: (r) => (r.snokvalitet ? <Bricka farg={r.snokvalitet === 'blot' ? 'varning' : ''}>{r.snokvalitet}</Bricka> : '–') },
             { falt: 'anteckning', rubrik: 'Anteckning' },
             { falt: 'av', rubrik: 'Av', visa: (r) => <span className="initial" title={r.av}>{initialer(r.av)}</span> },
           ]}

@@ -7,6 +7,7 @@ export default defineConfig({
   // Mobilklienten bygger till dist/mobil, så webbklienten får inte tömma katalogen.
   build: { outDir: 'dist', emptyOutDir: false, sourcemap: false },
   server: {
+    fs: { allow: [new URL('..', import.meta.url).pathname] },
     port: 5190,
     strictPort: true,
     proxy: { '/api': 'http://127.0.0.1:8120', '/halsa': 'http://127.0.0.1:8120' },

@@ -23,8 +23,8 @@ export function Historik() {
             under={`${k.utrustning || k.omrade || 'Allmänt'} · ${klockan(k.startad)} · ${k.av || ''}`}
             hoger={
               <span className="brickrad">
-                {!!k.antal_avvikelser && <Bricka farg="rod">{k.antal_avvikelser}</Bricka>}
-                <Bricka farg={k.status === 'klar' ? 'gron' : 'gul'}>
+                {!!k.antal_avvikelser && <Bricka farg="fara">{k.antal_avvikelser}</Bricka>}
+                <Bricka farg={k.status === 'klar' ? 'ok' : 'info'}>
                   {k.status === 'klar' ? 'Klar' : 'Pågår'}
                 </Bricka>
               </span>
@@ -49,7 +49,7 @@ function Detalj({ id, stang }) {
         <>
           <div className="rad hopp">
             <Bricka>{k.utrustning || k.omrade || 'Allmänt'}</Bricka>
-            <Bricka farg={k.status === 'klar' ? 'gron' : 'gul'}>{k.status === 'klar' ? 'Klar' : 'Pågår'}</Bricka>
+            <Bricka farg={k.status === 'klar' ? 'ok' : 'info'}>{k.status === 'klar' ? 'Klar' : 'Pågår'}</Bricka>
             {k.kalla === 'mobil' && <Bricka>mobil</Bricka>}
           </div>
           <p className="liten svag" style={{ margin: 0 }}>

@@ -72,7 +72,7 @@ export function Rond({ vy, ronder }) {
         <Framsteg andel={(klara / rond.punkter.length) * 100} />
         <div className="rad-mellan liten svag">
           <span>{klara} av {rond.punkter.length} besvarade</span>
-          {antalAvvikelser(rond) > 0 && <Bricka farg="rod">{antalAvvikelser(rond)} avvikelser</Bricka>}
+          {antalAvvikelser(rond) > 0 && <Bricka farg="fara">{antalAvvikelser(rond)} avvikelser</Bricka>}
         </div>
       </div>
 
@@ -317,9 +317,9 @@ function AvslutaArk({ rond, saknas, online, stang, slutfor, tillPunkt }) {
       }
     >
       <div className="rad hopp">
-        <Bricka farg="gron">{antalBesvarade(rond)} av {rond.punkter.length} besvarade</Bricka>
-        {!!avvikelser.length && <Bricka farg="rod">{avvikelser.length} avvikelser</Bricka>}
-        {!online && <Bricka farg="gul">offline</Bricka>}
+        <Bricka farg="ok">{antalBesvarade(rond)} av {rond.punkter.length} besvarade</Bricka>
+        {!!avvikelser.length && <Bricka farg="fara">{avvikelser.length} avvikelser</Bricka>}
+        {!online && <Bricka farg="varning">offline</Bricka>}
       </div>
 
       {!!saknas.length && (
@@ -375,8 +375,8 @@ function Klar({ rond, online, hem, skicka }) {
           {rond.objektnamn ? ` · ${rond.objektnamn}` : ''}
         </p>
         <div className="rad hopp" style={{ justifyContent: 'center' }}>
-          <Bricka farg="gron">{antalBesvarade(rond)} av {rond.punkter.length} besvarade</Bricka>
-          {!!avvikelser && <Bricka farg="rod">{avvikelser} avvikelser</Bricka>}
+          <Bricka farg="ok">{antalBesvarade(rond)} av {rond.punkter.length} besvarade</Bricka>
+          {!!avvikelser && <Bricka farg="fara">{avvikelser} avvikelser</Bricka>}
         </div>
 
         {rond.avslutad ? (

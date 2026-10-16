@@ -77,11 +77,11 @@ export function Checklistor() {
                 },
                 {
                   falt: 'antal_avvikelser', rubrik: 'Avvikelser', sifra: true,
-                  visa: (k) => (k.antal_avvikelser ? <Bricka farg="gul">{k.antal_avvikelser}</Bricka> : '–'),
+                  visa: (k) => (k.antal_avvikelser ? <Bricka farg="varning">{k.antal_avvikelser}</Bricka> : '–'),
                 },
                 {
                   falt: 'status', rubrik: 'Status',
-                  visa: (k) => <Bricka farg={k.status === 'klar' ? 'gron' : 'klubb'}>{k.status === 'klar' ? 'Klar' : 'Pågår'}</Bricka>,
+                  visa: (k) => <Bricka farg={k.status === 'klar' ? 'ok' : 'info'}>{k.status === 'klar' ? 'Klar' : 'Pågår'}</Bricka>,
                 },
               ]}
             />
@@ -137,8 +137,8 @@ function AttGora({ lage, starta }) {
                 <strong>{m.namn}</strong>
                 <span className="rad">
                   <Bricka>{INTERVALL[m.intervall]}</Bricka>
-                  <Bricka farg="gul">{m.kvar} kvar</Bricka>
-                  {!!m.klara && <Bricka farg="gron">{m.klara} klara</Bricka>}
+                  <Bricka farg="varning">{m.kvar} kvar</Bricka>
+                  {!!m.klara && <Bricka farg="ok">{m.klara} klara</Bricka>}
                 </span>
               </div>
               <div className="knapprad">
@@ -403,7 +403,7 @@ function Mallar({ mallar, utrustning, omraden, jag }) {
             },
             { falt: 'intervall', rubrik: 'Intervall', visa: (m) => INTERVALL[m.intervall] },
             { falt: 'punkter', rubrik: 'Punkter', sifra: true, visa: (m) => m.punkter.length },
-            { falt: 'aktiv', rubrik: 'Status', visa: (m) => (m.aktiv ? <Bricka farg="gron">Aktiv</Bricka> : <Bricka>Vilande</Bricka>) },
+            { falt: 'aktiv', rubrik: 'Status', visa: (m) => (m.aktiv ? <Bricka farg="ok">Aktiv</Bricka> : <Bricka>Vilande</Bricka>) },
           ]}
         />
       </Kort>

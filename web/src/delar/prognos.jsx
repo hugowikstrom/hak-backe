@@ -13,7 +13,7 @@ const HORISONTER = [
 ];
 
 const farg = (niva) =>
-  niva === 'nej' || niva === 'okant' ? 'rod' : niva === 'marginellt' ? 'gul' : niva === 'ok' || niva === 'bra' ? 'klubb' : 'gron';
+  niva === 'nej' || niva === 'okant' ? 'fara' : niva === 'marginellt' ? 'varning' : niva === 'ok' || niva === 'bra' ? 'info' : 'ok';
 
 export function Prognos({ kompakt = false }) {
   const notis = useNotis();
@@ -86,7 +86,7 @@ function Timmar({ h, data, kompakt }) {
           etikett="Produktionstimmar"
           varde={h.produktionstimmar}
           enhet={`/ ${h.timmar} h`}
-          farg={h.produktionstimmar ? 'gron' : 'rod'}
+          farg={h.produktionstimmar ? 'ok' : 'fara'}
         />
         <Nyckeltal etikett="Kallast" varde={h.kallast != null && h.kallast < 90 ? tal(h.kallast) : '–'} enhet="°C" />
         <div className="vaxa" />
@@ -158,7 +158,7 @@ function Vecka({ data }) {
   return (
     <>
       <div className="rad gap-16 hopp" style={{ marginBottom: 10 }}>
-        <Nyckeltal etikett="Produktionstimmar i veckan" varde={summa} enhet="h" farg={summa ? 'gron' : 'rod'} />
+        <Nyckeltal etikett="Produktionstimmar i veckan" varde={summa} enhet="h" farg={summa ? 'ok' : 'fara'} />
         <Nyckeltal
           etikett="Kallaste wetbulb"
           varde={tal(Math.min(...dygn.map((d) => d.wetbulb_min ?? 99).filter((v) => v < 90)))}
@@ -178,7 +178,7 @@ function Vecka({ data }) {
           {
             falt: 'wetbulb_min', rubrik: 'Wetbulb min', sifra: true,
             visa: (d) => (
-              <Bricka farg={d.wetbulb_min != null && d.wetbulb_min < -2.5 ? 'gron' : 'rod'}>{tal(d.wetbulb_min)} °C</Bricka>
+              <Bricka farg={d.wetbulb_min != null && d.wetbulb_min < -2.5 ? 'ok' : 'fara'}>{tal(d.wetbulb_min)} °C</Bricka>
             ),
           },
           {

@@ -36,7 +36,7 @@ export function Retur({ ruta, ga }) {
         <div className="liten svag">Hyresnummer</div>
         <div className="ordernummer">{avtal.nummer}</div>
         <div style={{ marginTop: 10 }}>
-          <Bricka farg={inne ? 'gron' : 'gul'}>
+          <Bricka farg={inne ? 'ok' : 'varning'}>
             {inne ? 'Återlämnad – tack!' : avtal.status === 'ute' ? 'Utrustningen är ute' : 'Bokad'}
           </Bricka>
         </div>

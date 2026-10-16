@@ -73,7 +73,7 @@ export function App() {
                 <button className="tillbaka" onClick={tillbaka} aria-label="Tillbaka">‹</button>
               ) : null}
               <div className="marke">
-                <Marke storlek={30} />
+                <Marke storlek={34} />
                 <span>
                   HAK Rond
                   <small>Härnösands Alpina</small>

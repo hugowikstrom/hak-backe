@@ -46,7 +46,7 @@ export function Mallar() {
                   ? (omraden.data?.data || []).find((o) => o.id === m.omrade_id)?.namn || 'område'
                   : 'allmänt'
             }`}
-            hoger={m.aktiv ? <Bricka farg="gron">Aktiv</Bricka> : <Bricka>Vilande</Bricka>}
+            hoger={m.aktiv ? <Bricka farg="ok">Aktiv</Bricka> : <Bricka>Vilande</Bricka>}
             onClick={() => sattRedigerar({ ...m, punkter: m.punkter.map((p) => ({ ...p })) })}
           />
         ))}

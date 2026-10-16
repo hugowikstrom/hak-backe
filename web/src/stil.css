@@ -1,62 +1,17 @@
-/* HAK Backe – en formgivningsfil, sektionsvis.
-   1 Grund och tokens  2 Ram och navigering  3 Kort och ytor  4 Tabeller
+/* HAK Backe – webbklienten.
+   Färger, typsnitt och skuggor kommer från den gemensamma profilen i
+   web/delad/profil.css. Här står bara tätheten: ett arbetsverktyg med små
+   texter, smala rader och knappa marginaler.
+
+   1 Täthet  2 Ram och navigering  3 Kort och ytor  4 Tabeller
    5 Rutnät (bemanning)  6 Formulär  7 Brickor och mätare  8 Diagram  9 Smått */
 
-/* ---------- 1 Grund och tokens ---------- */
+@import '../delad/profil.css';
+
 :root {
-  --yta:        #f6f7f9;
-  --yta-2:      #ffffff;
-  --yta-3:      #eef1f5;
-  --yta-hover:  #e7ecf3;
-  --ram:        #d3d9e2;
-  --ram-stark:  #b4bdca;
-  --text:       #1b2230;
-  --text-svag:  #5d6878;
-  --text-svagar:#8a94a3;
-  /* Klubbgrönt ur logotypen. --klubb bär text och ramar, --klubb-ren är
-     fyllningsfärgen som bara duger med mörk text ovanpå. */
-  --klubb:      #4f8a24;
-  --klubb-ren:  #8cc63f;
-  --klubb-mjuk: #eef7e2;
-  --gron:       #1f7a4d;
-  --gron-mjuk:  #e0f3e8;
-  --gul:        #9a6400;
-  --gul-mjuk:   #fdf0d5;
-  --rod:        #b3261e;
-  --rod-mjuk:   #fbe4e2;
-  --lila:       #6b4fa8;
-  --natt:       #30406b;
-  --natt-mjuk:  #e8ecf7;
-  --skugga:     0 1px 2px rgba(16, 24, 40, .06), 0 4px 12px rgba(16, 24, 40, .05);
-  --radie:      6px;
-  --radie-s:    4px;
-  --rad:        26px;
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
-}
-[data-tema='morkt'] {
-  --yta:        #11151c;
-  --yta-2:      #171d26;
-  --yta-3:      #1e2631;
-  --yta-hover:  #26303d;
-  --ram:        #2c3745;
-  --ram-stark:  #3e4b5c;
-  --text:       #e6ebf2;
-  --text-svag:  #9aa6b6;
-  --text-svagar:#6c7889;
-  --klubb:      #9ad44f;
-  --klubb-ren:  #8cc63f;
-  --klubb-mjuk: #1d2a14;
-  --gron:       #6fcf97;
-  --gron-mjuk:  #162a21;
-  --gul:        #e3b341;
-  --gul-mjuk:   #2c2415;
-  --rod:        #f28b82;
-  --rod-mjuk:   #30191a;
-  --lila:       #b39ddb;
-  --natt:       #8fa6e0;
-  --natt-mjuk:  #1c2335;
-  --skugga:     0 1px 2px rgba(0, 0, 0, .4), 0 6px 18px rgba(0, 0, 0, .3);
+  --radie:   6px;
+  --radie-s: 4px;
+  --rad:     26px;  /* tabellradens höjd */
 }
 
 * { box-sizing: border-box; }
@@ -65,7 +20,7 @@ body {
   margin: 0;
   font: 13px/1.45 var(--sans);
   color: var(--text);
-  background: var(--yta);
+  background: var(--bak);
   -webkit-font-smoothing: antialiased;
 }
 h1, h2, h3, h4 { margin: 0; font-weight: 600; letter-spacing: -0.01em; }
@@ -78,7 +33,7 @@ a:hover { text-decoration: underline; }
 p { margin: 0 0 8px; }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .svag { color: var(--text-svag); }
-.svagare { color: var(--text-svagar); }
+.svagare { color: var(--text-svagare); }
 .liten { font-size: 11.5px; }
 .mitten { text-align: center; }
 .hoger { text-align: right; }
@@ -96,11 +51,13 @@ p { margin: 0 0 8px; }
 .topp {
   display: flex; align-items: center; gap: 14px;
   padding: 0 14px; height: 46px;
-  background: var(--yta-2); border-bottom: 1px solid var(--ram);
+  background: var(--bak); border-bottom: 1px solid var(--ram);
   border-top: 3px solid var(--klubb-ren);
   position: sticky; top: 0; z-index: 40;
 }
 .marke { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.02em; }
+/* Märket i listen: grön sköld med vit figur. Vitt ger skarpast läsning
+   på det gröna, mörkt läge eller inte. */
 .marke .marke-svg { display: block; --marke-fond: var(--klubb-ren); --marke-motiv: #fff; }
 .marke small { font-weight: 500; color: var(--text-svag); letter-spacing: 0; }
 .meny { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
@@ -109,7 +66,7 @@ p { margin: 0 0 8px; }
   padding: 5px 10px; border-radius: var(--radie-s); color: var(--text-svag);
   white-space: nowrap; font-weight: 500;
 }
-.meny a:hover { background: var(--yta-3); color: var(--text); text-decoration: none; }
+.meny a:hover { background: var(--bak-2); color: var(--text); text-decoration: none; }
 .meny a[aria-current='page'] { background: var(--klubb-mjuk); color: var(--klubb); }
 .toppslut { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .ytval {
@@ -123,12 +80,12 @@ p { margin: 0 0 8px; }
 
 /* ---------- 3 Kort och ytor ---------- */
 .kort {
-  background: var(--yta-2); border: 1px solid var(--ram);
+  background: var(--bak); border: 1px solid var(--ram);
   border-radius: var(--radie); box-shadow: var(--skugga);
 }
 .kort > header {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 8px 10px; border-bottom: 1px solid var(--ram); background: var(--yta-3);
+  padding: 8px 10px; border-bottom: 1px solid var(--ram); background: var(--bak-2);
   border-radius: var(--radie) var(--radie) 0 0; min-height: 34px;
 }
 .kort > .kropp { padding: 10px; }
@@ -144,7 +101,7 @@ p { margin: 0 0 8px; }
 table.data { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 12.5px; }
 table.data th {
   position: sticky; top: 0; z-index: 2;
-  background: var(--yta-3); color: var(--text-svag);
+  background: var(--bak-2); color: var(--text-svag);
   font-weight: 600; text-align: left; white-space: nowrap;
   padding: 5px 8px; border-bottom: 1px solid var(--ram-stark);
   font-size: 11.5px; text-transform: uppercase; letter-spacing: .04em;
@@ -155,46 +112,46 @@ table.data td {
   padding: 4px 8px; border-bottom: 1px solid var(--ram);
   height: var(--rad); vertical-align: middle;
 }
-table.data tbody tr:hover > td { background: var(--yta-hover); }
+table.data tbody tr:hover > td { background: var(--hover); }
 table.data tr.valdrad > td { background: var(--klubb-mjuk); }
 table.data tr.klickbar { cursor: pointer; }
 table.data td.sifra, table.data th.sifra { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
-table.data tfoot td { font-weight: 600; background: var(--yta-3); }
+table.data tfoot td { font-weight: 600; background: var(--bak-2); }
 table.data td.redigerbar { padding: 0; }
 table.data td.redigerbar input, table.data td.redigerbar select {
   width: 100%; height: calc(var(--rad) - 1px); border: 0; background: transparent;
   padding: 0 8px; color: inherit; font: inherit;
 }
 table.data td.redigerbar input:focus, table.data td.redigerbar select:focus {
-  outline: 2px solid var(--klubb); outline-offset: -2px; background: var(--yta-2);
+  outline: 2px solid var(--klubb); outline-offset: -2px; background: var(--bak);
 }
-.tomt { padding: 18px; text-align: center; color: var(--text-svagar); }
+.tomt { padding: 18px; text-align: center; color: var(--text-svagare); }
 
 /* ---------- 5 Rutnät (bemanning) ---------- */
 .rutnatsramp { overflow: auto; max-height: calc(100vh - 230px); }
 table.rutnat { border-collapse: separate; border-spacing: 0; font-size: 12px; }
 table.rutnat th, table.rutnat td { border-right: 1px solid var(--ram); border-bottom: 1px solid var(--ram); }
 table.rutnat thead th {
-  position: sticky; top: 0; z-index: 3; background: var(--yta-3);
+  position: sticky; top: 0; z-index: 3; background: var(--bak-2);
   padding: 3px 6px; font-size: 11px; font-weight: 600; text-align: center; min-width: 96px;
 }
 table.rutnat thead th.helgdag { background: var(--natt-mjuk); color: var(--natt); }
 table.rutnat thead th .dagnamn { display: block; color: var(--text-svag); font-weight: 500; font-size: 10.5px; text-transform: uppercase; }
 table.rutnat th.hornruta {
   position: sticky; left: 0; top: 0; z-index: 5; min-width: 180px; text-align: left;
-  background: var(--yta-3); border-right: 2px solid var(--ram-stark);
+  background: var(--bak-2); border-right: 2px solid var(--ram-stark);
 }
 table.rutnat th.radrubrik {
-  position: sticky; left: 0; z-index: 2; background: var(--yta-2);
+  position: sticky; left: 0; z-index: 2; background: var(--bak);
   text-align: left; padding: 3px 8px; min-width: 180px; max-width: 180px;
   border-right: 2px solid var(--ram-stark); font-weight: 500;
 }
 table.rutnat th.radrubrik .tid { font-family: var(--mono); color: var(--text-svag); font-size: 11px; }
 table.rutnat th.gruppen {
-  position: sticky; left: 0; z-index: 2; background: var(--yta-3); text-align: left;
+  position: sticky; left: 0; z-index: 2; background: var(--bak-2); text-align: left;
   padding: 3px 8px; font-weight: 700; font-size: 11.5px; border-right: 2px solid var(--ram-stark);
 }
-table.rutnat tr.gruppsrad td { background: var(--yta-3); }
+table.rutnat tr.gruppsrad td { background: var(--bak-2); }
 td.cell { padding: 0; height: 30px; vertical-align: top; position: relative; }
 td.cell.helgdag { background: color-mix(in srgb, var(--natt-mjuk) 45%, transparent); }
 .cellknapp {
@@ -205,32 +162,32 @@ td.cell.helgdag { background: color-mix(in srgb, var(--natt-mjuk) 45%, transpare
 .cellknapp:focus-visible { outline: 2px solid var(--klubb); outline-offset: -2px; }
 .cellknapp .namnrad { display: flex; gap: 3px; flex-wrap: wrap; align-items: center; }
 .cellknapp .antal { font-family: var(--mono); font-size: 10.5px; color: var(--text-svag); }
-td.cell.full { background: var(--gron-mjuk); }
-td.cell.delvis { background: var(--gul-mjuk); }
-td.cell.tom { background: var(--rod-mjuk); }
+td.cell.full { background: var(--ok-mjuk); }
+td.cell.delvis { background: var(--varning-mjuk); }
+td.cell.tom { background: var(--fara-mjuk); }
 td.cell.mitt { box-shadow: inset 3px 0 0 var(--text); }
 td.cell.markerad { outline: 2px solid var(--klubb); outline-offset: -2px; z-index: 1; }
 td.cell.obehorig .cellknapp { cursor: not-allowed; }
 td.cell.obehorig { opacity: .6; }
-td.cell.obokbar { background: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--yta-3) 4px, var(--yta-3) 8px); }
+td.cell.obokbar { background: repeating-linear-gradient(45deg, transparent, transparent 4px, var(--bak-2) 4px, var(--bak-2) 8px); }
 .initial {
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 17px; height: 15px; padding: 0 3px; border-radius: 3px;
-  background: var(--yta-3); border: 1px solid var(--ram-stark);
+  background: var(--bak-2); border: 1px solid var(--ram-stark);
   font-size: 10px; font-weight: 700; letter-spacing: .02em;
 }
-.initial.jag { background: var(--text); border-color: var(--text); color: var(--yta-2); }
+.initial.jag { background: var(--text); border-color: var(--text); color: var(--bak); }
 .initial.auto { border-style: dashed; }
 .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-svag); align-items: center; }
 .legend i { display: inline-block; width: 11px; height: 11px; border: 1px solid var(--ram-stark); border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
 
 /* ---------- 6 Formulär ---------- */
 label.falt { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--text-svag); min-width: 0; }
-label.falt > span.krav::after { content: ' *'; color: var(--rod); }
+label.falt > span.krav::after { content: ' *'; color: var(--fara); }
 input, select, textarea, button { font: inherit; color: inherit; }
 input[type='text'], input[type='number'], input[type='date'], input[type='time'],
 input[type='password'], input[type='email'], select, textarea {
-  background: var(--yta-2); border: 1px solid var(--ram-stark); border-radius: var(--radie-s);
+  background: var(--bak); border: 1px solid var(--ram-stark); border-radius: var(--radie-s);
   padding: 4px 7px; min-height: 28px; color: var(--text); width: 100%;
 }
 input:focus, select:focus, textarea:focus { outline: 2px solid var(--klubb); outline-offset: -1px; border-color: var(--klubb); }
@@ -239,16 +196,16 @@ input[type='checkbox'] { width: 15px; height: 15px; accent-color: var(--klubb); 
 .faltrad { display: grid; gap: 8px; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); align-items: end; }
 button, .knapp {
   display: inline-flex; align-items: center; justify-content: center; gap: 5px;
-  background: var(--yta-2); border: 1px solid var(--ram-stark); border-radius: var(--radie-s);
+  background: var(--bak); border: 1px solid var(--ram-stark); border-radius: var(--radie-s);
   padding: 4px 10px; min-height: 28px; cursor: pointer; font-weight: 500; white-space: nowrap;
 }
-button:hover, .knapp:hover { background: var(--yta-hover); text-decoration: none; }
+button:hover, .knapp:hover { background: var(--hover); text-decoration: none; }
 button:disabled { opacity: .5; cursor: not-allowed; }
-button.primar { background: var(--klubb-ren); border-color: var(--klubb); color: #15210a; font-weight: 600; }
+button.primar { background: var(--klubb-ren); border-color: var(--klubb); color: var(--pa-klubb); font-weight: 600; }
 button.primar:hover { filter: brightness(1.07); }
-button.fara { color: var(--rod); border-color: color-mix(in srgb, var(--rod) 50%, var(--ram-stark)); }
+button.fara { color: var(--fara); border-color: color-mix(in srgb, var(--fara) 50%, var(--ram-stark)); }
 button.tom { border-color: transparent; background: transparent; color: var(--text-svag); }
-button.tom:hover { background: var(--yta-3); color: var(--text); }
+button.tom:hover { background: var(--bak-2); color: var(--text); }
 button.liten, .knapp.liten { min-height: 22px; padding: 1px 7px; font-size: 11.5px; }
 .knapprad { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
 .segment { display: inline-flex; border: 1px solid var(--ram-stark); border-radius: var(--radie-s); overflow: hidden; }
@@ -260,29 +217,30 @@ button.liten, .knapp.liten { min-height: 22px; padding: 1px 7px; font-size: 11.5
 .bricka {
   display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px;
   border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap;
-  background: var(--yta-3); border: 1px solid var(--ram); color: var(--text-svag);
+  background: var(--bak-2); border: 1px solid var(--ram); color: var(--text-svag);
 }
 .bricka.klubb { background: var(--klubb-mjuk); color: var(--klubb); border-color: transparent; }
-.bricka.gron { background: var(--gron-mjuk); color: var(--gron); border-color: transparent; }
-.bricka.gul { background: var(--gul-mjuk); color: var(--gul); border-color: transparent; }
-.bricka.rod { background: var(--rod-mjuk); color: var(--rod); border-color: transparent; }
+.bricka.ok { background: var(--ok-mjuk); color: var(--ok); border-color: transparent; }
+.bricka.varning { background: var(--varning-mjuk); color: var(--varning); border-color: transparent; }
+.bricka.fara { background: var(--fara-mjuk); color: var(--fara); border-color: transparent; }
 .bricka.natt { background: var(--natt-mjuk); color: var(--natt); border-color: transparent; }
 .bricka.lila { background: color-mix(in srgb, var(--lila) 16%, transparent); color: var(--lila); border-color: transparent; }
+.bricka.info { background: var(--info-mjuk); color: var(--info); border-color: transparent; }
 .prick { width: 7px; height: 7px; border-radius: 99px; display: inline-block; background: currentColor; }
-.matare { height: 7px; border-radius: 99px; background: var(--yta-3); overflow: hidden; border: 1px solid var(--ram); }
+.matare { height: 7px; border-radius: 99px; background: var(--bak-2); overflow: hidden; border: 1px solid var(--ram); }
 .matare > span { display: block; height: 100%; background: var(--klubb); }
-.matare.gron > span { background: var(--gron); }
-.matare.gul > span { background: var(--gul); }
-.matare.rod > span { background: var(--rod); }
+.matare.ok > span { background: var(--ok); }
+.matare.varning > span { background: var(--varning); }
+.matare.fara > span { background: var(--fara); }
 .stortal { font-family: var(--mono); font-size: 25px; font-weight: 600; line-height: 1.1; letter-spacing: -.02em; }
 .stortal small { font-size: 12px; font-weight: 500; color: var(--text-svag); margin-left: 2px; font-family: var(--sans); }
 .nyckeltal { display: flex; flex-direction: column; gap: 2px; }
 .nyckeltal .etikett { font-size: 11px; color: var(--text-svag); text-transform: uppercase; letter-spacing: .05em; }
 .meddelande { padding: 7px 10px; border-radius: var(--radie-s); border: 1px solid var(--ram); font-size: 12px; }
-.meddelande.fel { background: var(--rod-mjuk); border-color: color-mix(in srgb, var(--rod) 35%, transparent); color: var(--rod); }
-.meddelande.ok { background: var(--gron-mjuk); border-color: color-mix(in srgb, var(--gron) 35%, transparent); color: var(--gron); }
+.meddelande.fel { background: var(--fara-mjuk); border-color: color-mix(in srgb, var(--fara) 35%, transparent); color: var(--fara); }
+.meddelande.ok { background: var(--ok-mjuk); border-color: color-mix(in srgb, var(--ok) 35%, transparent); color: var(--ok); }
 .meddelande.info { background: var(--klubb-mjuk); border-color: color-mix(in srgb, var(--klubb) 30%, transparent); color: var(--klubb); }
-.meddelande.varning { background: var(--gul-mjuk); border-color: color-mix(in srgb, var(--gul) 35%, transparent); color: var(--gul); }
+.meddelande.varning { background: var(--varning-mjuk); border-color: color-mix(in srgb, var(--varning) 35%, transparent); color: var(--varning); }
 .brodtext { font-size: 12.5px; white-space: pre-wrap; }
 
 /* Klartecken-panel */
@@ -291,37 +249,37 @@ button.liten, .knapp.liten { min-height: 22px; padding: 1px 7px; font-size: 11.5
   width: 54px; height: 54px; border-radius: 12px; display: grid; place-items: center;
   font-family: var(--mono); font-size: 16px; font-weight: 700; border: 1px solid var(--ram-stark);
 }
-.klartecken.utmarkt .lampa, .klartecken.mycket_bra .lampa { background: var(--gron-mjuk); color: var(--gron); }
+.klartecken.utmarkt .lampa, .klartecken.mycket_bra .lampa { background: var(--ok-mjuk); color: var(--ok); }
 .klartecken.bra .lampa, .klartecken.ok .lampa { background: var(--klubb-mjuk); color: var(--klubb); }
-.klartecken.marginellt .lampa { background: var(--gul-mjuk); color: var(--gul); }
-.klartecken.nej .lampa, .klartecken.okant .lampa { background: var(--rod-mjuk); color: var(--rod); }
+.klartecken.marginellt .lampa { background: var(--varning-mjuk); color: var(--varning); }
+.klartecken.nej .lampa, .klartecken.okant .lampa { background: var(--fara-mjuk); color: var(--fara); }
 
 /* ---------- 8 Diagram ---------- */
 .stapel { display: flex; flex-direction: column; gap: 5px; }
 .stapel .post { display: grid; grid-template-columns: 130px 1fr 54px; gap: 8px; align-items: center; font-size: 12px; }
-.stapel .spar { height: 14px; background: var(--yta-3); border: 1px solid var(--ram); border-radius: 3px; overflow: hidden; }
+.stapel .spar { height: 14px; background: var(--bak-2); border: 1px solid var(--ram); border-radius: 3px; overflow: hidden; }
 .stapel .spar > span { display: block; height: 100%; background: var(--klubb); }
 .grafruta { display: flex; gap: 8px; align-items: stretch; }
 .grafskala {
   position: relative; width: 38px; flex: 0 0 38px;
   display: flex; flex-direction: column; justify-content: space-between;
-  font-family: var(--mono); font-size: 10.5px; color: var(--text-svagar);
+  font-family: var(--mono); font-size: 10.5px; color: var(--text-svagare);
   text-align: right; padding: 2px 0 20px;
 }
-.grafskala .grafgrans { position: absolute; right: 0; color: var(--rod); transform: translateY(-50%); }
+.grafskala .grafgrans { position: absolute; right: 0; color: var(--fara); transform: translateY(-50%); }
 .grafkropp { flex: 1 1 auto; min-width: 0; }
-.grafrad { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--text-svagar); padding-top: 3px; }
+.grafrad { display: flex; align-items: center; gap: 8px; font-size: 10.5px; color: var(--text-svagare); padding-top: 3px; }
 .grafnyckel { margin: 0 6px; }
 .grafnyckel.a::before { content: '— '; color: var(--klubb); }
 .grafnyckel.b::before { content: '-- '; color: var(--lila); }
-.grafnyckel.g::before { content: '-- '; color: var(--rod); }
+.grafnyckel.g::before { content: '-- '; color: var(--fara); }
 svg.graf { width: 100%; display: block; }
 svg.graf .linje { fill: none; stroke: var(--klubb); stroke-width: 1.6; }
 svg.graf .linje2 { fill: none; stroke: var(--lila); stroke-width: 1.6; stroke-dasharray: 3 2; }
 svg.graf .yta { fill: color-mix(in srgb, var(--klubb) 14%, transparent); }
 svg.graf .axel { stroke: var(--ram); stroke-width: 1; }
 svg.graf .noll { stroke: var(--ram-stark); stroke-dasharray: 2 2; }
-svg.graf .grans { stroke: var(--rod); stroke-dasharray: 4 3; stroke-width: 1.2; opacity: .8; }
+svg.graf .grans { stroke: var(--fara); stroke-dasharray: 4 3; stroke-width: 1.2; opacity: .8; }
 
 /* ---------- 9 Lådor, modal, inloggning, smått ---------- */
 .lada-bak {
@@ -329,7 +287,7 @@ svg.graf .grans { stroke: var(--rod); stroke-dasharray: 4 3; stroke-width: 1.2; 
   display: grid; place-items: center; z-index: 60; padding: 16px;
 }
 .lada {
-  background: var(--yta-2); border: 1px solid var(--ram); border-radius: var(--radie);
+  background: var(--bak); border: 1px solid var(--ram); border-radius: var(--radie);
   box-shadow: 0 16px 48px rgba(0, 0, 0, .3); width: min(760px, 100%);
   max-height: 90vh; display: flex; flex-direction: column;
 }
@@ -340,12 +298,12 @@ svg.graf .grans { stroke: var(--rod); stroke-dasharray: 4 3; stroke-width: 1.2; 
 
 .inlogg {
   display: grid; place-items: center; height: 100%;
-  background: linear-gradient(170deg, var(--klubb-ren) 0%, var(--klubb-ren) 38%, var(--yta) 38%, var(--yta) 100%);
+  background: linear-gradient(170deg, var(--klubb-ren) 0%, var(--klubb-ren) 38%, var(--bak) 38%, var(--bak) 100%);
 }
-.inlogg form { background: var(--yta-2); border: 1px solid var(--ram); border-radius: var(--radie); padding: 18px; box-shadow: var(--skugga); }
+.inlogg form { background: var(--bak); border: 1px solid var(--ram); border-radius: var(--radie); padding: 18px; box-shadow: var(--skugga); }
 .inlogg form { width: min(340px, 92vw); display: flex; flex-direction: column; gap: 10px; }
 .inlogg .marke { justify-content: center; font-size: 19px; margin-bottom: 4px; }
-.inlogg .hjalp { font-size: 11.5px; color: var(--text-svagar); text-align: center; }
+.inlogg .hjalp { font-size: 11.5px; color: var(--text-svagare); text-align: center; }
 
 .lista { display: flex; flex-direction: column; }
 .lista > li, .lista > .post {
@@ -355,29 +313,29 @@ svg.graf .grans { stroke: var(--rod); stroke-dasharray: 4 3; stroke-width: 1.2; 
 .lista > li:last-child, .lista > .post:last-child { border-bottom: 0; }
 ul.lista { margin: 0; padding: 0; }
 .punkt { display: grid; grid-template-columns: auto 1fr auto; gap: 8px; align-items: start; padding: 7px 10px; border-bottom: 1px solid var(--ram); }
-.punkt.avvikande { background: var(--gul-mjuk); }
-.punkt.klar { background: color-mix(in srgb, var(--gron-mjuk) 60%, transparent); }
+.punkt.avvikande { background: var(--varning-mjuk); }
+.punkt.klar { background: color-mix(in srgb, var(--ok-mjuk) 60%, transparent); }
 .punkt .text { display: flex; flex-direction: column; gap: 2px; }
 .punkt .hjalp { font-size: 11px; color: var(--text-svag); }
 .tidslinje { display: flex; flex-direction: column; gap: 0; }
 .tidslinje .handelse { display: grid; grid-template-columns: 112px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px dashed var(--ram); font-size: 12px; }
 .tidslinje .handelse:last-child { border-bottom: 0; }
-.chip { display: inline-flex; gap: 4px; align-items: center; padding: 1px 6px; border: 1px solid var(--ram-stark); border-radius: 99px; font-size: 11px; background: var(--yta-3); }
+.chip { display: inline-flex; gap: 4px; align-items: center; padding: 1px 6px; border: 1px solid var(--ram-stark); border-radius: 99px; font-size: 11px; background: var(--bak-2); }
 .chip button { border: 0; background: transparent; padding: 0 0 0 2px; min-height: auto; color: var(--text-svag); }
 .flikar { display: flex; gap: 2px; border-bottom: 1px solid var(--ram); }
 .flikar button { border: 0; background: transparent; border-bottom: 2px solid transparent; border-radius: 0; color: var(--text-svag); }
 .flikar button[aria-selected='true'] { border-bottom-color: var(--klubb); color: var(--text); font-weight: 600; }
-.vanta { padding: 24px; text-align: center; color: var(--text-svagar); }
+.vanta { padding: 24px; text-align: center; color: var(--text-svagare); }
 .notis { position: fixed; right: 14px; bottom: 14px; z-index: 80; display: flex; flex-direction: column; gap: 6px; }
 .notis > div {
-  background: var(--yta-2); border: 1px solid var(--ram); border-left: 3px solid var(--klubb);
+  background: var(--bak); border: 1px solid var(--ram); border-left: 3px solid var(--klubb);
   border-radius: var(--radie-s); box-shadow: var(--skugga); padding: 8px 12px; font-size: 12px;
   max-width: 420px; animation: in .15s ease-out;
 }
-.notis > div.fel { border-left-color: var(--rod); }
-.notis > div.ok { border-left-color: var(--gron); }
+.notis > div.fel { border-left-color: var(--fara); }
+.notis > div.ok { border-left-color: var(--ok); }
 @keyframes in { from { opacity: 0; transform: translateY(6px); } }
-.tasta { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--ram-stark); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--yta-3); color: var(--text-svag); }
+.tasta { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--ram-stark); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--bak-2); color: var(--text-svag); }
 
 @media (max-width: 720px) {
   .topp { height: auto; flex-wrap: wrap; padding: 6px 10px; gap: 8px; }

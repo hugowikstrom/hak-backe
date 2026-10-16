@@ -79,7 +79,7 @@ export function Oversikt() {
                 <Nyckeltal etikett="Timmar" varde={tal(lage.timmar)} enhet={`/ ${tal(lage.kvot)}`} />
                 <Nyckeltal etikett="Nattpass" varde={lage.natt} />
                 <Nyckeltal etikett="Helgpass" varde={lage.helg} />
-                <Nyckeltal etikett="Kvar" varde={tal(lage.kvar)} enhet="h" farg={lage.kvar > 0 ? 'gul' : 'gron'} />
+                <Nyckeltal etikett="Kvar" varde={tal(lage.kvar)} enhet="h" farg={lage.kvar > 0 ? 'varning' : 'ok'} />
               </div>
               <div style={{ marginTop: 8 }}>
                 <Matare andel={lage.andel} />
@@ -104,7 +104,7 @@ export function Oversikt() {
                     <div className="liten svag">{a.utrustning || a.omrade || 'Allmänt'}</div>
                   </span>
                   <span className="rad">
-                    {a.allvarlighet === 'sakerhetsrisk' && <Bricka farg="rod">Säkerhet</Bricka>}
+                    {a.allvarlighet === 'sakerhetsrisk' && <Bricka farg="fara">Säkerhet</Bricka>}
                     <Prioritetsbricka niva={a.prioritet} />
                     <Statusbricka status={a.status} />
                   </span>
@@ -137,7 +137,7 @@ export function Oversikt() {
                         {!bokade.length && <span className="svagare">ingen bokad</span>}
                       </div>
                     </span>
-                    <Bricka farg={bokade.length >= p.behov ? 'gron' : bokade.length ? 'gul' : 'rod'}>
+                    <Bricka farg={bokade.length >= p.behov ? 'ok' : bokade.length ? 'varning' : 'fara'}>
                       {bokade.length}/{p.behov}
                     </Bricka>
                   </li>
@@ -164,7 +164,7 @@ export function Oversikt() {
                   etikett="Produktion 48 h"
                   varde={vader.data.h48.produktionstimmar}
                   enhet="h"
-                  farg={vader.data.h48.produktionstimmar ? 'gron' : 'rod'}
+                  farg={vader.data.h48.produktionstimmar ? 'ok' : 'fara'}
                 />
               </div>
               <div style={{ marginTop: 8 }}>
@@ -212,7 +212,7 @@ export function Oversikt() {
                         {m.kvar > 4 ? ` +${m.kvar - 4}` : ''}
                       </div>
                     </span>
-                    <Bricka farg={m.kvar ? 'gul' : 'gron'}>{m.kvar} kvar</Bricka>
+                    <Bricka farg={m.kvar ? 'varning' : 'ok'}>{m.kvar} kvar</Bricka>
                   </li>
                 ))}
             </ul>
@@ -248,7 +248,7 @@ export function Oversikt() {
                     <strong>{u.namn}</strong>
                     <div className="liten svag">{UTRUSTNINGSTYP[u.typ]} · {u.omrade}</div>
                   </span>
-                  <Bricka farg={u.status === 'ur_drift' ? 'rod' : 'gul'}>
+                  <Bricka farg={u.status === 'ur_drift' ? 'fara' : 'varning'}>
                     {u.status === 'ur_drift' ? 'Ur drift' : 'Service'}
                   </Bricka>
                 </li>

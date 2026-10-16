@@ -126,12 +126,15 @@ Hållpunkter:
 - **Mobilens ronder är dokument, inte köade anrop.** `web/mobil/src/ko.js`
   sparar hela ronden i telefonen och spelar upp den mot API:et när det går.
   Därför överlever en rond både dålig täckning och att appen stängs.
-- **Klubbgrönt `#8cc63f`** ur logotypen bär mobilappen. Grönt på vitt duger
-  inte som textfärg – använd `--gron-mork` när det ska läsas.
-- **Märket** (`web/mobil/public/ikon.svg` och `Marke`-komponenten i båda
-  klienterna) är ritat efter klubbemblemet: sköld, vårdkasen och en åkare i
-  sväng. Under 36 px ritas en förenklad variant utan stegpinnar. Ikonerna i
-  `web/mobil/public/ikon-*.png` rasteriseras ur samma SVG – rita om SVG:n och
+- **Den grafiska profilen bor på ett ställe**: `web/delad/profil.css` och
+  `web/delad/marke.jsx`, delade av alla tre klienterna. Färger, typsnitt,
+  skuggor och märket ändras där, inte i en enskild klient. Reglerna står i
+  `docs/GRAFISK-PROFIL.md`.
+- **Grönt är varumärket, inte en status.** Klart är `--ok`, pågår är
+  `--info`, brådskande är `--fara`. Brickor och mätare använder de namnen.
+- **Märket** är ritat efter klubbemblemet: sköld, vårdkasen och en åkare i
+  sväng. Det finns i tre nivåer efter storlek, och ikonerna i
+  `web/mobil/public/ikon-*.png` rasteriseras ur `ikon.svg` – rita om SVG:n och
   gör om PNG:erna, aldrig tvärtom.
 - `npm run verify` är grinden.
 

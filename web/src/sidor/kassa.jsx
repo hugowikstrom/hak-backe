@@ -7,18 +7,18 @@ import { Tabell } from '../delar/tabell.jsx';
 import { klockslag, minstRoll, sedan, tidpunkt } from '../nytta.js';
 
 const STATUS = {
-  ny: { namn: 'Ny', farg: 'gul' },
-  betald: { namn: 'Betald', farg: 'klubb' },
-  tillagas: { namn: 'Tillagas', farg: 'gul' },
-  klar: { namn: 'Klar', farg: 'gron' },
+  ny: { namn: 'Ny', farg: 'varning' },
+  betald: { namn: 'Betald', farg: 'info' },
+  tillagas: { namn: 'Tillagas', farg: 'varning' },
+  klar: { namn: 'Klar', farg: 'ok' },
   hamtad: { namn: 'Hämtad', farg: '' },
   avbruten: { namn: 'Avbruten', farg: '' },
 };
 const HYRSTATUS = {
-  bokad: { namn: 'Bokad', farg: 'gul' },
-  ute: { namn: 'Ute', farg: 'klubb' },
-  aterlamnad: { namn: 'Återlämnad', farg: 'gron' },
-  forsenad: { namn: 'Försenad', farg: 'rod' },
+  bokad: { namn: 'Bokad', farg: 'varning' },
+  ute: { namn: 'Ute', farg: 'info' },
+  aterlamnad: { namn: 'Återlämnad', farg: 'ok' },
+  forsenad: { namn: 'Försenad', farg: 'fara' },
   avbruten: { namn: 'Avbruten', farg: '' },
 };
 const BETALSATT = [
@@ -89,7 +89,7 @@ function Fiket() {
       <div className="rutor">
         <Kort>
           <div className="rad gap-16 hopp">
-            <Nyckeltal etikett="Öppna beställningar" varde={kassa.data.oppna.length} farg={kassa.data.oppna.length ? 'gul' : 'gron'} />
+            <Nyckeltal etikett="Öppna beställningar" varde={kassa.data.oppna.length} farg={kassa.data.oppna.length ? 'varning' : 'ok'} />
             <Nyckeltal etikett="Sålt i dag" varde={kassa.data.summa} />
             <Nyckeltal etikett="Beställningar i dag" varde={kassa.data.antal} />
             <div className="vaxa" />
@@ -116,7 +116,7 @@ function Fiket() {
                     <div className="rad">
                       <span className="stortal" style={{ fontSize: 22 }}>{o.nummer}</span>
                       <Bricka farg={STATUS[o.status]?.farg}>{STATUS[o.status]?.namn || o.status}</Bricka>
-                      {o.betald_tid ? <Bricka farg="gron">Betald {o.betalsatt}</Bricka> : <Bricka farg="rod">Obetald</Bricka>}
+                      {o.betald_tid ? <Bricka farg="ok">Betald {o.betalsatt}</Bricka> : <Bricka farg="fara">Obetald</Bricka>}
                       {o.kanal === 'qr' && <Bricka>QR</Bricka>}
                       {o.plats && <Bricka>{o.plats}</Bricka>}
                     </div>
@@ -172,7 +172,7 @@ function Fiket() {
               { falt: 'nummer', rubrik: 'Nr' },
               { falt: 'skapad', rubrik: 'Tid', visa: (o) => <span className="num">{klockslag(o.skapad)}</span> },
               { falt: 'belopp', rubrik: 'Summa', sifra: true },
-              { falt: 'betalsatt', rubrik: 'Betalt', visa: (o) => (o.betald_tid ? o.betalsatt : <Bricka farg="rod">nej</Bricka>) },
+              { falt: 'betalsatt', rubrik: 'Betalt', visa: (o) => (o.betald_tid ? o.betalsatt : <Bricka farg="fara">nej</Bricka>) },
               { falt: 'kanal', rubrik: 'Kanal' },
               { falt: 'status', rubrik: 'Status', visa: (o) => <Bricka farg={STATUS[o.status]?.farg}>{STATUS[o.status]?.namn}</Bricka> },
             ]}
@@ -456,7 +456,7 @@ function UthyrningsKassa() {
         <Kort>
           <div className="rad gap-16 hopp">
             <Nyckeltal etikett="Utrustning ute" varde={kassa.data.ute.filter((a) => a.status === 'ute').length} />
-            <Nyckeltal etikett="Väntar på utlämning" varde={kassa.data.ute.filter((a) => a.status === 'bokad').length} farg="gul" />
+            <Nyckeltal etikett="Väntar på utlämning" varde={kassa.data.ute.filter((a) => a.status === 'bokad').length} farg="varning" />
             <Nyckeltal etikett="Hyrt i dag" varde={kassa.data.summa} />
           </div>
         </Kort>
@@ -472,7 +472,7 @@ function UthyrningsKassa() {
               { falt: 'namn', rubrik: 'Kund', visa: (a) => a.namn || a.mobil || '–' },
               { falt: 'rader', rubrik: 'Utrustning', sortlos: true, visa: (a) => a.rader.map((r) => `${r.antal}× ${r.namn}`).join(', ') },
               { falt: 'belopp', rubrik: 'Summa', sifra: true },
-              { falt: 'betald_tid', rubrik: 'Betalt', visa: (a) => (a.betald_tid ? <Bricka farg="gron">{a.betalsatt}</Bricka> : <Bricka farg="rod">nej</Bricka>) },
+              { falt: 'betald_tid', rubrik: 'Betalt', visa: (a) => (a.betald_tid ? <Bricka farg="ok">{a.betalsatt}</Bricka> : <Bricka farg="fara">nej</Bricka>) },
               { falt: 'status', rubrik: 'Status', visa: (a) => <Bricka farg={HYRSTATUS[a.status]?.farg}>{HYRSTATUS[a.status]?.namn}</Bricka> },
               { falt: 'retur_senast', rubrik: 'Åter senast' },
             ]}
@@ -565,7 +565,7 @@ function AvtalLada({ avtal, stang, uppdaterat, andra }) {
       <div className="rad hopp">
         <Bricka farg={HYRSTATUS[avtal.status]?.farg}>{HYRSTATUS[avtal.status]?.namn}</Bricka>
         <Bricka>{avtal.belopp}</Bricka>
-        {avtal.betald_tid ? <Bricka farg="gron">Betald {avtal.betalsatt}</Bricka> : <Bricka farg="rod">Obetald</Bricka>}
+        {avtal.betald_tid ? <Bricka farg="ok">Betald {avtal.betalsatt}</Bricka> : <Bricka farg="fara">Obetald</Bricka>}
         {avtal.mobil && <Bricka>{avtal.mobil}</Bricka>}
         <span className="liten svag">Bokad {tidpunkt(avtal.skapad)}</span>
       </div>
@@ -592,7 +592,7 @@ function AvtalLada({ avtal, stang, uppdaterat, andra }) {
                     onChange={(e) => sattRader((lista) => lista.map((x, j) => (j === i ? { ...x, markning: e.target.value } : x)))}
                   />
                 </td>
-                <td>{r.aterlamnad ? <Bricka farg="gron">ja</Bricka> : '–'}</td>
+                <td>{r.aterlamnad ? <Bricka farg="ok">ja</Bricka> : '–'}</td>
               </tr>
             ))}
           </tbody>

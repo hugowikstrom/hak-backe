@@ -87,7 +87,7 @@ function Verifikationer({ period, jag }) {
             { falt: 'bokford', rubrik: 'Bokförd', visa: (v) => <span className="liten svag">{tidpunkt(v.bokford)}</span> },
             {
               falt: 'rattar_id', rubrik: '',
-              visa: (v) => (v.rattar_id ? <Bricka farg="gul">rättelse</Bricka> : ''),
+              visa: (v) => (v.rattar_id ? <Bricka farg="varning">rättelse</Bricka> : ''),
             },
           ]}
         />
@@ -150,7 +150,7 @@ function VerifikationsLada({ id, jag, stang, uppdaterat }) {
       }
     >
       <div className="rad hopp">
-        <Bricka farg="klubb">{v.datum}</Bricka>
+        <Bricka>{v.datum}</Bricka>
         <Bricka>{v.belopp}</Bricka>
         {v.motpart && <Bricka>{v.motpart}</Bricka>}
         <span className="liten svag">Bokförd {tidpunkt(v.bokford)} av {v.skapad_av}</span>
@@ -337,9 +337,9 @@ function Resultat({ period }) {
     <>
       <Kort titel={`Resultat ${data.fran} – ${data.till}`}>
         <div className="rad gap-16 hopp">
-          <Nyckeltal etikett="Intäkter" varde={data.intakter} farg="gron" />
+          <Nyckeltal etikett="Intäkter" varde={data.intakter} farg="ok" />
           <Nyckeltal etikett="Kostnader" varde={data.kostnader} />
-          <Nyckeltal etikett="Resultat" varde={data.resultat} farg={data.resultat_ore >= 0 ? 'gron' : 'rod'} />
+          <Nyckeltal etikett="Resultat" varde={data.resultat} farg={data.resultat_ore >= 0 ? 'ok' : 'fara'} />
         </div>
       </Kort>
       <Kort titel="Konton" tat>

@@ -117,7 +117,7 @@ function SnoRapport({ r, period }) {
               { falt: 'slut', rubrik: 'Slut', visa: (p) => <span className="num">{p.slut ? tidpunkt(p.slut) : '–'}</span> },
               { falt: 'ansvarig', rubrik: 'Ansvarig' },
               { falt: 'antal_matningar', rubrik: 'Mätningar', sifra: true },
-              { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'pagar' ? 'klubb' : 'gron'}>{p.status === 'pagar' ? 'Pågår' : 'Avslutat'}</Bricka> },
+              { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'pagar' ? 'info' : 'ok'}>{p.status === 'pagar' ? 'Pågår' : 'Avslutat'}</Bricka> },
               { falt: 'anteckning', rubrik: 'Anteckning' },
             ]}
           />
@@ -134,10 +134,10 @@ function ArendeRapport({ r }) {
         <div className="rad gap-16 hopp">
           <Nyckeltal etikett="Öppna" varde={r.oppna_totalt} />
           <Nyckeltal etikett="Nya i perioden" varde={r.nya} />
-          <Nyckeltal etikett="Stängda i perioden" varde={r.stangda} farg="gron" />
+          <Nyckeltal etikett="Stängda i perioden" varde={r.stangda} farg="ok" />
           <Nyckeltal etikett="Medeltid till stängning" varde={tal(r.atgardstid_dagar)} enhet="dgr" />
           <Nyckeltal etikett="Varav akuta/höga" varde={tal(r.atgardstid_akuta_dagar)} enhet="dgr" />
-          <Nyckeltal etikett="Säkerhetsrisker" varde={r.sakerhetsrisker.length} farg={r.sakerhetsrisker.length ? 'rod' : 'gron'} />
+          <Nyckeltal etikett="Säkerhetsrisker" varde={r.sakerhetsrisker.length} farg={r.sakerhetsrisker.length ? 'fara' : 'ok'} />
         </div>
       </Kort>
 
@@ -163,7 +163,7 @@ function ArendeRapport({ r }) {
             poster={r.per_prioritet.map((p) => ({
               etikett: PRIORITET[p.prioritet]?.namn || p.prioritet,
               varde: p.antal,
-              farg: PRIORITET[p.prioritet]?.farg === 'rod' ? 'rod' : PRIORITET[p.prioritet]?.farg === 'gul' ? 'gul' : undefined,
+              farg: PRIORITET[p.prioritet]?.farg === 'fara' ? 'fara' : PRIORITET[p.prioritet]?.farg === 'varning' ? 'varning' : undefined,
             }))}
           />
         </Kort>
@@ -226,7 +226,7 @@ function BemanningsRapport({ r, period }) {
         <div className="rad gap-16 hopp">
           <Nyckeltal etikett="Pass" varde={r.summa.pass} />
           <Nyckeltal etikett="Platser" varde={`${r.summa.bokade}/${r.summa.behov}`} />
-          <Nyckeltal etikett="Saknas" varde={r.summa.hal} farg={r.summa.hal ? 'rod' : 'gron'} />
+          <Nyckeltal etikett="Saknas" varde={r.summa.hal} farg={r.summa.hal ? 'fara' : 'ok'} />
           <Nyckeltal etikett="Planerade timmar" varde={r.summa.timmar} enhet="h" />
           <Nyckeltal etikett="Under kvot" varde={r.under_kvot} enhet="medlemmar" />
           <Nyckeltal etikett="Spridning kvot" varde={tal(r.rattvisa.andel_std, 2)} />
@@ -245,7 +245,7 @@ function BemanningsRapport({ r, period }) {
               etikett: p.position,
               varde: p.tackning,
               text: `${p.bokade}/${p.behov}`,
-              farg: p.tackning >= 100 ? 'gron' : p.tackning >= 70 ? undefined : 'rod',
+              farg: p.tackning >= 100 ? 'ok' : p.tackning >= 70 ? undefined : 'fara',
             }))}
             max={100}
           />
@@ -256,7 +256,7 @@ function BemanningsRapport({ r, period }) {
               etikett: p.vecka,
               varde: p.tackning,
               text: `${procent(p.tackning)}`,
-              farg: p.tackning >= 100 ? 'gron' : p.tackning >= 70 ? undefined : 'rod',
+              farg: p.tackning >= 100 ? 'ok' : p.tackning >= 70 ? undefined : 'fara',
             }))}
             max={100}
           />
@@ -301,7 +301,7 @@ function BemanningsRapport({ r, period }) {
             { falt: 'slag', rubrik: 'Typ', visa: (p) => <Bricka farg={p.slag === 'natt' ? 'natt' : ''}>{PASSLAG[p.slag]}</Bricka> },
             { falt: 'bokade', rubrik: 'Bokade', sifra: true },
             { falt: 'behov', rubrik: 'Behov', sifra: true },
-            { falt: 'saknas', rubrik: 'Saknas', sifra: true, visa: (p) => <Bricka farg="rod">{p.saknas}</Bricka> },
+            { falt: 'saknas', rubrik: 'Saknas', sifra: true, visa: (p) => <Bricka farg="fara">{p.saknas}</Bricka> },
           ]}
         />
       </Kort>

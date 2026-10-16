@@ -82,7 +82,7 @@ function Matrikel({ jag }) {
             <Nyckeltal etikett="Medlemmar" varde={aktiva.length} />
             <Nyckeltal etikett="Under 18" varde={aktiva.filter((m) => alder(m.fodelsedatum) != null && alder(m.fodelsedatum) < 18).length} />
             <Nyckeltal etikett="Ledare och tränare" varde={aktiva.filter((m) => ['ledare'].includes(m.kategori) || m.roll === 'tranare').length} />
-            <Nyckeltal etikett="Saknar födelsedatum" varde={aktiva.filter((m) => !m.fodelsedatum).length} farg={aktiva.some((m) => !m.fodelsedatum) ? 'gul' : 'gron'} />
+            <Nyckeltal etikett="Saknar födelsedatum" varde={aktiva.filter((m) => !m.fodelsedatum).length} farg={aktiva.some((m) => !m.fodelsedatum) ? 'varning' : 'ok'} />
           </div>
           {!far_se && (
             <p className="liten svag" style={{ marginTop: 8, marginBottom: 0 }}>
@@ -136,7 +136,7 @@ function Matrikel({ jag }) {
                   <span className="svagare">–</span>
                 ),
             },
-            { falt: 'aktiv', rubrik: 'Aktiv', visa: (m) => (m.aktiv ? <Bricka farg="gron">ja</Bricka> : <Bricka>nej</Bricka>) },
+            { falt: 'aktiv', rubrik: 'Aktiv', visa: (m) => (m.aktiv ? <Bricka farg="ok">ja</Bricka> : <Bricka>nej</Bricka>) },
           ]}
         />
       </Kort>
@@ -278,7 +278,7 @@ function Grupper({ jag }) {
                   falt: 'tranare', rubrik: 'Tränare',
                   visa: (g) => g.tranare.map((t) => t.namn).join(', ') || <span className="svagare">–</span>,
                 },
-                { falt: 'aktiv', rubrik: 'Status', visa: (g) => (g.aktiv ? <Bricka farg="gron">Aktiv</Bricka> : <Bricka>Vilande</Bricka>) },
+                { falt: 'aktiv', rubrik: 'Status', visa: (g) => (g.aktiv ? <Bricka farg="ok">Aktiv</Bricka> : <Bricka>Vilande</Bricka>) },
               ]}
             />
           ) : (
@@ -325,7 +325,7 @@ function GruppLada({ id, jag, medlemmar, stang, uppdaterat }) {
       <div className="rad hopp">
         {g.aldersspann && <Bricka>{g.aldersspann}</Bricka>}
         {g.dag && <Bricka>{g.dag} {g.tid}</Bricka>}
-        <Bricka farg="klubb">{g.antal_aktiva} aktiva</Bricka>
+        <Bricka farg="info">{g.antal_aktiva} aktiva</Bricka>
       </div>
       {g.beskrivning && <p className="brodtext">{g.beskrivning}</p>}
 
@@ -367,7 +367,7 @@ function GruppLada({ id, jag, medlemmar, stang, uppdaterat }) {
         tomtext="Ingen i gruppen ännu."
         kolumner={[
           { falt: 'namn', rubrik: 'Namn', visa: (m) => <strong>{m.namn}</strong> },
-          { falt: 'roll', rubrik: 'Roll', visa: (m) => <Bricka farg={m.roll === 'tranare' ? 'klubb' : ''}>{m.roll}</Bricka> },
+          { falt: 'roll', rubrik: 'Roll', visa: (m) => <Bricka farg={m.roll === 'tranare' ? 'info' : ''}>{m.roll}</Bricka> },
           { falt: 'epost', rubrik: 'E-post' },
           { falt: 'telefon', rubrik: 'Telefon' },
           ...(far(jag, 'traning')

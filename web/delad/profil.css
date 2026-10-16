@@ -1,0 +1,143 @@
+/* Härnösands Alpinas grafiska profil – en källa för alla tre klienterna.
+ *
+ * Färgparen är mätta: varje textfärg når minst 4,6:1 mot både vit yta och sin
+ * egen mjuka bottenton. Undantaget är --klubb-ren, som med flit bara bär mörk
+ * text – vitt på den ger 2,0:1 och ska aldrig förekomma.
+ *
+ * Webben, mobilappen och kiosken har olika täthet men samma identitet.
+ * Här står färgerna, typsnittet, skuggorna och rörelsen. Varje klient lägger
+ * bara sin egen täthet ovanpå: textstorlek, radier och mellanrum.
+ *
+ * Regler som är lätta att råka bryta:
+ *   · --klubb-ren är en fyllningsfärg. Den bär bara mörk text, aldrig vit.
+ *   · --klubb är textfärgen på ljus botten. Den är mörk nog att läsas.
+ *   · Blått är information, aldrig varumärke. Klubben är grön.
+ *   · Varje betydelse har en ton och en mjuk bottenton: --fara/--fara-mjuk.
+ */
+
+:root {
+  /* ---- Varumärket ---- */
+  --klubb-ren:   #8cc63f;  /* grönt ur logotypen – fyllning, mörk text ovanpå */
+  --klubb:       #477c20;  /* bär text och ramar på ljus botten (AA mot vitt och mjukt) */
+  --klubb-djup:  #35611a;  /* tryckta ytor och text på klubb-ren */
+  --klubb-mjuk:  #f1f8e7;  /* ljus bottenton */
+  --klubb-ram:   #d6e9bd;
+  --pa-klubb:    #15210a;  /* text ovanpå --klubb-ren */
+
+  /* ---- Neutraler, varma med en aning grönt ---- */
+  --yta:         #ffffff;  /* kort och paneler */
+  --bak:         #f5f7f2;  /* sidans botten */
+  --bak-2:       #eceee8;  /* nedtonad yta, hovring, tabellhuvud */
+  --hover:       #e7eade;  /* radhovring och tryckta ytor */
+  --ram:         #dfe4d8;
+  --ram-stark:   #c3cab8;
+  --text:        #1b2116;
+  --text-svag:   #6c7466;
+  --text-svagare:#98a092;
+
+  /* ---- Betydelser ---- */
+  --ok:          #1f7a4d;  --ok-mjuk:      #e3f3ea;
+  --varning:     #946000;  --varning-mjuk: #fdf0d5;
+  --fara:        #b3261e;  --fara-mjuk:    #fbe4e2;
+  --info:        #2d6bac;  --info-mjuk:    #e3eefa;
+  --natt:        #3b4a73;  --natt-mjuk:    #e8ecf7;  /* nattpass */
+  --lila:        #6b4fa8;  --lila-mjuk:    #efeaf9;  /* tilldelat av någon annan */
+
+  /* ---- Form ---- */
+  --skugga:      0 1px 2px rgba(27, 33, 22, .06), 0 4px 12px rgba(27, 33, 22, .05);
+  --skugga-lyft: 0 1px 2px rgba(27, 33, 22, .08), 0 10px 28px rgba(27, 33, 22, .10);
+  --skugga-upp:  0 -6px 24px rgba(27, 33, 22, .12);
+  --ring:        2px solid var(--klubb);
+
+  /* ---- Typsnitt ---- */
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* ---- Rörelse ---- */
+  --snabbt: .12s ease-out;
+  --lugnt:  .2s ease-out;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --klubb-ren:   #8cc63f;
+    --klubb:       #9ad44f;  /* ljusare, för att bära text mot mörkt */
+    --klubb-djup:  #c6ea9a;
+    --klubb-mjuk:  #1d2a14;
+    --klubb-ram:   #33471f;
+    --pa-klubb:    #15210a;
+
+    --yta:         #171c13;
+    --bak:         #0f130c;
+    --bak-2:       #1d2318;
+    --hover:       #262e1f;
+    --ram:         #2b3324;
+    --ram-stark:   #3d4733;
+    --text:        #e9efe3;
+    --text-svag:   #9aa492;
+    --text-svagare:#6f7a68;
+
+    --ok:          #6fcf97;  --ok-mjuk:      #15291e;
+    --varning:     #e0ae55;  --varning-mjuk: #2a2112;
+    --fara:        #f08f7a;  --fara-mjuk:    #2d1711;
+    --info:        #74a8e8;  --info-mjuk:    #16202e;
+    --natt:        #8fa6e0;  --natt-mjuk:    #1a2034;
+    --lila:        #b39ddb;  --lila-mjuk:    #231c33;
+
+    --skugga:      0 1px 2px rgba(0, 0, 0, .45), 0 4px 14px rgba(0, 0, 0, .3);
+    --skugga-lyft: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 30px rgba(0, 0, 0, .4);
+    --skugga-upp:  0 -8px 28px rgba(0, 0, 0, .45);
+  }
+}
+
+/* Mörkt läge kan också väljas i webbklienten, inte bara följa systemet. */
+[data-tema='morkt'] {
+  --klubb-ren:   #8cc63f;
+  --klubb:       #9ad44f;
+  --klubb-djup:  #c6ea9a;
+  --klubb-mjuk:  #1d2a14;
+  --klubb-ram:   #33471f;
+  --pa-klubb:    #15210a;
+
+  --yta:         #171c13;
+  --bak:         #0f130c;
+  --bak-2:       #1d2318;
+  --hover:       #262e1f;
+  --ram:         #2b3324;
+  --ram-stark:   #3d4733;
+  --text:        #e9efe3;
+  --text-svag:   #9aa492;
+  --text-svagare:#6f7a68;
+
+  --ok:          #6fcf97;  --ok-mjuk:      #15291e;
+  --varning:     #e0ae55;  --varning-mjuk: #2a2112;
+  --fara:        #f08f7a;  --fara-mjuk:    #2d1711;
+  --info:        #74a8e8;  --info-mjuk:    #16202e;
+  --natt:        #8fa6e0;  --natt-mjuk:    #1a2034;
+  --lila:        #b39ddb;  --lila-mjuk:    #231c33;
+
+  --skugga:      0 1px 2px rgba(0, 0, 0, .45), 0 4px 14px rgba(0, 0, 0, .3);
+  --skugga-lyft: 0 1px 2px rgba(0, 0, 0, .5), 0 12px 30px rgba(0, 0, 0, .4);
+  --skugga-upp:  0 -8px 28px rgba(0, 0, 0, .45);
+}
+
+/* Ljust läge går att välja även när systemet står mörkt. */
+[data-tema='ljust'] {
+  color-scheme: light;
+}
+
+/* ---- Gemensamma grundregler ---- */
+*:focus-visible {
+  outline: var(--ring);
+  outline-offset: 2px;
+}
+.num {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}

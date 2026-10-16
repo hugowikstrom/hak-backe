@@ -7,5 +7,6 @@ export default defineConfig({
   base: '/fik/',
   plugins: [react()],
   build: { outDir: '../dist/fik', emptyOutDir: true, sourcemap: false },
-  server: { port: 5192, strictPort: true, proxy: { '/api': 'http://127.0.0.1:8120' } },
+  server: {
+    fs: { allow: [new URL('../..', import.meta.url).pathname] }, port: 5192, strictPort: true, proxy: { '/api': 'http://127.0.0.1:8120' } },
 });

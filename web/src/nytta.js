@@ -42,9 +42,9 @@ export const grader = (v) => (v == null ? '–' : `${tal(v)} °C`);
 export const procent = (v) => (v == null ? '–' : `${Math.round(v)} %`);
 
 export const PRIORITET = {
-  1: { namn: 'Akut', farg: 'rod' },
-  2: { namn: 'Hög', farg: 'gul' },
-  3: { namn: 'Normal', farg: 'klubb' },
+  1: { namn: 'Akut', farg: 'fara' },
+  2: { namn: 'Hög', farg: 'varning' },
+  3: { namn: 'Normal', farg: '' },
   4: { namn: 'Låg', farg: '' },
 };
 export const ALLVARLIGHET = {
@@ -54,11 +54,11 @@ export const ALLVARLIGHET = {
   kosmetisk: 'Kosmetisk',
 };
 export const ARENDESTATUS = {
-  ny: { namn: 'Ny', farg: 'klubb' },
+  ny: { namn: 'Ny', farg: 'info' },
   bekraftad: { namn: 'Bekräftad', farg: 'lila' },
-  pagar: { namn: 'Pågår', farg: 'gul' },
+  pagar: { namn: 'Pågår', farg: 'varning' },
   vantar: { namn: 'Väntar', farg: '' },
-  atgardad: { namn: 'Åtgärdad', farg: 'gron' },
+  atgardad: { namn: 'Åtgärdad', farg: 'ok' },
   stangd: { namn: 'Stängd', farg: '' },
 };
 export const ARENDETYP = { fel: 'Fel', brist: 'Brist', forbattring: 'Förbättring', risk: 'Risk' };

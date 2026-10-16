@@ -1,62 +1,20 @@
-/* HAK Rond – mobilappens formgivning i Härnösands Alpinas gröna.
-   1 Tokens  2 Grund  3 Skal och navigering  4 Kort och listor
+/* HAK Rond – mobilappen.
+   Färgerna kommer från web/delad/profil.css. Här står tätheten: stora
+   tryckytor, 16 px text och runda hörn som tål en vante.
+
+   1 Täthet  2 Grund  3 Skal och navigering  4 Kort och listor
    5 Knappar  6 Formulär  7 Rond  8 Ark och dialoger  9 Smått */
 
-/* ---------- 1 Tokens ---------- */
+@import '../../delad/profil.css';
+
 :root {
-  --gron:        #8cc63f;   /* klubbgrönt ur logotypen */
-  --gron-mork:   #5f9a2e;   /* bär text på vitt */
-  --gron-djup:   #3b6619;
-  --gron-mjuk:   #f1f8e7;
-  --gron-ram:    #d6e9bd;
-
-  --yta:         #ffffff;
-  --bak:         #f5f7f2;
-  --bak-2:       #eceee8;
-  --ram:         #e0e4da;
-  --text:        #1b2116;
-  --text-svag:   #6c7466;
-  --text-svagare:#98a092;
-
-  --varning:     #b8761a;
-  --varning-mjuk:#fdf2dd;
-  --fara:        #c23b24;
-  --fara-mjuk:   #fbe6e1;
-  --info:        #2f6fb3;
-
-  --radie:       16px;
-  --radie-s:     10px;
-  --radie-xl:    22px;
-  --skugga:      0 1px 2px rgba(27, 33, 22, .06), 0 8px 24px rgba(27, 33, 22, .07);
-  --skugga-upp:  0 -6px 24px rgba(27, 33, 22, .12);
-  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
-  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-  --topp: env(safe-area-inset-top, 0px);
+  --radie:   16px;
+  --radie-s: 10px;
+  --radie-xl: 22px;
+  --topp:   env(safe-area-inset-top, 0px);
   --botten: env(safe-area-inset-bottom, 0px);
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --gron:        #9ad44f;
-    --gron-mork:   #a9dd63;
-    --gron-djup:   #c6ea9a;
-    --gron-mjuk:   #1b2614;
-    --gron-ram:    #33471f;
-    --yta:         #171c13;
-    --bak:         #0f130c;
-    --bak-2:       #1d2318;
-    --ram:         #2b3324;
-    --text:        #e9efe3;
-    --text-svag:   #9aa492;
-    --text-svagare:#6f7a68;
-    --varning:     #e0ae55;
-    --varning-mjuk:#2a2112;
-    --fara:        #f08f7a;
-    --fara-mjuk:   #2d1711;
-    --skugga:      0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.35);
-  }
-}
 
-/* ---------- 2 Grund ---------- */
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body, #rot { height: 100%; }
 body {
@@ -72,7 +30,7 @@ h1 { font-size: 22px; }
 h2 { font-size: 17px; }
 h3 { font-size: 15px; }
 p { margin: 0 0 10px; }
-a { color: var(--gron-mork); }
+a { color: var(--klubb); }
 .num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
 .svag { color: var(--text-svag); }
 .svagare { color: var(--text-svagare); }
@@ -89,19 +47,19 @@ a { color: var(--gron-mork); }
 /* Flex, inte grid: offlineraden tillkommer ibland och ska inte äta höjden. */
 .skal { display: flex; flex-direction: column; height: 100%; }
 .topp {
-  background: var(--gron);
-  color: #15210a;
+  background: var(--klubb-ren);
+  color: var(--pa-klubb);
   padding: calc(var(--topp) + 10px) 16px 12px;
   display: flex; align-items: center; gap: 10px;
   position: sticky; top: 0; z-index: 20;
 }
 .topp .marke { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: -.02em; }
 .topp .marke svg { width: 30px; height: 30px; display: block; }
-.topp .marke { --marke-fond: #fff; --marke-motiv: var(--gron); }
+.topp .marke { --marke-fond: #fff; --marke-motiv: var(--klubb-ren); }
 .topp .marke small { display: block; font-size: 11px; font-weight: 600; opacity: .75; letter-spacing: .04em; text-transform: uppercase; }
 .topp .slut { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .topp button {
-  background: rgba(255, 255, 255, .25); border: 0; color: #15210a;
+  background: #fff; border: 0; color: var(--klubb-djup);
   border-radius: 999px; min-height: 36px; padding: 0 14px; font-weight: 600;
 }
 .topp.enkel { padding-bottom: 12px; }
@@ -123,7 +81,7 @@ a { color: var(--gron-mork); }
   font-size: 11px; font-weight: 600;
 }
 .botten a .fig { font-size: 20px; line-height: 1; }
-.botten a[aria-current='page'] { color: var(--gron-mork); }
+.botten a[aria-current='page'] { color: var(--klubb); }
 .botten a[aria-current='page'] .fig { transform: translateY(-1px); }
 
 /* ---------- 4 Kort och listor ---------- */
@@ -133,7 +91,7 @@ a { color: var(--gron-mork); }
 }
 .kort > header { padding: 12px 14px 0; }
 .kort > .kropp { padding: 14px; }
-.kort.gron { background: var(--gron-mjuk); border-color: var(--gron-ram); }
+.kort.gron { background: var(--klubb-mjuk); border-color: var(--klubb-ram); }
 
 .lista { display: flex; flex-direction: column; }
 .post {
@@ -145,7 +103,7 @@ a { color: var(--gron-mork); }
 .post:active { background: var(--bak-2); }
 .post .figur {
   width: 42px; height: 42px; flex: 0 0 42px; border-radius: 12px;
-  background: var(--gron-mjuk); color: var(--gron-mork);
+  background: var(--klubb-mjuk); color: var(--klubb);
   display: grid; place-items: center; font-size: 19px; font-weight: 800;
 }
 .post .figur.varning { background: var(--varning-mjuk); color: var(--varning); }
@@ -160,9 +118,10 @@ a { color: var(--gron-mork); }
   border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap;
   background: var(--bak-2); color: var(--text-svag);
 }
-.bricka.gron { background: var(--gron-mjuk); color: var(--gron-mork); }
-.bricka.gul { background: var(--varning-mjuk); color: var(--varning); }
-.bricka.rod { background: var(--fara-mjuk); color: var(--fara); }
+.bricka.ok { background: var(--klubb-mjuk); color: var(--klubb); }
+.bricka.varning { background: var(--varning-mjuk); color: var(--varning); }
+.bricka.fara { background: var(--fara-mjuk); color: var(--fara); }
+.bricka.info { background: var(--info-mjuk); color: var(--info); border-color: transparent; }
 .brickrad { display: flex; gap: 6px; flex-wrap: wrap; }
 
 /* ---------- 5 Knappar ---------- */
@@ -175,11 +134,11 @@ button, .knapp {
 button:active, .knapp:active { transform: translateY(1px); }
 button:disabled { opacity: .45; }
 button.primar, .knapp.primar {
-  background: var(--gron); border-color: var(--gron); color: #15210a; font-weight: 800;
+  background: var(--klubb-ren); border-color: var(--klubb-ren); color: var(--pa-klubb); font-weight: 800;
 }
 button.stor { min-height: 60px; font-size: 17px; border-radius: var(--radie); width: 100%; }
 button.fara { background: var(--fara-mjuk); border-color: var(--fara-mjuk); color: var(--fara); }
-button.tom { border-color: transparent; background: transparent; color: var(--gron-mork); }
+button.tom { border-color: transparent; background: transparent; color: var(--klubb); }
 button.full { width: 100%; }
 .knapprad { display: flex; gap: 10px; }
 .knapprad > * { flex: 1 1 0; }
@@ -198,14 +157,14 @@ input, select, textarea {
   border: 1px solid var(--ram); border-radius: var(--radie-s);
   padding: 11px 12px; width: 100%; min-height: 46px;
 }
-input:focus, select:focus, textarea:focus { outline: 2px solid var(--gron); outline-offset: -1px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--klubb-ren); outline-offset: -1px; }
 textarea { min-height: 88px; resize: vertical; }
-input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color: var(--gron-mork); }
+input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color: var(--klubb); }
 .falt-rad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
 /* ---------- 7 Rond ---------- */
 .framsteg { height: 6px; background: var(--bak-2); border-radius: 999px; overflow: hidden; }
-.framsteg > span { display: block; height: 100%; background: var(--gron); transition: width .2s ease; }
+.framsteg > span { display: block; height: 100%; background: var(--klubb-ren); transition: width .2s ease; }
 .rondtopp { display: flex; flex-direction: column; gap: 8px; }
 
 .punktkort {
@@ -214,16 +173,16 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   flex: 1 1 auto;
 }
 .sida > .punktkort { flex: 1 1 auto; }
-.punktkort .rakning { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--gron-mork); }
+.punktkort .rakning { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--klubb); }
 .punktkort .fraga { font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -.02em; }
 .punktkort .hjalp {
   font-size: 14px; color: var(--text-svag); background: var(--bak);
-  border-left: 3px solid var(--gron-ram); padding: 10px 12px; border-radius: 0 10px 10px 0;
+  border-left: 3px solid var(--klubb-ram); padding: 10px 12px; border-radius: 0 10px 10px 0;
 }
 .punktkort .enhet { font-size: 14px; color: var(--text-svag); }
 .svarsknappar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; }
 .svarsknappar button { min-height: 64px; font-size: 17px; font-weight: 800; border-radius: var(--radie); }
-.svarsknappar .ok { background: var(--gron); border-color: var(--gron); color: #15210a; }
+.svarsknappar .ok { background: var(--klubb-ren); border-color: var(--klubb-ren); color: var(--pa-klubb); }
 .svarsknappar .avvik { background: var(--fara-mjuk); border-color: var(--fara-mjuk); color: var(--fara); }
 
 .punktrad {
@@ -237,7 +196,7 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center;
   font-size: 14px; font-weight: 800; background: var(--bak-2); color: var(--text-svagare);
 }
-.punktrad.klar .markor { background: var(--gron-mjuk); color: var(--gron-mork); }
+.punktrad.klar .markor { background: var(--klubb-mjuk); color: var(--klubb); }
 .punktrad.avvikande .markor { background: var(--fara-mjuk); color: var(--fara); }
 .punktrad.avvikande { background: color-mix(in srgb, var(--fara-mjuk) 45%, var(--yta)); }
 .bildruta { width: 100%; border-radius: var(--radie-s); border: 1px solid var(--ram); display: block; }
@@ -245,8 +204,8 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 
 .slutford { text-align: center; padding: 26px 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
 .slutford .bock {
-  width: 86px; height: 86px; border-radius: 999px; background: var(--gron-mjuk);
-  color: var(--gron-mork); display: grid; place-items: center; font-size: 44px;
+  width: 86px; height: 86px; border-radius: 999px; background: var(--klubb-mjuk);
+  color: var(--klubb); display: grid; place-items: center; font-size: 44px;
 }
 
 /* ---------- 8 Ark och dialoger ---------- */
@@ -271,12 +230,12 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .ark > footer > * { flex: 1 1 0; }
 
 /* Märket på vit yta: grön sköld med vitt motiv. */
-.marke-pa-vitt { --marke-fond: var(--gron); --marke-motiv: #fff; display: inline-flex; }
+.marke-pa-vitt { --marke-fond: var(--klubb-ren); --marke-motiv: #fff; display: inline-flex; }
 
 /* ---------- 9 Smått ---------- */
 .meddelande { padding: 11px 13px; border-radius: var(--radie-s); font-size: 14px; }
 .meddelande.fel { background: var(--fara-mjuk); color: var(--fara); }
-.meddelande.ok { background: var(--gron-mjuk); color: var(--gron-mork); }
+.meddelande.ok { background: var(--klubb-mjuk); color: var(--klubb); }
 .meddelande.varning { background: var(--varning-mjuk); color: var(--varning); }
 .meddelande.info { background: var(--bak-2); color: var(--text-svag); }
 .offlinerad {
@@ -294,14 +253,14 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   padding: 10px 18px; font-size: 14px; font-weight: 600; box-shadow: var(--skugga);
   max-width: 100%; animation: upp .15s ease-out;
 }
-.notis > div.fel { background: var(--fara); color: #fff; }
+.notis > div.fel { background: var(--fara); color: var(--yta); }
 
 .inlogg {
   min-height: 100%; display: flex; flex-direction: column; justify-content: center;
   gap: 16px; padding: 30px 22px calc(30px + var(--botten));
-  background: linear-gradient(170deg, var(--gron) 0%, var(--gron) 42%, var(--bak) 42%, var(--bak) 100%);
+  background: linear-gradient(170deg, var(--klubb-ren) 0%, var(--klubb-ren) 42%, var(--bak) 42%, var(--bak) 100%);
 }
-.inlogg .huvud { text-align: center; color: #15210a; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.inlogg .huvud { text-align: center; color: var(--pa-klubb); display: flex; flex-direction: column; align-items: center; gap: 8px; }
 .inlogg .huvud svg { width: 84px; height: 84px; }
-.inlogg .huvud { --marke-fond: #fff; --marke-motiv: var(--gron); }
+.inlogg .huvud { --marke-fond: #fff; --marke-motiv: var(--klubb-ren); }
 .inlogg form { background: var(--yta); border-radius: var(--radie-xl); padding: 18px; box-shadow: var(--skugga); display: flex; flex-direction: column; gap: 14px; }

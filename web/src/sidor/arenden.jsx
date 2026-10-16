@@ -172,8 +172,8 @@ function Arende({ id, jag, medlemmar, stang, notis }) {
         <Prioritetsbricka niva={a.prioritet} />
         <Statusbricka status={a.status} />
         <Bricka>{ARENDETYP[a.typ]}</Bricka>
-        <Bricka farg={a.allvarlighet === 'sakerhetsrisk' ? 'rod' : ''}>{ALLVARLIGHET[a.allvarlighet]}</Bricka>
-        {a.utrustning && <Bricka farg="klubb">{a.utrustning}</Bricka>}
+        <Bricka farg={a.allvarlighet === 'sakerhetsrisk' ? 'fara' : ''}>{ALLVARLIGHET[a.allvarlighet]}</Bricka>
+        {a.utrustning && <Bricka>{a.utrustning}</Bricka>}
         {a.omrade && <Bricka>{a.omrade}</Bricka>}
         <span className="liten svag">Skapat {tidpunkt(a.skapad)} av {a.skapad_av || 'okänd'}</span>
       </div>
@@ -205,7 +205,7 @@ function Arende({ id, jag, medlemmar, stang, notis }) {
           <div className="handelse" key={h.id}>
             <span className="num liten svag">{tidpunkt(h.tid)}</span>
             <span>
-              {h.slag === 'atgard' && <Bricka farg="gron">Åtgärd</Bricka>}{' '}
+              {h.slag === 'atgard' && <Bricka farg="ok">Åtgärd</Bricka>}{' '}
               {h.text}
               <span className="liten svagare"> — {h.av || 'systemet'}</span>
             </span>

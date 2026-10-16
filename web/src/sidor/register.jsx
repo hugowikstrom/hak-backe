@@ -453,7 +453,7 @@ function Sasonger() {
               falt: 'aktiv', rubrik: 'Aktiv',
               visa: (s) =>
                 s.aktiv ? (
-                  <Bricka farg="gron">Aktiv</Bricka>
+                  <Bricka farg="ok">Aktiv</Bricka>
                 ) : far ? (
                   <button className="liten" onClick={() => spara(s, { aktiv: true })}>Aktivera</button>
                 ) : (

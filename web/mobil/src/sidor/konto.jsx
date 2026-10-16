@@ -40,7 +40,7 @@ export function Konto() {
                 <div className="mini svag">Min plånbok</div>
                 <div style={{ fontSize: 30, fontWeight: 800, fontFamily: 'var(--mono)' }}>{planbok.data.saldo}</div>
               </div>
-              <Bricka farg="gron">{planbok.data.rabatt_procent} % rabatt</Bricka>
+              <Bricka farg="ok">{planbok.data.rabatt_procent} % rabatt</Bricka>
             </div>
             <p className="liten svag" style={{ margin: '8px 0 0' }}>
               Fyll på i kiosken eller hos kassören – en påfyllning i stället för en swishavgift per korv.
@@ -68,7 +68,7 @@ export function Konto() {
           <div className="kropp">
             <div className="rad-mellan">
               <span>Mina timmar i säsongen</span>
-              <Bricka farg={mina.data.lage.kvar > 0 ? 'gul' : 'gron'}>
+              <Bricka farg={mina.data.lage.kvar > 0 ? 'varning' : 'ok'}>
                 {mina.data.lage.timmar} av {mina.data.lage.kvot} h
               </Bricka>
             </div>
@@ -93,11 +93,11 @@ export function Konto() {
         <div className="kropp kolumn">
           <div className="rad-mellan">
             <span>Anslutning</span>
-            <Bricka farg={online ? 'gron' : 'gul'}>{online ? 'Online' : 'Offline'}</Bricka>
+            <Bricka farg={online ? 'ok' : 'varning'}>{online ? 'Online' : 'Offline'}</Bricka>
           </div>
           <div className="rad-mellan">
             <span>Ronder i telefonen</span>
-            <Bricka farg={kvar ? 'gul' : 'gron'}>{kvar ? `${kvar} att skicka` : 'Allt skickat'}</Bricka>
+            <Bricka farg={kvar ? 'varning' : 'ok'}>{kvar ? `${kvar} att skicka` : 'Allt skickat'}</Bricka>
           </div>
           <button
             onClick={async () => {

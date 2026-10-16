@@ -12,9 +12,9 @@ const KATEGORINAMN = {
   traning: 'Träningen', ekonomi: 'Ekonomi', ovrigt: 'Övrigt',
 };
 const STATUS = {
-  ny: { namn: 'Ny', farg: 'gul' },
-  granskad: { namn: 'Läst', farg: 'klubb' },
-  skickad: { namn: 'I Backlog', farg: 'gron' },
+  ny: { namn: 'Ny', farg: 'varning' },
+  granskad: { namn: 'Läst', farg: 'info' },
+  skickad: { namn: 'I Backlog', farg: 'ok' },
   avfard: { namn: 'Avfärdad', farg: '' },
 };
 
@@ -50,9 +50,9 @@ export function Ideer() {
 
         <Kort>
           <div className="rad gap-16 hopp">
-            <Nyckeltal etikett="Nya" varde={ideer.filter((i) => i.status === 'ny').length} farg="gul" />
+            <Nyckeltal etikett="Nya" varde={ideer.filter((i) => i.status === 'ny').length} farg="varning" />
             <Nyckeltal etikett="Lästa" varde={ideer.filter((i) => i.status === 'granskad').length} />
-            <Nyckeltal etikett="I Backlog" varde={ideer.filter((i) => i.status === 'skickad').length} farg="gron" />
+            <Nyckeltal etikett="I Backlog" varde={ideer.filter((i) => i.status === 'skickad').length} farg="ok" />
           </div>
           <p className="liten svag" style={{ marginTop: 10, marginBottom: 0 }}>
             Inspelningen sparas som ljudfil och skrivs av ordagrant av husets egen tal-till-text. Både ljudet och
@@ -266,7 +266,7 @@ function IdeLada({ ide, farSkicka, stang, uppdaterat }) {
         <Bricka farg={STATUS[ide.status]?.farg}>{STATUS[ide.status]?.namn}</Bricka>
         <Bricka>{KATEGORINAMN[ide.kategori] || ide.kategori}</Bricka>
         <span className="liten svag">Inlämnad {tidpunkt(ide.skapad)} av {ide.skapad_av}</span>
-        {ide.backlog_ref && <Bricka farg="gron">Backlog {ide.backlog_ref}</Bricka>}
+        {ide.backlog_ref && <Bricka farg="ok">Backlog {ide.backlog_ref}</Bricka>}
       </div>
 
       {ide.ljudfil && (

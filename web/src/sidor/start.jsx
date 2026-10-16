@@ -47,7 +47,7 @@ function Vaderkort({ kompakt = false }) {
       <div className="rad gap-16 hopp">
         <Nyckeltal etikett="Wetbulb nu" varde={tal(data.nu?.wetbulb)} enhet="°C" />
         <Nyckeltal etikett="Lufttemp" varde={tal(data.nu?.temp)} enhet="°C" />
-        <Nyckeltal etikett="Produktion 48 h" varde={data.h48.produktionstimmar} enhet="h" farg={data.h48.produktionstimmar ? 'gron' : 'rod'} />
+        <Nyckeltal etikett="Produktion 48 h" varde={data.h48.produktionstimmar} enhet="h" farg={data.h48.produktionstimmar ? 'ok' : 'fara'} />
       </div>
       <div style={{ marginTop: 8 }}>
         {f ? (
@@ -94,7 +94,7 @@ function Rondkort({ titel = 'Ronder att göra i dag' }) {
                   {m.kvar > 3 ? ` +${m.kvar - 3}` : ''}
                 </div>
               </span>
-              <Bricka farg="gul">{m.kvar}</Bricka>
+              <Bricka farg="varning">{m.kvar}</Bricka>
             </li>
           ))}
         </ul>
@@ -120,7 +120,7 @@ function Arendekort({ titel = 'Ärenden som väntar', filter = '' }) {
                 <div className="liten svag">{a.utrustning || a.omrade || 'Allmänt'} · {sedan(a.skapad)}</div>
               </span>
               <span className="rad">
-                {a.allvarlighet === 'sakerhetsrisk' && <Bricka farg="rod">Säkerhet</Bricka>}
+                {a.allvarlighet === 'sakerhetsrisk' && <Bricka farg="fara">Säkerhet</Bricka>}
                 <Prioritetsbricka niva={a.prioritet} />
               </span>
             </li>
@@ -181,7 +181,7 @@ function Anlaggning() {
                     <strong>{u.namn}</strong>
                     <div className="liten svag">{UTRUSTNINGSTYP[u.typ]} · {u.omrade}</div>
                   </span>
-                  <Bricka farg={u.status === 'ur_drift' ? 'rod' : 'gul'}>{u.status === 'ur_drift' ? 'Ur drift' : 'Service'}</Bricka>
+                  <Bricka farg={u.status === 'ur_drift' ? 'fara' : 'varning'}>{u.status === 'ur_drift' ? 'Ur drift' : 'Service'}</Bricka>
                 </li>
               ))}
             </ul>
@@ -196,7 +196,7 @@ function Anlaggning() {
         <Kort titel="Bemanning den närmaste veckan" undertext={`${d.bemanning.hal} pass saknar folk`} verktyg={<Lank till="/bemanning" className="knapp liten">Schemat</Lank>}>
           <div className="rad gap-16 hopp">
             <Nyckeltal etikett="Pass i veckan" varde={d.bemanning.veckan.length} />
-            <Nyckeltal etikett="Hål" varde={d.bemanning.hal} farg={d.bemanning.hal ? 'rod' : 'gron'} />
+            <Nyckeltal etikett="Hål" varde={d.bemanning.hal} farg={d.bemanning.hal ? 'fara' : 'ok'} />
           </div>
         </Kort>
       </div>
@@ -232,7 +232,7 @@ function Back() {
                         {!bokade.length && <span className="svagare">ingen bokad</span>}
                       </div>
                     </span>
-                    <Bricka farg={bokade.length >= p.behov ? 'gron' : bokade.length ? 'gul' : 'rod'}>{bokade.length}/{p.behov}</Bricka>
+                    <Bricka farg={bokade.length >= p.behov ? 'ok' : bokade.length ? 'varning' : 'fara'}>{bokade.length}/{p.behov}</Bricka>
                   </li>
                 );
               })}
@@ -275,8 +275,8 @@ function Kiosken() {
       <div className="rutor">
         <Kort>
           <div className="rad gap-16 hopp">
-            <Nyckeltal etikett="Öppna beställningar" varde={d.oppna.length} farg={d.oppna.length ? 'gul' : 'gron'} />
-            <Nyckeltal etikett="Väntar på betalning" varde={obetalda.length} farg={obetalda.length ? 'rod' : 'gron'} />
+            <Nyckeltal etikett="Öppna beställningar" varde={d.oppna.length} farg={d.oppna.length ? 'varning' : 'ok'} />
+            <Nyckeltal etikett="Väntar på betalning" varde={obetalda.length} farg={obetalda.length ? 'fara' : 'ok'} />
             <Nyckeltal etikett="Sålt i dag" varde={d.summa} />
             <Nyckeltal etikett="Beställningar i dag" varde={d.antal} />
           </div>
@@ -293,8 +293,8 @@ function Kiosken() {
               { falt: 'rader', rubrik: 'Beställning', sortlos: true, visa: (o) => o.rader.map((r) => `${r.antal}× ${r.namn}`).join(', ') },
               { falt: 'plats', rubrik: 'Var' },
               { falt: 'belopp', rubrik: 'Summa', sifra: true },
-              { falt: 'betald_tid', rubrik: 'Betalt', visa: (o) => (o.betald_tid ? <Bricka farg="gron">{o.betalsatt}</Bricka> : <Bricka farg="rod">nej</Bricka>) },
-              { falt: 'status', rubrik: 'Status', visa: (o) => <Bricka farg={o.status === 'klar' ? 'gron' : 'gul'}>{o.status}</Bricka> },
+              { falt: 'betald_tid', rubrik: 'Betalt', visa: (o) => (o.betald_tid ? <Bricka farg="ok">{o.betalsatt}</Bricka> : <Bricka farg="fara">nej</Bricka>) },
+              { falt: 'status', rubrik: 'Status', visa: (o) => <Bricka farg={o.status === 'klar' ? 'ok' : 'varning'}>{o.status}</Bricka> },
               { falt: 'skapad', rubrik: 'Inne', visa: (o) => <span className="liten svag">{sedan(o.skapad)}</span> },
             ]}
           />
@@ -359,7 +359,7 @@ function Uthyrningen() {
         <Kort>
           <div className="rad gap-16 hopp">
             <Nyckeltal etikett="Ute nu" varde={ute.length} />
-            <Nyckeltal etikett="Väntar på utlämning" varde={vantar.length} farg={vantar.length ? 'gul' : 'gron'} />
+            <Nyckeltal etikett="Väntar på utlämning" varde={vantar.length} farg={vantar.length ? 'varning' : 'ok'} />
             <Nyckeltal etikett="Hyrt i dag" varde={d.summa} />
           </div>
         </Kort>
@@ -374,7 +374,7 @@ function Uthyrningen() {
               { falt: 'namn', rubrik: 'Kund', visa: (a) => a.namn || a.mobil || '–' },
               { falt: 'rader', rubrik: 'Utrustning', sortlos: true, visa: (a) => a.rader.map((r) => `${r.antal}× ${r.namn}`).join(', ') },
               { falt: 'belopp', rubrik: 'Summa', sifra: true },
-              { falt: 'betald_tid', rubrik: 'Betalt', visa: (a) => (a.betald_tid ? <Bricka farg="gron">{a.betalsatt}</Bricka> : <Bricka farg="rod">nej</Bricka>) },
+              { falt: 'betald_tid', rubrik: 'Betalt', visa: (a) => (a.betald_tid ? <Bricka farg="ok">{a.betalsatt}</Bricka> : <Bricka farg="fara">nej</Bricka>) },
             ]}
           />
         ) : (
@@ -427,10 +427,10 @@ function EkonomiStart() {
         <Kort>
           <div className="rad gap-16 hopp">
             <Nyckeltal etikett="I dag" varde={dag.data.summa} />
-            <Nyckeltal etikett="30 dagar" varde={saldon.data.intakter} farg="gron" />
-            <Nyckeltal etikett="Resultat" varde={saldon.data.resultat} farg={saldon.data.resultat_ore >= 0 ? 'gron' : 'rod'} />
+            <Nyckeltal etikett="30 dagar" varde={saldon.data.intakter} farg="ok" />
+            <Nyckeltal etikett="Resultat" varde={saldon.data.resultat} farg={saldon.data.resultat_ore >= 0 ? 'ok' : 'fara'} />
             <Nyckeltal etikett="Verifikationer" varde={(ver.data?.verifikationer || []).length} />
-            <Nyckeltal etikett="Obetalda i kassan" varde={obetalda.length} farg={obetalda.length ? 'gul' : 'gron'} />
+            <Nyckeltal etikett="Obetalda i kassan" varde={obetalda.length} farg={obetalda.length ? 'varning' : 'ok'} />
           </div>
         </Kort>
       </div>
@@ -509,11 +509,11 @@ function Styrelsen() {
       <div className="rutor">
         <Kort>
           <div className="rad gap-16 hopp">
-            <Nyckeltal etikett="Öppna ärenden" varde={d.arenden.oppna} farg={d.arenden.oppna > 8 ? 'gul' : undefined} />
-            <Nyckeltal etikett="Hål i bemanningen" varde={d.bemanning.hal} farg={d.bemanning.hal ? 'rod' : 'gron'} />
-            <Nyckeltal etikett="Intäkter 30 dgr" varde={saldon.data?.intakter ?? '–'} farg="gron" />
+            <Nyckeltal etikett="Öppna ärenden" varde={d.arenden.oppna} farg={d.arenden.oppna > 8 ? 'varning' : undefined} />
+            <Nyckeltal etikett="Hål i bemanningen" varde={d.bemanning.hal} farg={d.bemanning.hal ? 'fara' : 'ok'} />
+            <Nyckeltal etikett="Intäkter 30 dgr" varde={saldon.data?.intakter ?? '–'} farg="ok" />
             <Nyckeltal etikett="Aktiva i grupper" varde={medlemmar} />
-            <Nyckeltal etikett="Nya idéer" varde={nya.length} farg={nya.length ? 'gul' : undefined} />
+            <Nyckeltal etikett="Nya idéer" varde={nya.length} farg={nya.length ? 'varning' : undefined} />
             <Nyckeltal etikett="LOK-sammankomster" varde={stod.data?.sammankomster ?? '–'} />
           </div>
         </Kort>
@@ -530,7 +530,7 @@ function Styrelsen() {
                     <div className="liten svag">{a.utrustning || a.omrade || 'Allmänt'}</div>
                   </span>
                   <span className="rad">
-                    {a.allvarlighet === 'sakerhetsrisk' && <Bricka farg="rod">Säkerhet</Bricka>}
+                    {a.allvarlighet === 'sakerhetsrisk' && <Bricka farg="fara">Säkerhet</Bricka>}
                     <Prioritetsbricka niva={a.prioritet} />
                     <Statusbricka status={a.status} />
                   </span>
@@ -620,7 +620,7 @@ function Traningen() {
           <div className="rad gap-16 hopp">
             <Nyckeltal etikett="Mina grupper" varde={minaGrupper.length} />
             <Nyckeltal etikett="Aktiva" varde={minaGrupper.reduce((a, g) => a + g.antal_aktiva, 0)} />
-            <Nyckeltal etikett="Närvaro som saknas" varde={utanNarvaro.length} farg={utanNarvaro.length ? 'gul' : 'gron'} />
+            <Nyckeltal etikett="Närvaro som saknas" varde={utanNarvaro.length} farg={utanNarvaro.length ? 'varning' : 'ok'} />
             <Nyckeltal etikett="LOK-sammankomster" varde={stod.data?.sammankomster ?? '–'} />
           </div>
         </Kort>
@@ -703,7 +703,7 @@ function Medlemmen() {
               <div className="rad gap-16 hopp">
                 <Nyckeltal etikett="Timmar" varde={tal(lage.timmar)} enhet={`/ ${tal(lage.kvot)}`} />
                 <Nyckeltal etikett="Nattpass" varde={lage.natt} />
-                <Nyckeltal etikett="Kvar" varde={tal(lage.kvar)} enhet="h" farg={lage.kvar > 0 ? 'gul' : 'gron'} />
+                <Nyckeltal etikett="Kvar" varde={tal(lage.kvar)} enhet="h" farg={lage.kvar > 0 ? 'varning' : 'ok'} />
               </div>
               <div style={{ marginTop: 8 }}>
                 <Matare andel={lage.andel} />
@@ -722,7 +722,7 @@ function Medlemmen() {
                     <strong>{p.position}</strong>
                     <div className="liten svag">{langDatum(p.datum)} {p.start}–{p.slut}</div>
                   </span>
-                  <Bricka farg={p.status === 'tilldelad' ? 'lila' : 'klubb'}>{p.status}</Bricka>
+                  <Bricka farg={p.status === 'tilldelad' ? 'lila' : 'info'}>{p.status}</Bricka>
                 </li>
               ))}
             </ul>

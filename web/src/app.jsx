@@ -111,7 +111,7 @@ export function App() {
           <div className="skal">
             <header className="topp">
               <div className="marke">
-                <Marke storlek={26} />
+                <Marke storlek={32} />
                 HAK&nbsp;Backe
               </div>
               <nav className="meny">
