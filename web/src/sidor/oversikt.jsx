@@ -2,12 +2,17 @@
 import { api } from '../api.js';
 import { Lank, useJag } from '../app.jsx';
 import { Bricka, Kort, Linjegraf, Matare, Nyckeltal, Prioritetsbricka, Statusbricka, Tomt, useHamta, Vanta } from '../delar/bitar.jsx';
-import { grader, idag, initialer, KLARTECKEN, klockslag, kortDatum, langDatum, procent, sedan, tal, UTRUSTNINGSTYP } from '../nytta.js';
+import {
+  grader, idag, initialer, KLARTECKEN, klockslag, kortDatum, langDatum, procent,
+  prognosstund, prognostimme, sedan, tal, UTRUSTNINGSTYP,
+} from '../nytta.js';
 
 export function Oversikt() {
   const jag = useJag();
   const { data, laddar, fel } = useHamta(() => api.hamta('/api/oversikt'));
   const serie = useHamta(() => api.hamta('/api/sno/matningar?antal=60'));
+  const vader = useHamta(() => api.hamta('/api/vader'));
+  const ronder = useHamta(() => api.hamta('/api/checklistor/lage'));
 
   if (laddar && !data) return <Vanta />;
   if (fel) return <div className="meddelande fel">{fel}</div>;
@@ -142,6 +147,78 @@ export function Oversikt() {
           ) : (
             <Tomt>Inga pass i dag.</Tomt>
           )}
+        </Kort>
+
+        <Kort
+          titel="Väder och produktionsfönster"
+          undertext={vader.data ? `${vader.data.plats.namn} · ${vader.data.kallor.map((k) => k.namn).join(' och ')}` : 'Hämtar prognos …'}
+          verktyg={<Lank till="/snolaggning" className="knapp liten">Prognos</Lank>}
+        >
+          {vader.fel && <div className="meddelande varning">{vader.fel}</div>}
+          {vader.data && (
+            <>
+              <div className="rad gap-16 hopp">
+                <Nyckeltal etikett="Våtkula nu" varde={tal(vader.data.nu?.vatkula)} enhet="°C" />
+                <Nyckeltal etikett="Lufttemp" varde={tal(vader.data.nu?.temp)} enhet="°C" />
+                <Nyckeltal
+                  etikett="Produktion 48 h"
+                  varde={vader.data.h48.produktionstimmar}
+                  enhet="h"
+                  farg={vader.data.h48.produktionstimmar ? 'gron' : 'rod'}
+                />
+              </div>
+              <div style={{ marginTop: 8 }}>
+                {vader.data.h48.fonster.length ? (
+                  <div className="meddelande ok">
+                    Nästa fönster: {prognosstund(vader.data.h48.fonster[0].fran)} –{' '}
+                    {prognosstund(vader.data.h48.fonster[0].till)} ({vader.data.h48.fonster[0].timmar} h, ned till{' '}
+                    {tal(vader.data.h48.fonster[0].lagsta)} °C)
+                  </div>
+                ) : (
+                  <div className="meddelande varning">Inget produktionsfönster de närmaste två dygnen.</div>
+                )}
+              </div>
+              {vader.data.h48.punkter.length > 1 && (
+                <div style={{ marginTop: 8 }}>
+                  <Linjegraf
+                    punkter={vader.data.h48.punkter.map((p) => ({ x: prognostimme(p.tid), a: p.vatkula, b: p.temp }))}
+                    hojd={110}
+                    etikett_a="våtkula"
+                    etikett_b="lufttemp"
+                    grans={-2.5}
+                  />
+                </div>
+              )}
+            </>
+          )}
+        </Kort>
+
+        <Kort
+          titel="Ronder att göra"
+          undertext={ronder.data ? `${ronder.data.kvar} kvar i dag · ${ronder.data.klara} gjorda` : 'Hämtar …'}
+          verktyg={<Lank till="/checklistor" className="knapp liten">Checklistor</Lank>}
+        >
+          {ronder.data && (ronder.data.mallar.filter((m) => m.kvar).length ? (
+            <ul className="lista">
+              {ronder.data.mallar
+                .filter((m) => m.kvar)
+                .slice(0, 6)
+                .map((m) => (
+                  <li key={m.mall_id}>
+                    <span className="vaxa">
+                      <strong>{m.namn}</strong>
+                      <div className="liten svag">
+                        {m.objekt.filter((o) => o.behovs).slice(0, 4).map((o) => o.namn).join(', ')}
+                        {m.kvar > 4 ? ` +${m.kvar - 4}` : ''}
+                      </div>
+                    </span>
+                    <Bricka farg={m.kvar ? 'gul' : 'gron'}>{m.kvar} kvar</Bricka>
+                  </li>
+                ))}
+            </ul>
+          ) : (
+            <Tomt>Allt som skulle göras i dag är gjort.</Tomt>
+          ))}
         </Kort>
 
         <Kort titel="Checklistor" undertext={`${data.checklistor.avvikelser_7d} avvikelser senaste veckan`} verktyg={<Lank till="/checklistor" className="knapp liten">Öppna</Lank>}>

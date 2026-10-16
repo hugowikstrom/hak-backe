@@ -3,6 +3,9 @@ import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { bool, ettAv, fel, heltal, kravTxt, num, rutt, svar, txt } from '../http.mjs';
 import { skapaArende } from './arenden.mjs';
 import { bildfinns, sparaBild } from './bilder.mjs';
+import { rondlage } from '../rond.mjs';
+import { aktivSasong, omradeslista, utrustningslista } from './register.mjs';
+import { idag } from '../tid.mjs';
 
 const INTERVALL = ['vid_start', 'per_pass', 'dagligen', 'veckovis', 'sasong'];
 const OMFATTNING = ['utrustningstyp', 'omrade', 'allmant'];
@@ -58,8 +61,34 @@ export function mallarFor({ utrustning_id, omrade_id }) {
   );
 }
 
+/** Vilka ronder som ska göras i dag, och vilka som redan är gjorda. */
+export function lage(datum = idag()) {
+  const snopass = en("SELECT start FROM snopass WHERE status='pagar' ORDER BY start DESC LIMIT 1");
+  const sasong = aktivSasong();
+  return rondlage({
+    mallar: alla('SELECT * FROM checklistmall WHERE aktiv=1 ORDER BY ordning, namn').map((m) => ({
+      ...m,
+      punkter: alla('SELECT id FROM checklistpunkt WHERE mall_id=?', m.id),
+    })),
+    utrustning: utrustningslista(),
+    omraden: omradeslista(),
+    korningar: alla(
+      `SELECT k.mall_id, k.utrustning_id, k.omrade_id, k.avslutad, m.namn AS av
+       FROM checklistkorning k LEFT JOIN medlem m ON m.id=k.av_id
+       WHERE k.status='klar' AND k.avslutad IS NOT NULL AND k.avslutad >= date('now','-21 days')`
+    ),
+    datum,
+    snopassStart: snopass?.start || null,
+    sasongStart: sasong?.start || null,
+  });
+}
+
 export const rutter = [
   rutt('GET', '/api/checklistor/mallar', 'medlem', ({ res }) => svar(res, 200, mallar())),
+
+  rutt('GET', '/api/checklistor/lage', 'medlem', ({ res, fraga }) =>
+    svar(res, 200, lage(fraga.get('datum') || undefined))
+  ),
 
   rutt('GET', '/api/checklistor/for', 'medlem', ({ res, fraga }) =>
     svar(res, 200, mallarFor({

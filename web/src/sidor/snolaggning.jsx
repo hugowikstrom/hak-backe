@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { Lank, useJag } from '../app.jsx';
 import { Bricka, Kort, Lada, Linjegraf, Nyckeltal, Ruta, Text, Tomt, useHamta, useNotis, Val, Vanta } from '../delar/bitar.jsx';
 import { Tabell } from '../delar/tabell.jsx';
+import { Prognos } from '../delar/prognos.jsx';
 import {
   grader, initialer, KLARTECKEN, klarteckenLokalt, klockslag, minstRoll, sedan, tal,
   tidpunkt, UTRUSTNINGSTYP, vatkulaLokalt,
@@ -175,6 +176,8 @@ export function Snolaggning() {
           )}
         </Kort>
       </div>
+
+      <Prognos />
 
       <Kort
         titel="Lansar, fläktar och pumpar"

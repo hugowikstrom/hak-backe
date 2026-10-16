@@ -192,37 +192,61 @@ export const Stapeldiagram = ({ poster, enhet = '', max }) => {
   );
 };
 
-/** Liten linjegraf med en eller två serier. Punkter: [{x, a, b}] i ordning. */
-export const Linjegraf = ({ punkter, hojd = 120, etikett_a, etikett_b, noll = true }) => {
+/**
+ * Liten linjegraf med en eller två serier. Punkter: [{x, a, b}] i ordning.
+ * Skalstreck och etiketter ritas som HTML utanför svg:n – text inuti en
+ * skalad viewBox blir olika stor beroende på hur bred kortet råkar vara.
+ */
+export const Linjegraf = ({ punkter, hojd = 150, etikett_a, etikett_b, noll = true, grans = null, gransetikett }) => {
   if (punkter.length < 2) return <Tomt>För få mätpunkter.</Tomt>;
-  const B = 480;
-  const mv = 26;
+  const B = 1000;
   const varden = punkter.flatMap((p) => [p.a, p.b].filter((v) => v != null));
-  const min = Math.min(...varden);
-  const max = Math.max(...varden);
+  const min = Math.min(...varden, grans ?? Infinity);
+  const max = Math.max(...varden, grans ?? -Infinity);
   const spann = max - min || 1;
-  const x = (i) => mv + (i / (punkter.length - 1)) * (B - mv - 6);
-  const y = (v) => 8 + (1 - (v - min) / spann) * (hojd - 26);
+  const x = (i) => (i / (punkter.length - 1)) * B;
+  const y = (v) => 6 + (1 - (v - min) / spann) * (hojd - 12);
   const bana = (falt) =>
     punkter
-      .map((p, i) => (p[falt] == null ? null : `${i === 0 || punkter[i - 1][falt] == null ? 'M' : 'L'}${x(i).toFixed(1)},${y(p[falt]).toFixed(1)}`))
+      .map((p, i) =>
+        p[falt] == null ? null : `${i === 0 || punkter[i - 1][falt] == null ? 'M' : 'L'}${x(i).toFixed(1)},${y(p[falt]).toFixed(1)}`
+      )
       .filter(Boolean)
       .join(' ');
+
   return (
-    <svg className="graf" viewBox={`0 0 ${B} ${hojd}`} preserveAspectRatio="none" role="img">
-      <line className="axel" x1={mv} y1={hojd - 16} x2={B - 4} y2={hojd - 16} />
-      {noll && min < 0 && max > 0 && (
-        <line className="noll" x1={mv} y1={y(0)} x2={B - 4} y2={y(0)} />
-      )}
-      <text x="2" y={y(max) + 3}>{max.toFixed(1)}</text>
-      <text x="2" y={y(min) + 3}>{min.toFixed(1)}</text>
-      <path className="linje" d={bana('a')} />
-      {punkter.some((p) => p.b != null) && <path className="linje2" d={bana('b')} />}
-      <text x={mv} y={hojd - 4}>{punkter[0].x}</text>
-      <text x={B - 60} y={hojd - 4}>{punkter.at(-1).x}</text>
-      {etikett_a && <text x={mv + 60} y={hojd - 4} style={{ fill: 'var(--blaa)' }}>— {etikett_a}</text>}
-      {etikett_b && <text x={mv + 160} y={hojd - 4} style={{ fill: 'var(--lila)' }}>-- {etikett_b}</text>}
-    </svg>
+    <div className="grafruta">
+      <div className="grafskala">
+        <span>{max.toFixed(1)}</span>
+        {grans != null && Math.abs(grans - min) > spann * 0.08 && Math.abs(grans - max) > spann * 0.08 && (
+          <span className="grafgrans" style={{ top: `${(y(grans) / hojd) * 100}%` }}>
+            {grans.toFixed(1)}
+          </span>
+        )}
+        <span>{min.toFixed(1)}</span>
+      </div>
+      <div className="grafkropp">
+        <svg className="graf" viewBox={`0 0 ${B} ${hojd}`} preserveAspectRatio="none" role="img" style={{ height: hojd }}>
+          {noll && min < 0 && max > 0 && <line className="noll" x1="0" y1={y(0)} x2={B} y2={y(0)} />}
+          {grans != null && grans > min && grans < max && (
+            <line className="grans" x1="0" y1={y(grans)} x2={B} y2={y(grans)} />
+          )}
+          <path className="linje" d={bana('a')} vectorEffect="non-scaling-stroke" />
+          {punkter.some((p) => p.b != null) && (
+            <path className="linje2" d={bana('b')} vectorEffect="non-scaling-stroke" />
+          )}
+        </svg>
+        <div className="grafrad">
+          <span className="num">{punkter[0].x}</span>
+          <span className="vaxa mitten liten">
+            {etikett_a && <span className="grafnyckel a">{etikett_a}</span>}
+            {etikett_b && <span className="grafnyckel b">{etikett_b}</span>}
+            {gransetikett && <span className="grafnyckel g">{gransetikett}</span>}
+          </span>
+          <span className="num">{punkter.at(-1).x}</span>
+        </div>
+      </div>
+    </div>
   );
 };
 

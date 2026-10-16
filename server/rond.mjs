@@ -1,0 +1,100 @@
+// Vilka ronder som ska göras, och vilka som är försenade.
+// Ren funktion över inlästa data – inga frågor mot databasen här.
+import { veckonummer } from './tid.mjs';
+
+/** Början på den period som intervallet mäts mot, eller null om ronden inte är schemalagd. */
+export function periodstart({ intervall, datum, snopassStart, sasongStart }) {
+  const dag = `${datum} 00:00:00`;
+  switch (intervall) {
+    case 'dagligen':
+      return dag;
+    case 'veckovis': {
+      const d = new Date(`${datum}T12:00:00`);
+      d.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+      return `${d.toLocaleDateString('sv-SE')} 00:00:00`;
+    }
+    case 'sasong':
+      return sasongStart ? `${sasongStart} 00:00:00` : null;
+    case 'vid_start':
+    case 'per_pass':
+      // Bara aktuella när snöläggningen är i gång.
+      return snopassStart || null;
+    default:
+      return null;
+  }
+}
+
+/**
+ * Bygger listan över ronder att göra.
+ * @param {object} indata
+ * @param {Array} indata.mallar        aktiva mallar med punkter
+ * @param {Array} indata.utrustning    aktiv utrustning
+ * @param {Array} indata.omraden       aktiva områden
+ * @param {Array} indata.korningar     avslutade körningar {mall_id, utrustning_id, omrade_id, avslutad}
+ * @param {string} indata.datum        dagens datum
+ * @param {string|null} indata.snopassStart
+ * @param {string|null} indata.sasongStart
+ */
+export function rondlage({ mallar, utrustning, omraden, korningar, datum, snopassStart, sasongStart }) {
+  const senasteFor = new Map();
+  for (const k of korningar) {
+    if (!k.avslutad) continue;
+    const nyckel = `${k.mall_id}|${k.utrustning_id ?? ''}|${k.omrade_id ?? ''}`;
+    const fore = senasteFor.get(nyckel);
+    if (!fore || k.avslutad > fore.avslutad) senasteFor.set(nyckel, k);
+  }
+
+  const rader = [];
+  for (const mall of mallar) {
+    const start = periodstart({ intervall: mall.intervall, datum, snopassStart, sasongStart });
+    const objekt =
+      mall.omfattning === 'utrustningstyp'
+        ? utrustning
+            .filter((u) => u.typ === mall.utrustningstyp && u.aktiv && u.status !== 'ur_drift')
+            .map((u) => ({ slag: 'utrustning', id: u.id, namn: u.namn, omrade: u.omrade }))
+        : mall.omfattning === 'omrade'
+          ? omraden
+              .filter((o) => o.id === mall.omrade_id && o.aktiv)
+              .map((o) => ({ slag: 'omrade', id: o.id, namn: o.namn }))
+          : [{ slag: 'allmant', id: null, namn: 'Allmänt' }];
+
+    const poster = objekt.map((o) => {
+      const nyckel = `${mall.id}|${o.slag === 'utrustning' ? o.id : ''}|${o.slag === 'omrade' ? o.id : ''}`;
+      const senaste = senasteFor.get(nyckel) || null;
+      const klar = !!(start && senaste && senaste.avslutad >= start);
+      return {
+        ...o,
+        senast: senaste?.avslutad || null,
+        senast_av: senaste?.av || null,
+        klar,
+        // Schemalagd men inte gjord i perioden.
+        behovs: !!start && !klar,
+      };
+    });
+
+    rader.push({
+      mall_id: mall.id,
+      namn: mall.namn,
+      intervall: mall.intervall,
+      omfattning: mall.omfattning,
+      utrustningstyp: mall.utrustningstyp,
+      omrade_id: mall.omrade_id,
+      antal_punkter: mall.punkter?.length ?? 0,
+      schemalagd: !!start,
+      periodstart: start,
+      objekt: poster,
+      kvar: poster.filter((p) => p.behovs).length,
+      klara: poster.filter((p) => p.klar).length,
+    });
+  }
+
+  rader.sort((a, b) => b.kvar - a.kvar || a.namn.localeCompare(b.namn, 'sv'));
+  return {
+    datum,
+    vecka: veckonummer(datum),
+    snopass: !!snopassStart,
+    mallar: rader,
+    kvar: rader.reduce((a, b) => a + b.kvar, 0),
+    klara: rader.reduce((a, b) => a + b.klara, 0),
+  };
+}

@@ -44,7 +44,7 @@ export const procent = (v) => (v == null ? '–' : `${Math.round(v)} %`);
 export const PRIORITET = {
   1: { namn: 'Akut', farg: 'rod' },
   2: { namn: 'Hög', farg: 'gul' },
-  3: { namn: 'Normal', farg: 'bla' },
+  3: { namn: 'Normal', farg: 'klubb' },
   4: { namn: 'Låg', farg: '' },
 };
 export const ALLVARLIGHET = {
@@ -54,7 +54,7 @@ export const ALLVARLIGHET = {
   kosmetisk: 'Kosmetisk',
 };
 export const ARENDESTATUS = {
-  ny: { namn: 'Ny', farg: 'bla' },
+  ny: { namn: 'Ny', farg: 'klubb' },
   bekraftad: { namn: 'Bekräftad', farg: 'lila' },
   pagar: { namn: 'Pågår', farg: 'gul' },
   vantar: { namn: 'Väntar', farg: '' },
@@ -84,6 +84,12 @@ export const INSATSSLAG = {
 };
 export const RANG = { medlem: 1, backansvarig: 2, anlaggningsansvarig: 3, admin: 4 };
 export const minstRoll = (medlem, roll) => (RANG[medlem?.roll] ?? 0) >= RANG[roll];
+
+/** "2026-12-01 20:00" -> "20:00". Prognosen levereras i svensk lokaltid. */
+export const prognostimme = (tid) => (tid ? String(tid).slice(11, 16) : '');
+export const prognosdag = (tid) => (tid ? langDatum(String(tid).slice(0, 10)) : '');
+export const prognosstund = (tid) =>
+  tid ? `${DAGNAMN[veckodag(String(tid).slice(0, 10))]} ${prognostimme(tid)}` : '';
 
 export const sorteraEfter = (lista, falt, riktning = 1) =>
   [...lista].sort((a, b) => {

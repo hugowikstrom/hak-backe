@@ -12,6 +12,7 @@ export function Hem({ ronder }) {
   const [sok, sattSok] = useState('');
 
   const mallar = useHamta(() => hamtaMedCache('/api/checklistor/mallar'));
+  const lage = useHamta(() => hamtaMedCache('/api/checklistor/lage'));
   const utrustning = useHamta(() => hamtaMedCache('/api/utrustning'));
   const omraden = useHamta(() => hamtaMedCache('/api/omraden'));
 
@@ -23,6 +24,9 @@ export function Hem({ ronder }) {
 
   const pagaende = ronder.filter((r) => !r.klar);
   const attSkicka = ronder.filter((r) => r.klar && !r.avslutad);
+
+  // Ronder som ska göras i dag enligt checklistornas intervall.
+  const attGora = (lage.data?.data?.mallar || []).filter((m) => m.kvar > 0);
 
   const starta = (mall, objekt) => {
     const rond = nyRond({
@@ -42,6 +46,40 @@ export function Hem({ ronder }) {
     <>
       {mallar.data?.fran === 'cache' && (
         <div className="meddelande info">Visar sparade checklistor – telefonen når inte servern just nu.</div>
+      )}
+
+      {!!attGora.length && (
+        <section className="kort">
+          <header>
+            <h2>Att göra i dag</h2>
+            <p className="liten svag" style={{ margin: '4px 0 10px' }}>
+              {lage.data.data.kvar} ronder kvar · {lage.data.data.klara} gjorda
+              {lage.data.data.snopass ? ' · snöpass pågår' : ''}
+            </p>
+          </header>
+          <div className="lista">
+            {attGora.map((m) => {
+              const mall = (mallar.data?.data || []).find((x) => x.id === m.mall_id);
+              return (
+                <Post
+                  key={m.mall_id}
+                  figur={m.kvar}
+                  figurfarg="varning"
+                  titel={m.namn}
+                  under={`${INTERVALL[m.intervall]} · ${m.objekt.filter((o) => o.behovs).map((o) => o.namn).slice(0, 3).join(', ')}${m.kvar > 3 ? ` +${m.kvar - 3}` : ''}`}
+                  onClick={() => {
+                    if (!mall) return notis('Checklistan kunde inte läsas.', 'fel');
+                    const kvar = m.objekt.filter((o) => o.behovs);
+                    if (m.omfattning === 'allmant') starta(mall, null);
+                    else if (kvar.length === 1 && m.omfattning === 'omrade')
+                      starta(mall, { slag: 'omrade', post: { id: kvar[0].id, namn: kvar[0].namn } });
+                    else sattVald({ ...mall, bara: kvar.map((o) => o.id) });
+                  }}
+                />
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {!!pagaende.length && (
@@ -131,7 +169,9 @@ export function Hem({ ronder }) {
       {vald && (
         <ValjObjekt
           mall={vald}
-          utrustning={(utrustning.data?.data || []).filter((u) => u.aktiv && u.typ === vald.utrustningstyp)}
+          utrustning={(utrustning.data?.data || [])
+            .filter((u) => u.aktiv && u.typ === vald.utrustningstyp)
+            .filter((u) => !vald.bara || vald.bara.includes(u.id))}
           stang={() => sattVald(null)}
           valj={(u) => starta(vald, { slag: 'utrustning', post: u })}
         />

@@ -15,8 +15,9 @@ import { rutter as bemanning } from './api/bemanning.mjs';
 import { rutter as rapport } from './api/rapport.mjs';
 import { rutter as oversikt } from './api/oversikt.mjs';
 import { rutter as bilder } from './api/bilder.mjs';
+import { rutter as vader } from './api/vader.mjs';
 
-const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder];
+const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder, ...vader];
 
 const PORT = Number(process.env.HAK_PORT || 8120);
 const VARD = process.env.HAK_VARD || '127.0.0.1';

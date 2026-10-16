@@ -173,7 +173,7 @@ function Arende({ id, jag, medlemmar, stang, notis }) {
         <Statusbricka status={a.status} />
         <Bricka>{ARENDETYP[a.typ]}</Bricka>
         <Bricka farg={a.allvarlighet === 'sakerhetsrisk' ? 'rod' : ''}>{ALLVARLIGHET[a.allvarlighet]}</Bricka>
-        {a.utrustning && <Bricka farg="bla">{a.utrustning}</Bricka>}
+        {a.utrustning && <Bricka farg="klubb">{a.utrustning}</Bricka>}
         {a.omrade && <Bricka>{a.omrade}</Bricka>}
         <span className="liten svag">Skapat {tidpunkt(a.skapad)} av {a.skapad_av || 'okänd'}</span>
       </div>

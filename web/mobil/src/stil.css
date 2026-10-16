@@ -109,6 +109,8 @@ a { color: var(--gron-mork); }
 
 .innehall { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 14px 20px; -webkit-overflow-scrolling: touch; display: flex; }
 .sida { display: flex; flex-direction: column; gap: 14px; max-width: 640px; margin: 0 auto; width: 100%; }
+/* Korten får inte krympas ihop av flexen – då klipper overflow bort innehåll. */
+.sida > * { flex: 0 0 auto; }
 
 .botten {
   display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
@@ -211,6 +213,7 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   box-shadow: var(--skugga); padding: 22px 18px; display: flex; flex-direction: column; gap: 14px;
   flex: 1 1 auto;
 }
+.sida > .punktkort { flex: 1 1 auto; }
 .punktkort .rakning { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--gron-mork); }
 .punktkort .fraga { font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -.02em; }
 .punktkort .hjalp {

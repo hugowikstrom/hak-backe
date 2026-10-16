@@ -103,7 +103,7 @@ export function Mina() {
             { falt: 'datum', rubrik: 'Datum', visa: (p) => <span className="num">{langDatum(p.datum)}</span> },
             { falt: 'start', rubrik: 'Tid', visa: (p) => <span className="num">{p.start}–{p.slut}</span> },
             { falt: 'position', rubrik: 'Position', visa: (p) => <strong>{p.position}</strong> },
-            { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'tilldelad' ? 'lila' : 'bla'}>{p.status}</Bricka> },
+            { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'tilldelad' ? 'lila' : 'klubb'}>{p.status}</Bricka> },
           ]}
         />
       </Kort>

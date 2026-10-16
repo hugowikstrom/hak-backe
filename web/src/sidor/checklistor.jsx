@@ -18,6 +18,7 @@ export function Checklistor() {
   const utrustning = useHamta(() => api.hamta('/api/utrustning'));
   const omraden = useHamta(() => api.hamta('/api/omraden'));
   const korningar = useHamta(() => api.hamta('/api/checklistor/korningar?antal=120'));
+  const lage = useHamta(() => api.hamta('/api/checklistor/lage'));
 
   const flikar = [
     { nyckel: 'korningar', text: 'Körningar' },
@@ -39,7 +40,23 @@ export function Checklistor() {
       <Flikar flikar={flikar} aktiv={flik} satt={sattFlik} />
 
       {flik === 'korningar' ? (
-        <Kort titel="Senaste körningar" tat>
+        <>
+          <AttGora
+            lage={lage}
+            starta={async (mall_id, objekt) => {
+              try {
+                const k = await api.skapa('/api/checklistor/korningar', {
+                  mall_id,
+                  utrustning_id: objekt.slag === 'utrustning' ? objekt.id : null,
+                  omrade_id: objekt.slag === 'omrade' ? objekt.id : null,
+                });
+                sattKorningId(k.id);
+              } catch (e) {
+                notis(e.message, 'fel');
+              }
+            }}
+          />
+          <Kort titel="Senaste körningar" tat>
           {korningar.laddar && !korningar.data ? (
             <Vanta />
           ) : (
@@ -64,12 +81,13 @@ export function Checklistor() {
                 },
                 {
                   falt: 'status', rubrik: 'Status',
-                  visa: (k) => <Bricka farg={k.status === 'klar' ? 'gron' : 'bla'}>{k.status === 'klar' ? 'Klar' : 'Pågår'}</Bricka>,
+                  visa: (k) => <Bricka farg={k.status === 'klar' ? 'gron' : 'klubb'}>{k.status === 'klar' ? 'Klar' : 'Pågår'}</Bricka>,
                 },
               ]}
             />
-          )}
-        </Kort>
+            )}
+          </Kort>
+        </>
       ) : (
         <Mallar mallar={mallar} utrustning={utrustning} omraden={omraden} jag={jag} />
       )}
@@ -88,11 +106,71 @@ export function Checklistor() {
       {korningId && (
         <KorningLada
           id={korningId}
-          stang={() => { sattKorningId(null); korningar.uppdatera(); }}
+          stang={() => { sattKorningId(null); korningar.uppdatera(); lage.uppdatera(); }}
           notis={notis}
         />
       )}
     </>
+  );
+}
+
+/** Vad som ska göras i dag, enligt checklistornas intervall. */
+function AttGora({ lage, starta }) {
+  if (lage.laddar && !lage.data) return <Kort titel="Att göra i dag"><Vanta /></Kort>;
+  if (lage.fel) return null;
+  const kvar = lage.data.mallar.filter((m) => m.kvar);
+  const klara = lage.data.mallar.filter((m) => !m.kvar && m.klara);
+  return (
+    <Kort
+      titel="Att göra i dag"
+      undertext={
+        lage.data.kvar
+          ? `${lage.data.kvar} ronder kvar · ${lage.data.klara} gjorda${lage.data.snopass ? ' · snöpass pågår' : ''}`
+          : 'Allt som skulle göras i dag är gjort'
+      }
+    >
+      {kvar.length ? (
+        <div className="kolumn">
+          {kvar.map((m) => (
+            <div key={m.mall_id}>
+              <div className="rad-mellan" style={{ marginBottom: 4 }}>
+                <strong>{m.namn}</strong>
+                <span className="rad">
+                  <Bricka>{INTERVALL[m.intervall]}</Bricka>
+                  <Bricka farg="gul">{m.kvar} kvar</Bricka>
+                  {!!m.klara && <Bricka farg="gron">{m.klara} klara</Bricka>}
+                </span>
+              </div>
+              <div className="knapprad">
+                {m.objekt
+                  .filter((o) => o.behovs)
+                  .map((o) => (
+                    <button key={`${o.slag}-${o.id}`} className="liten" onClick={() => starta(m.mall_id, o)}>
+                      {o.namn}
+                    </button>
+                  ))}
+                {m.objekt
+                  .filter((o) => o.klar)
+                  .map((o) => (
+                    <span key={`klar-${o.slag}-${o.id}`} className="bricka gron" title={`Gjord ${tidpunkt(o.senast)}${o.senast_av ? ` av ${o.senast_av}` : ''}`}>
+                      ✓ {o.namn}
+                    </span>
+                  ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="meddelande ok">
+          Allt är gjort. {klara.length ? `${lage.data.klara} ronder avklarade i dag.` : ''}
+        </div>
+      )}
+      {!lage.data.snopass && (
+        <p className="liten svagare" style={{ marginTop: 8, marginBottom: 0 }}>
+          Checklistor för snöläggning visas när ett snöpass är igång.
+        </p>
+      )}
+    </Kort>
   );
 }
 

@@ -117,7 +117,7 @@ function SnoRapport({ r, period }) {
               { falt: 'slut', rubrik: 'Slut', visa: (p) => <span className="num">{p.slut ? tidpunkt(p.slut) : '–'}</span> },
               { falt: 'ansvarig', rubrik: 'Ansvarig' },
               { falt: 'antal_matningar', rubrik: 'Mätningar', sifra: true },
-              { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'pagar' ? 'bla' : 'gron'}>{p.status === 'pagar' ? 'Pågår' : 'Avslutat'}</Bricka> },
+              { falt: 'status', rubrik: 'Status', visa: (p) => <Bricka farg={p.status === 'pagar' ? 'klubb' : 'gron'}>{p.status === 'pagar' ? 'Pågår' : 'Avslutat'}</Bricka> },
               { falt: 'anteckning', rubrik: 'Anteckning' },
             ]}
           />
