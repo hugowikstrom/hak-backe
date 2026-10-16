@@ -4,15 +4,16 @@ Ett system för hela backen: snöläggning, checklistor, ärenden, bemanning och
 rapporter. Kör som en enda Node-process med SQLite, byggd klient i `web/dist`.
 
 Drift: <https://hak.nattviken.com> (systemd-tjänsten `hak`, 127.0.0.1:8120).
+Mobilappen för checklistor: <https://hak.nattviken.com/mobil/>.
 
 ## Kom igång
 
 ```bash
 npm install
 npm run fro          # grunddata: medlemmar, utrustning, checklistor, pass
-npm run dev          # API på 8120 + Vite på 5190 (öppna 5190)
+npm run dev          # API 8120 + webben 5190 + mobilen 5191/mobil/
 npm run verify       # tester och bygge – grinden före driftsättning
-npm run build        # bygger web/dist som servern serverar i drift
+npm run build        # bygger båda klienterna till web/dist
 ```
 
 Inloggningar i grunddatat (alla har lösenordet `hak`):
@@ -80,11 +81,15 @@ server/            API och logik, inga ramverk
   epost.mjs        SMTP via nodemailer, allt loggas
   fro.mjs          grunddata (`npm run fro`, `--nollstall` skriver om)
   api/*.mjs        en modul per område, exporterar `rutter`
-web/src/           React + Vite, en formgivningsfil
+web/src/           Webbklienten: React + Vite, en formgivningsfil
   app.jsx          skal, navigering, inloggning
   delar/           återanvända byggstenar och datatabellen
   sidor/           översikt, snöläggning, checklistor, ärenden, bemanning,
                    mina sidor, rapporter, register
+web/mobil/         HAK Rond: mobilklienten på /mobil/
+  public/          manifest, servicearbetare och ikoner
+  src/ko.js        ronder i telefonen och synken mot servern
+  src/sidor/       hem, rond, historik, checklistor (redigering), konto
 tests/             node:test – snöteknik, tid, autoplan, API över HTTP
 drift/             systemd-enhet och Caddy-block
 ```
@@ -99,6 +104,11 @@ Hållpunkter:
 - **En CSS-fil**, `web/src/stil.css`, med sektioner. Inga komponentbibliotek.
 - `undefined` i indata betyder "fältet skickades inte", `null` betyder "töm
   fältet". Därför kan en delvis uppdatering aldrig nolla en titel.
+- **Mobilens ronder är dokument, inte köade anrop.** `web/mobil/src/ko.js`
+  sparar hela ronden i telefonen och spelar upp den mot API:et när det går.
+  Därför överlever en rond både dålig täckning och att appen stängs.
+- **Klubbgrönt `#8cc63f`** ur logotypen bär mobilappen. Grönt på vitt duger
+  inte som textfärg – använd `--gron-mork` när det ska läsas.
 - `npm run verify` är grinden.
 
 ## Miljövariabler
@@ -113,6 +123,9 @@ Hållpunkter:
 | `HAK_SMTP_USER` / `HAK_SMTP_LOSEN` | – | sätts bara om servern kräver det |
 | `HAK_EPOST_FRAN` | `HAK Backe <backe@nattviken.com>` | avsändare |
 | `HAK_EPOST_AV` | på | `0` loggar utskick utan att skicka |
+
+Bilder på avvikelser sparas som filer under `data/bilder/` och nås via
+`/api/bilder/<namn>` för inloggade. Telefonen skalar ned dem före uppladdning.
 
 ## Drift
 

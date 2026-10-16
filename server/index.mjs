@@ -14,8 +14,9 @@ import { rutter as arenden } from './api/arenden.mjs';
 import { rutter as bemanning } from './api/bemanning.mjs';
 import { rutter as rapport } from './api/rapport.mjs';
 import { rutter as oversikt } from './api/oversikt.mjs';
+import { rutter as bilder } from './api/bilder.mjs';
 
-const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt];
+const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder];
 
 const PORT = Number(process.env.HAK_PORT || 8120);
 const VARD = process.env.HAK_VARD || '127.0.0.1';
@@ -66,7 +67,9 @@ export const server = createServer(async (req, res) => {
 
     if (req.method === 'GET' || req.method === 'HEAD') {
       if (statisk(res, stig)) return;
-      if (statisk(res, '/index.html')) return;
+      // Mobilappen är en egen klient under /mobil/ med egen startsida.
+      const skal = stig === '/mobil' || stig.startsWith('/mobil/') ? '/mobil/index.html' : '/index.html';
+      if (statisk(res, skal)) return;
       return svar(res, 404, { fel: 'Klienten är inte byggd. Kör npm run build.' });
     }
     throw fel(404, 'Hittades inte');

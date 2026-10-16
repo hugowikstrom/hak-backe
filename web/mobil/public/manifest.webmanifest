@@ -1,0 +1,19 @@
+{
+  "name": "HAK Rond – Härnösands Alpina",
+  "short_name": "HAK Rond",
+  "description": "Checklistor och ronder för Härnösands Alpina Klubb.",
+  "lang": "sv",
+  "start_url": "/mobil/",
+  "scope": "/mobil/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#ffffff",
+  "theme_color": "#8cc63f",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "/mobil/ikon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/mobil/ikon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/mobil/ikon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/mobil/ikon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

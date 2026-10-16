@@ -216,3 +216,74 @@ test('CSV-export har rubriker och semikolon', async () => {
   const csv = await ok('GET', `/api/bemanning/schema.csv?fran=${dag(0)}&till=${dag(30)}`);
   assert.match(csv, /Datum;Start;Slut;Position/);
 });
+
+// ---- mobilappens tillägg ----
+
+test('bild sparas, hämtas och kan hängas på en avvikelse', async () => {
+  // Minsta tänkbara PNG, räcker för att pröva vägen in och ut.
+  const png =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const { bild } = await ok('POST', '/api/bilder', { data: png });
+  assert.match(bild, /^[0-9a-f]{24}\.png$/);
+
+  const r = await fetch(`${BAS}/api/bilder/${bild}`, { headers: { cookie: kaka } });
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('content-type'), 'image/png');
+
+  const saknas = await anrop('GET', '/api/bilder/0123456789abcdef01234567.png');
+  assert.equal(saknas.status, 404);
+
+  const fel = await anrop('POST', '/api/bilder', { data: 'inte en bild' });
+  assert.equal(fel.status, 400);
+});
+
+test('mobilrond sparar bild på avvikelsen och ärendet länkar till den', async () => {
+  const mallar = await ok('GET', '/api/checklistor/for?utrustning_id=1');
+  const k = await ok('POST', '/api/checklistor/korningar', { mall_id: mallar[0].id, utrustning_id: 1, kalla: 'mobil' });
+  assert.equal(k.kalla, 'mobil');
+
+  const png =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+  const svarad = await ok('PUT', `/api/checklistor/svar/${k.id}/${k.punkter[0].id}`, {
+    bockad: false, avvikelse: true, kommentar: 'Spricka i slangen', bild: png,
+  });
+  const punkt = svarad.punkter.find((p) => p.id === k.punkter[0].id);
+  assert.match(punkt.bild, /^[0-9a-f]{24}\.png$/);
+
+  const klar = await ok('POST', `/api/checklistor/korningar/${k.id}/avsluta`, { tvinga: true });
+  assert.equal(klar.nya_arenden.length, 1);
+  assert.match(klar.nya_arenden[0].beskrivning, new RegExp(`/api/bilder/${punkt.bild}`));
+});
+
+test('checklistmall kan kopieras och tas bort', async () => {
+  const skapad = await ok('POST', '/api/checklistor/mallar', {
+    namn: 'Testmall', omfattning: 'allmant', intervall: 'dagligen',
+    punkter: [{ text: 'Punkt ett' }, { text: 'Punkt två', svarstyp: 'varde', enhet: 'cm' }],
+  });
+  assert.equal(skapad.punkter.length, 2);
+
+  const kopia = await ok('POST', `/api/checklistor/mallar/${skapad.id}/kopia`);
+  assert.equal(kopia.namn, 'Testmall (kopia)');
+  assert.equal(kopia.aktiv, 0, 'kopian ska vara vilande tills någon aktiverar den');
+  assert.equal(kopia.punkter.length, 2);
+
+  const bort = await ok('DELETE', `/api/checklistor/mallar/${kopia.id}`);
+  assert.equal(bort.borttagen, true);
+
+  // En mall som använts ska bevaras för historikens skull.
+  await ok('POST', '/api/checklistor/korningar', { mall_id: skapad.id });
+  const anvand = await ok('DELETE', `/api/checklistor/mallar/${skapad.id}`);
+  assert.equal(anvand.borttagen, false);
+  assert.equal(anvand.inaktiverad, true);
+  const kvar = await ok('GET', '/api/checklistor/mallar');
+  assert.equal(kvar.find((m) => m.id === skapad.id).aktiv, 0);
+});
+
+test('medlem får inte ändra checklistmallar', async () => {
+  await ok('POST', '/api/logga-ut');
+  await ok('POST', '/api/logga-in', { anvandarnamn: 'ida', losenord: 'hemligt' });
+  const r = await anrop('POST', '/api/checklistor/mallar', { namn: 'Nej', punkter: [{ text: 'x' }] });
+  assert.equal(r.status, 403);
+  const d = await anrop('DELETE', '/api/checklistor/mallar/1');
+  assert.equal(d.status, 403);
+});

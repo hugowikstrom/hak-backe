@@ -1,5 +1,6 @@
 // Återanvända byggstenar.
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ARENDESTATUS, PRIORITET, procent } from '../nytta.js';
 
 export const Kort = ({ titel, verktyg, children, tat = false, undertext }) => (
@@ -96,7 +97,8 @@ export const Lada = ({ titel, children, fot, stang, bred = false }) => {
     ref.current?.focus();
     return () => document.removeEventListener('keydown', vid);
   }, [stang]);
-  return (
+  // Ritas i body: inuti den rullande ytan blir position:fixed opålitligt.
+  return createPortal(
     <div className="lada-bak" onMouseDown={(e) => e.target === e.currentTarget && stang?.()}>
       <div className={`lada${bred ? ' bred' : ''}`} ref={ref} tabIndex={-1} role="dialog" aria-label={titel}>
         <header>
@@ -106,7 +108,8 @@ export const Lada = ({ titel, children, fot, stang, bred = false }) => {
         <div className="kropp">{children}</div>
         {fot && <footer>{fot}</footer>}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

@@ -2,6 +2,7 @@
 import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { bool, ettAv, fel, heltal, kravTxt, num, rutt, svar, txt } from '../http.mjs';
 import { skapaArende } from './arenden.mjs';
+import { bildfinns, sparaBild } from './bilder.mjs';
 
 const INTERVALL = ['vid_start', 'per_pass', 'dagligen', 'veckovis', 'sasong'];
 const OMFATTNING = ['utrustningstyp', 'omrade', 'allmant'];
@@ -34,7 +35,7 @@ export const korning = (id) => {
   const k = en(`${KORNING_SQL} WHERE k.id=?`, id);
   if (!k) return null;
   const punkter = alla(
-    `SELECT p.*, s.id AS svar_id, s.bockad, s.varde, s.text AS svarstext, s.avvikelse, s.kommentar, s.tid AS svarstid
+    `SELECT p.*, s.id AS svar_id, s.bockad, s.varde, s.text AS svarstext, s.avvikelse, s.kommentar, s.bild, s.tid AS svarstid
      FROM checklistpunkt p LEFT JOIN checklistsvar s ON s.punkt_id=p.id AND s.korning_id=?
      WHERE p.mall_id=? ORDER BY p.ordning, p.id`,
     id,
@@ -128,6 +129,43 @@ export const rutter = [
   }),
 
   // ---- körningar ----
+  rutt('POST', '/api/checklistor/mallar/:id/kopia', 'backansvarig', ({ res, param }) => {
+    const m = mallMedPunkter(param.id);
+    if (!m) throw fel(404, 'Mallen finns inte');
+    const id = transaktion(() => {
+      const ny = spara('checklistmall', {
+        namn: `${m.namn} (kopia)`.slice(0, 120),
+        omfattning: m.omfattning,
+        utrustningstyp: m.utrustningstyp,
+        omrade_id: m.omrade_id,
+        intervall: m.intervall,
+        beskrivning: m.beskrivning,
+        aktiv: 0,
+        ordning: m.ordning,
+      });
+      for (const p of m.punkter)
+        spara('checklistpunkt', {
+          mall_id: ny, ordning: p.ordning, text: p.text, hjalptext: p.hjalptext,
+          svarstyp: p.svarstyp, enhet: p.enhet, obligatorisk: p.obligatorisk,
+        });
+      return ny;
+    });
+    svar(res, 201, mallMedPunkter(id));
+  }),
+
+  rutt('DELETE', '/api/checklistor/mallar/:id', 'backansvarig', ({ res, param }) => {
+    const m = en('SELECT * FROM checklistmall WHERE id=?', param.id);
+    if (!m) throw fel(404, 'Mallen finns inte');
+    const korda = en('SELECT count(*) AS n FROM checklistkorning WHERE mall_id=?', m.id).n;
+    // En mall som använts får inte försvinna – historiken ska finnas kvar.
+    if (korda) {
+      uppdatera('checklistmall', m.id, { aktiv: 0 });
+      return svar(res, 200, { borttagen: false, inaktiverad: true, korningar: korda });
+    }
+    kor('DELETE FROM checklistmall WHERE id=?', m.id);
+    svar(res, 200, { borttagen: true });
+  }),
+
   rutt('GET', '/api/checklistor/korningar', 'medlem', ({ res, fraga }) => {
     const villkor = [];
     const p = [];
@@ -157,6 +195,7 @@ export const rutter = [
       omrade_id: heltal(kropp.omrade_id),
       snopass_id: heltal(kropp.snopass_id),
       av_id: medlem.id,
+      kalla: ettAv(kropp.kalla, ['webb', 'mobil'], 'Källa') || 'webb',
       anteckning: txt(kropp.anteckning),
     });
     svar(res, 201, korning(id));
@@ -167,12 +206,20 @@ export const rutter = [
     if (!k) throw fel(404, 'Körningen finns inte');
     const p = en('SELECT * FROM checklistpunkt WHERE id=? AND mall_id=?', param.punkt, k.mall_id);
     if (!p) throw fel(404, 'Punkten hör inte till checklistan');
+    let bild;
+    if (kropp.bild !== undefined) {
+      if (kropp.bild === null || kropp.bild === '') bild = null;
+      else if (String(kropp.bild).startsWith('data:')) bild = sparaBild(kropp.bild);
+      else if (bildfinns(kropp.bild)) bild = kropp.bild;
+      else throw fel(400, 'Okänd bild');
+    }
     const data = {
       bockad: bool(kropp.bockad) ?? 0,
       varde: kropp.varde === undefined ? undefined : num(kropp.varde),
       text: kropp.text === undefined ? undefined : txt(kropp.text),
       avvikelse: bool(kropp.avvikelse) ?? 0,
       kommentar: kropp.kommentar === undefined ? undefined : txt(kropp.kommentar),
+      bild,
       tid: new Date().toISOString().slice(0, 19).replace('T', ' '),
     };
     const fanns = en('SELECT id FROM checklistsvar WHERE korning_id=? AND punkt_id=?', k.id, p.id);
@@ -209,7 +256,10 @@ export const rutter = [
           skapaArende(
             {
               titel,
-              beskrivning: [p.kommentar, p.hjalptext].filter(Boolean).join('\n\n') || null,
+              beskrivning:
+                [p.kommentar, p.hjalptext, p.bild ? `Bild: /api/bilder/${p.bild}` : null]
+                  .filter(Boolean)
+                  .join('\n\n') || null,
               typ: 'brist',
               prioritet: 2,
               allvarlighet: 'begransar',

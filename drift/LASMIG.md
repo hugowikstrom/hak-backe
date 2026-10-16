@@ -25,8 +25,15 @@ systemctl status hak --no-pager
 curl -s https://hak.nattviken.com/halsa
 ```
 
-Klienten byggs till `web/dist` och serveras av Node. Glöms `npm run build`
-visar sidan den gamla versionen – `halsa` säger alltså inte allt.
+Båda klienterna byggs till `web/dist` (webben i roten, mobilappen i
+`web/dist/mobil`) och serveras av Node. Glöms `npm run build` visar sidan den
+gamla versionen – `halsa` säger alltså inte allt. Kör alltid `npm run build`,
+inte `build:webb` ensamt: bygget rensar `web/dist` först och mobilappen måste
+byggas efteråt.
+
+Mobilappen är en PWA. Servicearbetaren (`/mobil/sw.js`) cachar appskalet, så
+en telefon kan ligga kvar på en gammal version tills den laddas om. Höj
+`CACHE`-namnet i `web/mobil/public/sw.js` när något i skalet måste ut direkt.
 
 ## Säkerhetsläge
 
@@ -36,6 +43,8 @@ visar sidan den gamla versionen – `halsa` säger alltså inte allt.
   **bör bytas innan riktiga medlemmar läggs in**, eftersom sajten är publik.
 - Databasen innehåller namn, e-post och telefonnummer. Den backas upp med
   resten av `/home/hugo` av `aiserver/bin/backup.sh`.
+- Bilder från mobilronderna ligger som filer i `data/bilder/` och kräver
+  inloggning. De tas aldrig bort automatiskt.
 
 ## Nollställ grunddata
 

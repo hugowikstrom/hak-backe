@@ -13,6 +13,16 @@ if (sokvag !== ':memory:') mkdirSync(dirname(sokvag), { recursive: true });
 export const db = new DatabaseSync(sokvag);
 db.exec(readFileSync(join(harDenna, 'schema.sql'), 'utf8'));
 
+// Kolumner som tillkommit efter första versionen. CREATE TABLE IF NOT EXISTS
+// rör inte befintliga tabeller, så de måste läggas till här.
+for (const [tabell, kolumn, typ] of [
+  ['checklistsvar', 'bild', 'TEXT'],
+  ['checklistkorning', 'kalla', "TEXT NOT NULL DEFAULT 'webb'"],
+]) {
+  const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
+  if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);
+}
+
 export const alla = (sql, ...p) => db.prepare(sql).all(...p);
 export const en = (sql, ...p) => db.prepare(sql).get(...p) ?? null;
 export const kor = (sql, ...p) => db.prepare(sql).run(...p);

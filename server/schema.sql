@@ -116,6 +116,7 @@ CREATE TABLE IF NOT EXISTS checklistkorning (
   startad       TEXT NOT NULL DEFAULT (datetime('now')),
   avslutad      TEXT,
   status        TEXT NOT NULL DEFAULT 'pagar',    -- pagar | klar
+  kalla         TEXT NOT NULL DEFAULT 'webb',     -- webb | mobil
   anteckning    TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_korning_mall ON checklistkorning(mall_id);
@@ -129,6 +130,7 @@ CREATE TABLE IF NOT EXISTS checklistsvar (
   text       TEXT,
   avvikelse  INTEGER NOT NULL DEFAULT 0,
   kommentar  TEXT,
+  bild       TEXT,                                -- filnamn under data/bilder
   tid        TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(korning_id, punkt_id)
 );

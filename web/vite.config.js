@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   root: new URL('.', import.meta.url).pathname,
   plugins: [react()],
-  build: { outDir: 'dist', emptyOutDir: true, sourcemap: false },
+  // Mobilklienten bygger till dist/mobil, så webbklienten får inte tömma katalogen.
+  build: { outDir: 'dist', emptyOutDir: false, sourcemap: false },
   server: {
     port: 5190,
     strictPort: true,

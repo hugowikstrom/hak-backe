@@ -1,0 +1,299 @@
+/* HAK Rond – mobilappens formgivning i Härnösands Alpinas gröna.
+   1 Tokens  2 Grund  3 Skal och navigering  4 Kort och listor
+   5 Knappar  6 Formulär  7 Rond  8 Ark och dialoger  9 Smått */
+
+/* ---------- 1 Tokens ---------- */
+:root {
+  --gron:        #8cc63f;   /* klubbgrönt ur logotypen */
+  --gron-mork:   #5f9a2e;   /* bär text på vitt */
+  --gron-djup:   #3b6619;
+  --gron-mjuk:   #f1f8e7;
+  --gron-ram:    #d6e9bd;
+
+  --yta:         #ffffff;
+  --bak:         #f5f7f2;
+  --bak-2:       #eceee8;
+  --ram:         #e0e4da;
+  --text:        #1b2116;
+  --text-svag:   #6c7466;
+  --text-svagare:#98a092;
+
+  --varning:     #b8761a;
+  --varning-mjuk:#fdf2dd;
+  --fara:        #c23b24;
+  --fara-mjuk:   #fbe6e1;
+  --info:        #2f6fb3;
+
+  --radie:       16px;
+  --radie-s:     10px;
+  --radie-xl:    22px;
+  --skugga:      0 1px 2px rgba(27, 33, 22, .06), 0 8px 24px rgba(27, 33, 22, .07);
+  --skugga-upp:  0 -6px 24px rgba(27, 33, 22, .12);
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --topp: env(safe-area-inset-top, 0px);
+  --botten: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --gron:        #9ad44f;
+    --gron-mork:   #a9dd63;
+    --gron-djup:   #c6ea9a;
+    --gron-mjuk:   #1b2614;
+    --gron-ram:    #33471f;
+    --yta:         #171c13;
+    --bak:         #0f130c;
+    --bak-2:       #1d2318;
+    --ram:         #2b3324;
+    --text:        #e9efe3;
+    --text-svag:   #9aa492;
+    --text-svagare:#6f7a68;
+    --varning:     #e0ae55;
+    --varning-mjuk:#2a2112;
+    --fara:        #f08f7a;
+    --fara-mjuk:   #2d1711;
+    --skugga:      0 1px 2px rgba(0,0,0,.5), 0 8px 24px rgba(0,0,0,.35);
+  }
+}
+
+/* ---------- 2 Grund ---------- */
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body, #rot { height: 100%; }
+body {
+  margin: 0;
+  font: 16px/1.45 var(--sans);
+  color: var(--text);
+  background: var(--bak);
+  overscroll-behavior-y: none;
+  -webkit-font-smoothing: antialiased;
+}
+h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.015em; }
+h1 { font-size: 22px; }
+h2 { font-size: 17px; }
+h3 { font-size: 15px; }
+p { margin: 0 0 10px; }
+a { color: var(--gron-mork); }
+.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.svag { color: var(--text-svag); }
+.svagare { color: var(--text-svagare); }
+.liten { font-size: 13px; }
+.mini { font-size: 11.5px; letter-spacing: .07em; text-transform: uppercase; font-weight: 700; }
+.mitten { text-align: center; }
+.rad { display: flex; align-items: center; gap: 10px; }
+.rad-mellan { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.kolumn { display: flex; flex-direction: column; gap: 10px; }
+.vaxa { flex: 1 1 auto; min-width: 0; }
+.hopp { flex-wrap: wrap; }
+
+/* ---------- 3 Skal och navigering ---------- */
+/* Flex, inte grid: offlineraden tillkommer ibland och ska inte äta höjden. */
+.skal { display: flex; flex-direction: column; height: 100%; }
+.topp {
+  background: var(--gron);
+  color: #15210a;
+  padding: calc(var(--topp) + 10px) 16px 12px;
+  display: flex; align-items: center; gap: 10px;
+  position: sticky; top: 0; z-index: 20;
+}
+.topp .marke { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: -.02em; }
+.topp .marke svg { width: 30px; height: 30px; display: block; color: #fff; }
+.topp .marke small { display: block; font-size: 11px; font-weight: 600; opacity: .75; letter-spacing: .04em; text-transform: uppercase; }
+.topp .slut { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.topp button {
+  background: rgba(255, 255, 255, .25); border: 0; color: #15210a;
+  border-radius: 999px; min-height: 36px; padding: 0 14px; font-weight: 600;
+}
+.topp.enkel { padding-bottom: 12px; }
+.tillbaka { background: transparent !important; padding: 0 6px !important; font-size: 20px; }
+
+.innehall { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px 14px 20px; -webkit-overflow-scrolling: touch; display: flex; }
+.sida { display: flex; flex-direction: column; gap: 14px; max-width: 640px; margin: 0 auto; width: 100%; }
+
+.botten {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  background: var(--yta); border-top: 1px solid var(--ram);
+  padding-bottom: var(--botten); position: sticky; bottom: 0; z-index: 20;
+}
+.botten a {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 9px 4px 7px; color: var(--text-svag); text-decoration: none;
+  font-size: 11px; font-weight: 600;
+}
+.botten a .fig { font-size: 20px; line-height: 1; }
+.botten a[aria-current='page'] { color: var(--gron-mork); }
+.botten a[aria-current='page'] .fig { transform: translateY(-1px); }
+
+/* ---------- 4 Kort och listor ---------- */
+.kort {
+  background: var(--yta); border: 1px solid var(--ram);
+  border-radius: var(--radie); box-shadow: var(--skugga); overflow: hidden;
+}
+.kort > header { padding: 12px 14px 0; }
+.kort > .kropp { padding: 14px; }
+.kort.gron { background: var(--gron-mjuk); border-color: var(--gron-ram); }
+
+.lista { display: flex; flex-direction: column; }
+.post {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: left;
+  padding: 14px; border: 0; border-bottom: 1px solid var(--ram);
+  background: var(--yta); color: inherit; font: inherit; min-height: 60px;
+}
+.post:last-child { border-bottom: 0; }
+.post:active { background: var(--bak-2); }
+.post .figur {
+  width: 42px; height: 42px; flex: 0 0 42px; border-radius: 12px;
+  background: var(--gron-mjuk); color: var(--gron-mork);
+  display: grid; place-items: center; font-size: 19px; font-weight: 800;
+}
+.post .figur.varning { background: var(--varning-mjuk); color: var(--varning); }
+.post .figur.fara { background: var(--fara-mjuk); color: var(--fara); }
+.post .txt { min-width: 0; flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; }
+.post .txt strong { font-size: 15.5px; line-height: 1.3; }
+.post .txt > span { display: block; line-height: 1.35; }
+.post .pil { color: var(--text-svagare); font-size: 20px; }
+
+.bricka {
+  display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+  border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap;
+  background: var(--bak-2); color: var(--text-svag);
+}
+.bricka.gron { background: var(--gron-mjuk); color: var(--gron-mork); }
+.bricka.gul { background: var(--varning-mjuk); color: var(--varning); }
+.bricka.rod { background: var(--fara-mjuk); color: var(--fara); }
+.brickrad { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ---------- 5 Knappar ---------- */
+button, .knapp {
+  font: inherit; font-weight: 600; border-radius: var(--radie-s);
+  border: 1px solid var(--ram); background: var(--yta); color: var(--text);
+  min-height: 46px; padding: 0 16px; display: inline-flex; align-items: center;
+  justify-content: center; gap: 8px; cursor: pointer; text-decoration: none;
+}
+button:active, .knapp:active { transform: translateY(1px); }
+button:disabled { opacity: .45; }
+button.primar, .knapp.primar {
+  background: var(--gron); border-color: var(--gron); color: #15210a; font-weight: 800;
+}
+button.stor { min-height: 60px; font-size: 17px; border-radius: var(--radie); width: 100%; }
+button.fara { background: var(--fara-mjuk); border-color: var(--fara-mjuk); color: var(--fara); }
+button.tom { border-color: transparent; background: transparent; color: var(--gron-mork); }
+button.full { width: 100%; }
+.knapprad { display: flex; gap: 10px; }
+.knapprad > * { flex: 1 1 0; }
+.segment { display: flex; background: var(--bak-2); border-radius: var(--radie-s); padding: 3px; gap: 3px; }
+.segment button {
+  flex: 1 1 0; min-height: 38px; border: 0; background: transparent;
+  border-radius: 8px; font-size: 14px; color: var(--text-svag); padding: 0 8px;
+}
+.segment button[aria-pressed='true'] { background: var(--yta); color: var(--text); box-shadow: var(--skugga); }
+
+/* ---------- 6 Formulär ---------- */
+label.falt { display: flex; flex-direction: column; gap: 5px; }
+label.falt > span { font-size: 12.5px; font-weight: 600; color: var(--text-svag); }
+input, select, textarea {
+  font: inherit; color: var(--text); background: var(--yta);
+  border: 1px solid var(--ram); border-radius: var(--radie-s);
+  padding: 11px 12px; width: 100%; min-height: 46px;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--gron); outline-offset: -1px; }
+textarea { min-height: 88px; resize: vertical; }
+input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color: var(--gron-mork); }
+.falt-rad { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ---------- 7 Rond ---------- */
+.framsteg { height: 6px; background: var(--bak-2); border-radius: 999px; overflow: hidden; }
+.framsteg > span { display: block; height: 100%; background: var(--gron); transition: width .2s ease; }
+.rondtopp { display: flex; flex-direction: column; gap: 8px; }
+
+.punktkort {
+  background: var(--yta); border: 1px solid var(--ram); border-radius: var(--radie-xl);
+  box-shadow: var(--skugga); padding: 22px 18px; display: flex; flex-direction: column; gap: 14px;
+  flex: 1 1 auto;
+}
+.punktkort .rakning { font-size: 12px; font-weight: 800; letter-spacing: .09em; text-transform: uppercase; color: var(--gron-mork); }
+.punktkort .fraga { font-size: 24px; line-height: 1.25; font-weight: 700; letter-spacing: -.02em; }
+.punktkort .hjalp {
+  font-size: 14px; color: var(--text-svag); background: var(--bak);
+  border-left: 3px solid var(--gron-ram); padding: 10px 12px; border-radius: 0 10px 10px 0;
+}
+.punktkort .enhet { font-size: 14px; color: var(--text-svag); }
+.svarsknappar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: auto; }
+.svarsknappar button { min-height: 64px; font-size: 17px; font-weight: 800; border-radius: var(--radie); }
+.svarsknappar .ok { background: var(--gron); border-color: var(--gron); color: #15210a; }
+.svarsknappar .avvik { background: var(--fara-mjuk); border-color: var(--fara-mjuk); color: var(--fara); }
+
+.punktrad {
+  display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; align-items: start;
+  padding: 12px 14px; border-bottom: 1px solid var(--ram); background: var(--yta);
+  width: 100%; text-align: left; border-left: 0; border-right: 0; border-top: 0; font: inherit;
+  color: inherit; min-height: 54px;
+}
+.punktrad:last-child { border-bottom: 0; }
+.punktrad .markor {
+  width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center;
+  font-size: 14px; font-weight: 800; background: var(--bak-2); color: var(--text-svagare);
+}
+.punktrad.klar .markor { background: var(--gron-mjuk); color: var(--gron-mork); }
+.punktrad.avvikande .markor { background: var(--fara-mjuk); color: var(--fara); }
+.punktrad.avvikande { background: color-mix(in srgb, var(--fara-mjuk) 45%, var(--yta)); }
+.bildruta { width: 100%; border-radius: var(--radie-s); border: 1px solid var(--ram); display: block; }
+.miniatyr { width: 54px; height: 54px; object-fit: cover; border-radius: 10px; border: 1px solid var(--ram); }
+
+.slutford { text-align: center; padding: 26px 16px; display: flex; flex-direction: column; gap: 10px; align-items: center; }
+.slutford .bock {
+  width: 86px; height: 86px; border-radius: 999px; background: var(--gron-mjuk);
+  color: var(--gron-mork); display: grid; place-items: center; font-size: 44px;
+}
+
+/* ---------- 8 Ark och dialoger ---------- */
+.ark-bak {
+  position: fixed; inset: 0; background: rgba(12, 18, 8, .45); z-index: 60;
+  display: flex; align-items: flex-end; justify-content: center;
+}
+.ark {
+  background: var(--yta); width: 100%; max-width: 640px;
+  border-radius: var(--radie-xl) var(--radie-xl) 0 0; box-shadow: var(--skugga-upp);
+  max-height: 92vh; display: flex; flex-direction: column;
+  padding-bottom: var(--botten); animation: upp .18s ease-out;
+}
+@keyframes upp { from { transform: translateY(14px); opacity: .6; } }
+.ark > header { padding: 14px 16px 8px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.ark > header::before {
+  content: ''; position: absolute; left: 50%; transform: translateX(-50%);
+  margin-top: -8px; width: 38px; height: 4px; border-radius: 999px; background: var(--ram);
+}
+.ark > .kropp { padding: 8px 16px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+.ark > footer { padding: 10px 16px 16px; display: flex; gap: 10px; border-top: 1px solid var(--ram); }
+.ark > footer > * { flex: 1 1 0; }
+
+/* ---------- 9 Smått ---------- */
+.meddelande { padding: 11px 13px; border-radius: var(--radie-s); font-size: 14px; }
+.meddelande.fel { background: var(--fara-mjuk); color: var(--fara); }
+.meddelande.ok { background: var(--gron-mjuk); color: var(--gron-mork); }
+.meddelande.varning { background: var(--varning-mjuk); color: var(--varning); }
+.meddelande.info { background: var(--bak-2); color: var(--text-svag); }
+.offlinerad {
+  background: var(--varning-mjuk); color: var(--varning); text-align: center;
+  font-size: 13px; font-weight: 600; padding: 7px 12px;
+}
+.tomt { text-align: center; color: var(--text-svagare); padding: 26px 14px; }
+.vanta { text-align: center; color: var(--text-svagare); padding: 40px 14px; }
+.notis {
+  position: fixed; left: 12px; right: 12px; bottom: calc(76px + var(--botten)); z-index: 80;
+  display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: none;
+}
+.notis > div {
+  background: var(--text); color: var(--yta); border-radius: 999px;
+  padding: 10px 18px; font-size: 14px; font-weight: 600; box-shadow: var(--skugga);
+  max-width: 100%; animation: upp .15s ease-out;
+}
+.notis > div.fel { background: var(--fara); color: #fff; }
+
+.inlogg {
+  min-height: 100%; display: flex; flex-direction: column; justify-content: center;
+  gap: 16px; padding: 30px 22px calc(30px + var(--botten));
+  background: linear-gradient(170deg, var(--gron) 0%, var(--gron) 42%, var(--bak) 42%, var(--bak) 100%);
+}
+.inlogg .huvud { text-align: center; color: #15210a; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.inlogg .huvud svg { width: 84px; height: 84px; }
+.inlogg form { background: var(--yta); border-radius: var(--radie-xl); padding: 18px; box-shadow: var(--skugga); display: flex; flex-direction: column; gap: 14px; }
