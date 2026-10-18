@@ -41,6 +41,11 @@ const SIDOR = [
 const Jag = createContext(null);
 export const useJag = () => useContext(Jag);
 
+// Vad den här föreningen har påslaget. Komponenter frågar hellre
+// harModul('snolaggning') än gissar utifrån rollen.
+const Plattform = createContext({ forening: null, moduler: [], harModul: () => true });
+export const usePlattform = () => useContext(Plattform);
+
 const Ruta = createContext({ stig: '/', ga: () => {} });
 export const useRuta = () => useContext(Ruta);
 export const Lank = ({ till, children, ...rest }) => {
@@ -53,14 +58,36 @@ export const Lank = ({ till, children, ...rest }) => {
 };
 
 export function App() {
+  const [plattform, sattPlattform] = useState(null);
   const [medlem, sattMedlem] = useState(undefined);
   const [stig, sattStig] = useState(window.location.pathname);
   const [tema, sattTema] = useState(() => localStorage.getItem('hak-tema') || 'ljust');
   const [yta, sattYta] = useState(() => localStorage.getItem('hak-yta') || null);
 
+  // Ett anrop ger både vem jag är och vad plattformen består av här.
+  const hamtaPlattform = useCallback(
+    () =>
+      api
+        .hamta('/api/plattform')
+        .then((d) => {
+          sattPlattform(d);
+          sattMedlem(d.medlem);
+        })
+        .catch(() => sattMedlem(null)),
+    []
+  );
   useEffect(() => {
-    api.hamta('/api/jag').then((d) => sattMedlem(d.medlem)).catch(() => sattMedlem(null));
-  }, []);
+    hamtaPlattform();
+  }, [hamtaPlattform]);
+
+  // Föreningens färger läggs på roten, så att en annan klubb får sina egna.
+  useEffect(() => {
+    const profil = plattform?.forening?.profil;
+    if (!profil) return;
+    for (const [nyckel, varde] of Object.entries(profil))
+      document.documentElement.style.setProperty(`--${nyckel.replace(/_/g, '-')}`, varde);
+    document.title = `${plattform.forening.kortnamn || plattform.forening.namn} Backe`;
+  }, [plattform]);
 
   useEffect(() => {
     document.documentElement.dataset.tema = tema === 'morkt' ? 'morkt' : 'ljust';
@@ -79,10 +106,17 @@ export function App() {
   }, []);
 
   if (medlem === undefined) return <Vanta />;
-  if (!medlem) return <Inlogg klar={(m) => sattMedlem(m)} />;
+  if (!medlem) return <Inlogg forening={plattform?.forening} klar={() => hamtaPlattform()} />;
+
+  // Bara sidor som hör till en påslagen modul finns att gå till.
+  const tillgangliga = new Set((plattform?.moduler || []).flatMap((m) => m.sidor.map((s) => s.nyckel)));
+  tillgangliga.add('start');
 
   // Arbetsytan styr både startsidan och menyn.
-  const ytor = medlem.arbetsytor?.length ? medlem.arbetsytor : [{ nyckel: 'medlem', namn: 'Medlem', sidor: [] }];
+  // Arbetsytornas sidlistor beskärs av vad föreningen faktiskt har påslaget.
+  const ytor = (medlem.arbetsytor?.length ? medlem.arbetsytor : [{ nyckel: 'medlem', namn: 'Medlem', sidor: [] }])
+    .map((y) => ({ ...y, sidor: (y.sidor || []).filter((s) => tillgangliga.has(s)) }))
+    .filter((y, i, lista) => y.sidor.length || y.nyckel === 'medlem' || i === 0);
   const aktivYta = ytor.find((y) => y.nyckel === yta) || ytor[0];
   const bytYta = (nyckel) => {
     sattYta(nyckel);
@@ -92,6 +126,7 @@ export function App() {
 
   const synliga = SIDOR.filter(
     (s) =>
+      tillgangliga.has(s.nyckel) &&
       (!s.roll || minstRoll(medlem, s.roll)) &&
       (!s.behorighet || (medlem.behorigheter || []).includes(s.behorighet)) &&
       (s.nyckel === 'start' || (aktivYta.sidor || []).includes(s.nyckel))
@@ -106,13 +141,20 @@ export function App() {
 
   return (
     <Jag.Provider value={medlem}>
+      <Plattform.Provider
+        value={{
+          forening: plattform?.forening || null,
+          moduler: plattform?.moduler || [],
+          harModul: (nyckel) => (plattform?.moduler || []).some((m) => m.nyckel === nyckel),
+        }}
+      >
       <Ruta.Provider value={{ stig, ga }}>
         <Notiser>
           <div className="skal">
             <header className="topp">
               <div className="marke">
                 <Marke storlek={32} />
-                HAK&nbsp;Backe
+                {plattform?.forening?.kortnamn || 'HAK'}&nbsp;Backe
               </div>
               <nav className="meny">
                 {synliga.map((s) => (
@@ -156,6 +198,7 @@ export function App() {
           </div>
         </Notiser>
       </Ruta.Provider>
+      </Plattform.Provider>
     </Jag.Provider>
   );
 }

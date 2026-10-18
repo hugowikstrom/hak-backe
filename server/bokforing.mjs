@@ -7,6 +7,7 @@
 import { alla, en, spara, transaktion } from './db.mjs';
 import { kronor } from './pengar.mjs';
 import { fel } from './http.mjs';
+import { instans } from './foreningar.mjs';
 import { idag } from './tid.mjs';
 
 /** Föreningens kontoplan, ett urval ur BAS. Går att utöka i registret. */
@@ -270,7 +271,7 @@ export function sieKodning(text) {
   return Buffer.from(bytes);
 }
 
-export function sie4({ fran, till, foretag = process.env.HAK_FORENING || 'Härnösands Alpina Klubb', orgnr = process.env.HAK_ORGNR || '' }) {
+export function sie4({ fran, till, foretag = instans('namn', 'Föreningen'), orgnr = instans('orgnr', '') }) {
   const poster = verifikationer({ fran, till, antal: 10000 }).reverse();
   const anvanda = [...new Set(poster.flatMap((v) => v.rader.map((r) => r.konto)))].sort();
   const konton = kontoplan().filter((k) => anvanda.includes(k.nummer));

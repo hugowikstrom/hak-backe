@@ -1,7 +1,12 @@
 # HAK Backe
 
-Ett system för hela backen: snöläggning, checklistor, ärenden, bemanning och
-rapporter. Kör som en enda Node-process med SQLite, byggd klient i `web/dist`.
+Ett system för hela backen: snöläggning, checklistor, ärenden, bemanning,
+kiosk, uthyrning, ekonomi, träning och medlemsmatrikel. Kör som en enda
+Node-process med SQLite, byggda klienter i `web/dist`.
+
+Plattformen bär **flera föreningar**. Varje förening har en egen databasfil,
+egna färger och egna påslagna moduler; värdnamnet avgör vilken förening en
+begäran gäller. `docs/ARKITEKTUR.md` beskriver sömmarna och gränserna.
 
 Drift: <https://hak.nattviken.com> (systemd-tjänsten `hak`, 127.0.0.1:8120).
 Mobilappen för checklistor: <https://hak.nattviken.com/mobil/>.
@@ -14,7 +19,9 @@ npm install
 npm run fro          # grunddata: medlemmar, utrustning, checklistor, pass
 npm run dev          # API 8120 + webben 5190 + mobilen 5191/mobil/
 npm run verify       # tester och bygge – grinden före driftsättning
-npm run build        # bygger båda klienterna till web/dist
+npm run build        # bygger alla tre klienterna till web/dist
+npm run foreningar   # vilka föreningar som finns och vad de har påslaget
+npm run ny-forening -- --nyckel vargen --namn "Vargens SK" --doman vargen.se
 ```
 
 Inloggningar i grunddatat (alla har lösenordet `hak`):

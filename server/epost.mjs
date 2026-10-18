@@ -2,8 +2,10 @@
 import { alla, en, kor, spara } from './db.mjs';
 
 const PA = process.env.HAK_EPOST_AV !== '0';
-const FRAN = process.env.HAK_EPOST_FRAN || 'HAK Backe <backe@nattviken.com>';
-const BAS = process.env.HAK_BAS_URL || 'https://hak.nattviken.com';
+import { instans } from './foreningar.mjs';
+
+const FRAN = () => instans('epost_fran', process.env.HAK_EPOST_FRAN || 'HAK Backe <backe@nattviken.com>');
+const BAS = () => instans('bas_url', process.env.HAK_BAS_URL || 'https://hak.nattviken.com');
 
 let transport = null;
 async function hamtaTransport() {
@@ -33,7 +35,7 @@ export async function skicka({ till, amne, text, slag = 'ovrigt' }) {
   }
   try {
     const t = await hamtaTransport();
-    await t.sendMail({ from: FRAN, to: till, subject: amne, text });
+    await t.sendMail({ from: FRAN(), to: till, subject: amne, text });
     kor(`UPDATE epostlogg SET skickad=datetime('now') WHERE id=?`, id);
     return { id, skickad: true };
   } catch (e) {
@@ -42,7 +44,7 @@ export async function skicka({ till, amne, text, slag = 'ovrigt' }) {
   }
 }
 
-export const lank = (stig = '') => `${BAS}${stig}`;
+export const lank = (stig = '') => `${BAS()}${stig}`;
 
 /** Brev till en medlem om bokningsläget. */
 export function brevBokning({ medlem, lage, minaPass, lediga, fran, till }) {

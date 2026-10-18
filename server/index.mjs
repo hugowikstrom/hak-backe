@@ -2,30 +2,16 @@
 import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
-import { medlemAvKaka, RANG, stadaSessioner } from './auth.mjs';
+import { medlemAvKaka, publikMedlem, RANG, stadaSessioner } from './auth.mjs';
 import { far, uppdragFor } from './behorighet.mjs';
 import { fel, HttpFel, lasKropp, matcha, svar } from './http.mjs';
 import { ROT } from './db.mjs';
 
-import { rutter as konto } from './api/konto.mjs';
-import { rutter as register } from './api/register.mjs';
-import { rutter as sno } from './api/sno.mjs';
-import { rutter as checklistor } from './api/checklistor.mjs';
-import { rutter as arenden } from './api/arenden.mjs';
-import { rutter as bemanning } from './api/bemanning.mjs';
-import { rutter as rapport } from './api/rapport.mjs';
-import { rutter as oversikt } from './api/oversikt.mjs';
-import { rutter as bilder } from './api/bilder.mjs';
-import { rutter as vader } from './api/vader.mjs';
-import { rutter as fik } from './api/fik.mjs';
-import { rutter as uthyrning } from './api/uthyrning.mjs';
-import { rutter as bokforing } from './api/bokforing.mjs';
-import { rutter as forening } from './api/forening.mjs';
-import { rutter as traning } from './api/traning.mjs';
-import { rutter as ide } from './api/ide.mjs';
-import { rutter as planbok } from './api/planbok.mjs';
+import { aktivaModuler, allaRutter, modulPa, publikaModuler } from './moduler.mjs';
+import { foreningar, foreningAvVard, korSom, publikForening } from './foreningar.mjs';
+import { ARBETSYTOR } from './behorighet.mjs';
 
-const RUTTER = [...konto, ...register, ...sno, ...checklistor, ...arenden, ...bemanning, ...rapport, ...oversikt, ...bilder, ...vader, ...fik, ...uthyrning, ...bokforing, ...forening, ...traning, ...ide, ...planbok];
+const RUTTER = allaRutter();
 
 const PORT = Number(process.env.HAK_PORT || 8120);
 const VARD = process.env.HAK_VARD || '127.0.0.1';
@@ -51,34 +37,17 @@ function statisk(res, stig) {
 export const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const stig = url.pathname;
+  // Värdnamnet avgör vilken förening begäran gäller. Allt nedan körs i den
+  // föreningens skal: dess databas och dess inställningar.
+  // Bakom Caddy är det X-Forwarded-Host som bär det namn gästen skrev.
+  const forening = foreningAvVard(req.headers['x-forwarded-host'] || req.headers.host);
 
   try {
     if (stig.startsWith('/api/')) {
-      const traff = matcha(RUTTER, req.method, stig);
-      if (!traff) throw fel(404, `Okänd slutpunkt: ${req.method} ${stig}`);
-      const { rutt: r, param } = traff;
-
-      const grundmedlem = medlemAvKaka(req.headers.cookie);
-      // Uppdragen följer med, så att behörighetsprövningen slipper läsa om dem.
-      const medlem = grundmedlem ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id) } : null;
-      if (r.roll !== 'oppen') {
-        if (!medlem) throw fel(401, 'Inte inloggad');
-        if (r.roll.startsWith('@')) {
-          if (!far(medlem, r.roll.slice(1))) throw fel(403, `Kräver behörigheten ${r.roll.slice(1)}`);
-        } else if (!(RANG[medlem.roll] >= RANG[r.roll])) {
-          throw fel(403, `Kräver rollen ${r.roll}`);
-        }
-      }
-      // Enkelt CSRF-skydd: skrivningar måste komma från klienten.
-      if (req.method !== 'GET' && req.headers['x-hak'] !== '1')
-        throw fel(403, 'Saknar klientheader');
-
-      const kropp = await lasKropp(req);
-      await r.fn({ req, res, medlem, kropp, fraga: url.searchParams, param });
-      return;
+      return await korSom(forening, () => hanteraApi({ req, res, url, stig, forening }));
     }
 
-    if (stig === '/halsa') return svar(res, 200, { ok: true, tid: new Date().toISOString() });
+    if (stig === '/halsa') return svar(res, 200, { ok: true, tid: new Date().toISOString(), forening: forening.nyckel });
 
     if (req.method === 'GET' || req.method === 'HEAD') {
       if (statisk(res, stig)) return;
@@ -101,11 +70,64 @@ export const server = createServer(async (req, res) => {
   }
 });
 
+async function hanteraApi({ req, res, url, stig, forening }) {
+  // Vad plattformen består av för den här föreningen.
+  if (stig === '/api/plattform' && req.method === 'GET') {
+    const grundmedlem = medlemAvKaka(req.headers.cookie);
+    const medlem = grundmedlem ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id) } : null;
+    return svar(res, 200, {
+      forening: publikForening(forening),
+      moduler: publikaModuler(forening),
+      arbetsytor: ARBETSYTOR,
+      medlem: publikMedlem(grundmedlem),
+    });
+  }
+
+  const traff = matcha(RUTTER, req.method, stig);
+  if (!traff) throw fel(404, `Okänd slutpunkt: ${req.method} ${stig}`);
+  const { rutt: r, param } = traff;
+  // En avstängd modul finns inte för den här föreningen.
+  if (!modulPa(forening, r.modul))
+    throw fel(404, `Modulen ${r.modul} är inte påslagen för ${forening.namn}`);
+
+  const grundmedlem = medlemAvKaka(req.headers.cookie);
+  // Uppdragen följer med, så att behörighetsprövningen slipper läsa om dem.
+  const medlem = grundmedlem ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id) } : null;
+  if (r.roll !== 'oppen') {
+    if (!medlem) throw fel(401, 'Inte inloggad');
+    if (r.roll.startsWith('@')) {
+      if (!far(medlem, r.roll.slice(1))) throw fel(403, `Kräver behörigheten ${r.roll.slice(1)}`);
+    } else if (!(RANG[medlem.roll] >= RANG[r.roll])) {
+      throw fel(403, `Kräver rollen ${r.roll}`);
+    }
+  }
+  // Enkelt CSRF-skydd: skrivningar måste komma från klienten.
+  if (req.method !== 'GET' && req.headers['x-hak'] !== '1')
+    throw fel(403, 'Saknar klientheader');
+
+  const kropp = await lasKropp(req);
+  await r.fn({ req, res, medlem, kropp, fraga: url.searchParams, param, forening });
+}
+
 server.listen(PORT, VARD, () => {
+  const lista = foreningar();
   console.log(`HAK Backe lyssnar på http://${VARD}:${PORT}`);
-  stadaSessioner();
+  console.log(
+    `Föreningar: ${lista.map((f) => `${f.nyckel} (${aktivaModuler(f).length} moduler)`).join(', ')}`
+  );
+  stadaAllasSessioner();
 });
-setInterval(stadaSessioner, 6 * 3600e3).unref();
+/** Gamla sessioner städas i varje förenings databas. */
+function stadaAllasSessioner() {
+  for (const f of foreningar()) {
+    try {
+      korSom(f, stadaSessioner);
+    } catch (e) {
+      console.error('[sessionsstädning]', f.nyckel, e.message);
+    }
+  }
+}
+setInterval(stadaAllasSessioner, 6 * 3600e3).unref();
 
 for (const sig of ['SIGINT', 'SIGTERM'])
   process.on(sig, () => server.close(() => process.exit(0)));

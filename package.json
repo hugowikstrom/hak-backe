@@ -16,7 +16,9 @@
     "build:mobil": "vite build --config web/mobil/vite.config.js",
     "dev:mobil": "vite --config web/mobil/vite.config.js",
     "build:kiosk": "vite build --config web/kiosk/vite.config.js",
-    "dev:kiosk": "vite --config web/kiosk/vite.config.js"
+    "dev:kiosk": "vite --config web/kiosk/vite.config.js",
+    "ny-forening": "node scripts/ny-forening.mjs",
+    "foreningar": "node scripts/foreningar.mjs"
   },
   "dependencies": {
     "nodemailer": "^7.0.7"

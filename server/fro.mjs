@@ -8,7 +8,20 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const nollstall = process.argv.includes('--nollstall');
-const sokvag = process.env.HAK_DB || join(dirname(fileURLToPath(import.meta.url)), '..', 'data', 'hak.db');
+
+// Fröet kan läggas i vilken förening som helst: --forening <nyckel>.
+const valdForening = (() => {
+  const i = process.argv.indexOf('--forening');
+  return i > 0 ? process.argv[i + 1] : null;
+})();
+const { forening: hamtaForening, standardforening } = await import('./foreningar.mjs');
+const foreningen = valdForening ? hamtaForening(valdForening) : standardforening();
+if (!foreningen) {
+  console.error(`Föreningen ${valdForening} finns inte. Se npm run foreningar.`);
+  process.exit(1);
+}
+const sokvag = foreningen.databas;
+console.log(`Förening: ${foreningen.namn} (${sokvag})`);
 
 if (nollstall && sokvag !== ':memory:') {
   for (const fil of [sokvag, `${sokvag}-wal`, `${sokvag}-shm`])
@@ -18,7 +31,15 @@ if (nollstall && sokvag !== ':memory:') {
     }
 }
 
-const { alla, db, en, kor, spara, transaktion } = await import('./db.mjs');
+const dbmodul = await import('./db.mjs');
+const handtag = dbmodul.oppna(sokvag);
+const { alla, en, kor, spara, transaktion } = dbmodul;
+const db = handtag;
+
+// Allt som följer körs i föreningens skal, så att varje skrivning hamnar i
+// dess databas även när plattformen bär flera.
+const { medSkal } = dbmodul;
+const iForeningen = (fn) => medSkal({ db: handtag, forening: foreningen }, fn);
 const { hasha } = await import('./auth.mjs');
 const { passSlag, plusDagar, veckodag } = await import('./tid.mjs');
 
@@ -39,7 +60,7 @@ if (false) {
 
 const IDAG = new Date().toLocaleDateString('sv-SE');
 
-transaktion(() => {
+iForeningen(() => transaktion(() => {
   // ---------- Medlemmar ----------
   const medlemmar = [
     ['jonas', 'Jonas Lindqvist', 'anlaggningsansvarig', 'jonas@example.com', 0, []],
@@ -749,12 +770,12 @@ transaktion(() => {
       betalsatt: m.id % 4 === 0 ? null : 'swish',
     });
   }
-});
+}));
 
 // ---------- Bokföring av det som sålts ----------
 // Verifikationerna skapas utanför transaktionen: de har triggrar som
 // vägrar ändringar, och ska bokföras i samma ordning som affärerna skedde.
-{
+await iForeningen(async () => {
   const bok = await import('./bokforing.mjs');
   bok.sakerstallKontoplan();
   const kassorska = en("SELECT * FROM medlem WHERE anvandarnamn='karin'");
@@ -807,11 +828,13 @@ transaktion(() => {
       av: kassor,
     });
   }
-}
+});
 
 console.log('Frö klart:');
-for (const t of ['medlem', 'omrade', 'utrustning', 'checklistmall', 'checklistpunkt', 'position',
-  'pass', 'bokning', 'matning', 'arende', 'insats', 'artikel', 'hyrespris',
-  'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift'])
-  console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
+iForeningen(() => {
+  for (const t of ['medlem', 'omrade', 'utrustning', 'checklistmall', 'checklistpunkt', 'position',
+    'pass', 'bokning', 'matning', 'arende', 'insats', 'artikel', 'hyrespris',
+    'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift'])
+    console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
+});
 db.close();

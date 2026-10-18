@@ -2,12 +2,10 @@
 // Tolkningen är ren och testbar; hämtningen cachas, för båda tjänsterna
 // ber uttryckligen om att man inte frågar oftare än prognosen uppdateras.
 import { klartecken, wetbulb } from './snoteknik.mjs';
+import { instans } from './foreningar.mjs';
 
-/** Vårdkasbacken i Härnösand. Går att flytta med HAK_PLATS=lat,lon,hojd. */
-export const PLATS = (() => {
-  const [lat, lon, hojd] = (process.env.HAK_PLATS || '62.627,17.914,170').split(',').map(Number);
-  return { namn: 'Vårdkasbacken', lat, lon, hojd: hojd || 0 };
-})();
+/** Föreningens backe. Varje förening har sina egna koordinater. */
+export const plats = () => instans('plats', { namn: 'Backen', lat: 62.627, lon: 17.914, hojd: 170 });
 
 const AGENT = process.env.HAK_VADER_AGENT || 'HAK-Backe/1.0 (+https://hak.nattviken.com)';
 const TTL_MINUTER = Number(process.env.HAK_VADER_TTL || 30);
@@ -16,14 +14,14 @@ const KALLOR = {
   yr: {
     namn: 'YR (met.no)',
     url: () =>
-      `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${PLATS.lat}&lon=${PLATS.lon}&altitude=${Math.round(PLATS.hojd)}`,
+      `https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${plats().lat}&lon=${plats().lon}&altitude=${Math.round(plats().hojd)}`,
     huvuden: { 'user-agent': AGENT, accept: 'application/json' },
     tolka: tolkaYr,
   },
   smhi: {
     namn: 'SMHI',
     url: () =>
-      `https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/${PLATS.lon}/lat/${PLATS.lat}/data.json`,
+      `https://opendata-download-metfcst.smhi.se/api/category/snow1g/version/1/geotype/point/lon/${plats().lon}/lat/${plats().lat}/data.json`,
     huvuden: { 'user-agent': AGENT, accept: 'application/json' },
     tolka: tolkaSmhi,
   },
@@ -194,10 +192,11 @@ export const fonster = (punkter, timmar, nu = new Date()) => {
 
 // ---- hämtning och cache ----
 const cache = new Map();
+const cachenyckel = (nyckel) => `${nyckel}@${plats().lat},${plats().lon}`;
 
 async function hamtaKalla(nyckel) {
   const k = KALLOR[nyckel];
-  const sparad = cache.get(nyckel);
+  const sparad = cache.get(cachenyckel(nyckel));
   if (sparad && Date.now() - sparad.hamtad < TTL_MINUTER * 60e3) return sparad;
   try {
     const svar = await fetch(k.url(), { headers: k.huvuden, signal: AbortSignal.timeout(15000) });
@@ -205,11 +204,11 @@ async function hamtaKalla(nyckel) {
     const punkter = k.tolka(await svar.json());
     if (!punkter.length) throw new Error(`${k.namn} gav inga tidsteg`);
     const ny = { nyckel, namn: k.namn, hamtad: Date.now(), punkter, fel: null };
-    cache.set(nyckel, ny);
+    cache.set(cachenyckel(nyckel), ny);
     return ny;
   } catch (e) {
     const fel = { nyckel, namn: k.namn, hamtad: sparad?.hamtad ?? 0, punkter: sparad?.punkter ?? [], fel: String(e.message || e) };
-    if (sparad) cache.set(nyckel, { ...sparad, fel: fel.fel });
+    if (sparad) cache.set(cachenyckel(nyckel), { ...sparad, fel: fel.fel });
     return fel;
   }
 }
@@ -234,7 +233,7 @@ export async function prognos({ tvinga = false } = {}) {
   };
 
   return {
-    plats: PLATS,
+    plats: plats(),
     uppdaterad: new Date().toISOString(),
     kallor: hamtade.map((h) => ({
       nyckel: h.nyckel, namn: h.namn, fel: h.fel,

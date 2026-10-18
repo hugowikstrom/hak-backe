@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { api } from '../api.js';
 import { Marke } from '../delar/bitar.jsx';
 
-export function Inlogg({ klar }) {
+export function Inlogg({ klar, forening }) {
   const [anvandarnamn, sattAnv] = useState('');
   const [losenord, sattLos] = useState('');
   const [fel, sattFel] = useState(null);
@@ -26,8 +26,9 @@ export function Inlogg({ klar }) {
     <div className="inlogg">
       <form onSubmit={skicka}>
         <div className="marke">
-          <Marke storlek={30} /> HAK Backe
+          <Marke storlek={30} /> {forening?.kortnamn || 'HAK'} Backe
         </div>
+        {forening?.namn && <p className="hjalp" style={{ marginTop: -4 }}>{forening.namn}</p>}
         <p className="hjalp">Snöläggning, checklistor, ärenden och bemanning.</p>
         <label className="falt">
           <span>Användarnamn</span>

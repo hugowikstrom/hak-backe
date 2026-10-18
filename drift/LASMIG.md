@@ -14,6 +14,25 @@
   adresser ska användas, och sätt `HAK_EPOST_AV=0` under tiden för att inte
   mejla medlemmar av misstag.
 
+## Flera föreningar
+
+I dag kör maskinen en förening: registret `data/foreningar.json` saknas, och
+då byggs en förening av miljövariablerna mot `data/hak.db`. Allt fungerar som
+förut.
+
+Ska en till förening in:
+
+```bash
+npm run ny-forening -- --nyckel vargen --namn "Vargens SK" --doman vargen.nattviken.com
+# lägg till ett Caddy-block för domänen som pekar på 127.0.0.1:8120
+sudo systemctl restart hak
+npm run foreningar
+```
+
+Caddy måste skicka med värdnamnet – `reverse_proxy` gör det, och appen läser
+`X-Forwarded-Host` före `Host`. Varje förening får sin egen databasfil under
+`data/foreningar/`, som ska med i säkerhetskopian.
+
 ## Driftsätt en ändring
 
 ```bash

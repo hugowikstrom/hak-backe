@@ -1,4 +1,11 @@
-// Databasen. En fil, ingen ORM, synkrona frågor (node:sqlite).
+// Databasen. En fil per förening, ingen ORM, synkrona frågor (node:sqlite).
+//
+// Plattformen kan bära flera föreningar. Varje förening har sin egen fil:
+// ingen fråga kan läcka mellan dem, och en förening går att lämna ut, flytta
+// eller radera som en enda fil. Vilken databas ett anrop gäller avgörs av
+// begäran och bärs i en AsyncLocalStorage, så att modulerna kan fortsätta
+// anropa alla()/en()/kor() utan att veta något om föreningar.
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -7,48 +14,101 @@ import { fileURLToPath } from 'node:url';
 const harDenna = dirname(fileURLToPath(import.meta.url));
 export const ROT = join(harDenna, '..');
 
-const sokvag = process.env.HAK_DB || join(ROT, 'data', 'hak.db');
-if (sokvag !== ':memory:') mkdirSync(dirname(sokvag), { recursive: true });
+const skal = new AsyncLocalStorage();
+const oppnade = new Map();
 
-export const db = new DatabaseSync(sokvag);
-db.exec(readFileSync(join(harDenna, 'schema.sql'), 'utf8'));
+/** Öppnar en databas och kör schema och migreringar. Samma fil återanvänds. */
+export function oppna(sokvag) {
+  // :memory: cachas inte – två föreningar i minnet ska inte dela databas.
+  if (sokvag !== ':memory:' && oppnade.has(sokvag)) return oppnade.get(sokvag);
+  if (sokvag !== ':memory:') mkdirSync(dirname(sokvag), { recursive: true });
+  const handtag = new DatabaseSync(sokvag);
+  handtag.exec(readFileSync(join(harDenna, 'schema.sql'), 'utf8'));
+  migrera(handtag);
+  if (sokvag !== ':memory:') oppnade.set(sokvag, handtag);
+  return handtag;
+}
 
-// Kolumnen hette vatkula innan branschordet wetbulb slog igenom i appen.
-if (db.prepare('PRAGMA table_info(matning)').all().some((k) => k.name === 'vatkula'))
-  db.exec('ALTER TABLE matning RENAME COLUMN vatkula TO wetbulb');
+export function stang(sokvag) {
+  const handtag = oppnade.get(sokvag);
+  if (!handtag) return;
+  handtag.close();
+  oppnade.delete(sokvag);
+}
 
-// Kolumner som tillkommit efter första versionen. CREATE TABLE IF NOT EXISTS
-// rör inte befintliga tabeller, så de måste läggas till här.
-for (const [tabell, kolumn, typ] of [
-  ['checklistsvar', 'bild', 'TEXT'],
-  ['checklistkorning', 'kalla', "TEXT NOT NULL DEFAULT 'webb'"],
-  ['checklistmall', 'position_nyckel', 'TEXT'],
-  ['kundorder', 'kod', 'TEXT'],
-  // Matrikeln: personuppgifter ligger kvar i medlemstabellen men läses bara
-  // av den som har behörigheten medlemsregister.
-  ['medlem', 'medlemsnummer', 'TEXT'],
-  ['medlem', 'fornamn', 'TEXT'],
-  ['medlem', 'efternamn', 'TEXT'],
-  ['medlem', 'fodelsedatum', 'TEXT'],
-  ['medlem', 'adress', 'TEXT'],
-  ['medlem', 'postnummer', 'TEXT'],
-  ['medlem', 'ort', 'TEXT'],
-  ['medlem', 'kategori', "TEXT NOT NULL DEFAULT 'aktiv'"],
-  ['medlem', 'intradesdatum', 'TEXT'],
-  ['medlem', 'utradesdatum', 'TEXT'],
-  ['medlem', 'malsman_namn', 'TEXT'],
-  ['medlem', 'malsman_telefon', 'TEXT'],
-  ['medlem', 'malsman_epost', 'TEXT'],
-  ['medlem', 'nodkontakt_namn', 'TEXT'],
-  ['medlem', 'nodkontakt_telefon', 'TEXT'],
-  ['medlem', 'licens', 'TEXT'],
-  ['medlem', 'licens_till', 'TEXT'],
-  ['medlem', 'samtycke_bild', 'INTEGER'],
-  ['medlem', 'samtycke_tid', 'TEXT'],
-  ['medlem', 'belastningsregister_visat', 'TEXT'],
-]) {
-  const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
-  if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);
+export const oppnaDatabaser = () => [...oppnade.keys()];
+
+/** Standarddatabasen: den enda föreningen, eller den som skript kör mot. */
+const standardSokvag = process.env.HAK_DB || join(ROT, 'data', 'hak.db');
+let standard = null;
+const standarddb = () => (standard ??= oppna(standardSokvag));
+
+/**
+ * Kör fn i en förenings skal: dess databas och dess konfiguration. All kod
+ * inuti ser bara den föreningen, utan att själv behöva veta om saken.
+ */
+export const medSkal = (innehall, fn) => skal.run(innehall, fn);
+export const medDatabas = (handtag, fn) => skal.run({ db: handtag }, fn);
+
+/** Den databas anropet gäller just nu. */
+export const aktuell = () => skal.getStore()?.db ?? standarddb();
+
+/** Föreningen anropet gäller, om något skal är satt. */
+export const aktuellForening = () => skal.getStore()?.forening ?? null;
+
+/**
+ * `db` pekar alltid på den aktuella databasen. Proxyn finns för att äldre
+ * kod gör db.prepare(...) rakt av; nya anrop bör gå via alla/en/kor.
+ */
+export const db = new Proxy(
+  {},
+  {
+    get(_, egenskap) {
+      const h = aktuell();
+      const v = h[egenskap];
+      return typeof v === 'function' ? v.bind(h) : v;
+    },
+  }
+);
+
+function migrera(db) {
+  // Kolumnen hette vatkula innan branschordet wetbulb slog igenom i appen.
+  if (db.prepare('PRAGMA table_info(matning)').all().some((k) => k.name === 'vatkula'))
+    db.exec('ALTER TABLE matning RENAME COLUMN vatkula TO wetbulb');
+
+  // Kolumner som tillkommit efter första versionen. CREATE TABLE IF NOT EXISTS
+  // rör inte befintliga tabeller, så de måste läggas till här.
+  for (const [tabell, kolumn, typ] of [
+    ['checklistsvar', 'bild', 'TEXT'],
+    ['checklistkorning', 'kalla', "TEXT NOT NULL DEFAULT 'webb'"],
+    ['checklistmall', 'position_nyckel', 'TEXT'],
+    ['kundorder', 'kod', 'TEXT'],
+    // Matrikeln: personuppgifter ligger kvar i medlemstabellen men läses bara
+    // av den som har behörigheten medlemsregister.
+    ['medlem', 'medlemsnummer', 'TEXT'],
+    ['medlem', 'fornamn', 'TEXT'],
+    ['medlem', 'efternamn', 'TEXT'],
+    ['medlem', 'fodelsedatum', 'TEXT'],
+    ['medlem', 'adress', 'TEXT'],
+    ['medlem', 'postnummer', 'TEXT'],
+    ['medlem', 'ort', 'TEXT'],
+    ['medlem', 'kategori', "TEXT NOT NULL DEFAULT 'aktiv'"],
+    ['medlem', 'intradesdatum', 'TEXT'],
+    ['medlem', 'utradesdatum', 'TEXT'],
+    ['medlem', 'malsman_namn', 'TEXT'],
+    ['medlem', 'malsman_telefon', 'TEXT'],
+    ['medlem', 'malsman_epost', 'TEXT'],
+    ['medlem', 'nodkontakt_namn', 'TEXT'],
+    ['medlem', 'nodkontakt_telefon', 'TEXT'],
+    ['medlem', 'licens', 'TEXT'],
+    ['medlem', 'licens_till', 'TEXT'],
+    ['medlem', 'samtycke_bild', 'INTEGER'],
+    ['medlem', 'samtycke_tid', 'TEXT'],
+    ['medlem', 'belastningsregister_visat', 'TEXT'],
+  ]) {
+    const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
+    if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);
+  }
 }
 
 export const alla = (sql, ...p) => db.prepare(sql).all(...p);

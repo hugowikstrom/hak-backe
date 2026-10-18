@@ -2,7 +2,7 @@
 // inte snöläggningen, och ordföranden ska se föreningen, inte lansarna.
 import { useEffect } from 'react';
 import { api, fragestrang } from '../api.js';
-import { Lank, useJag } from '../app.jsx';
+import { Lank, useJag, usePlattform } from '../app.jsx';
 import { Bricka, Kort, Linjegraf, Matare, Nyckeltal, Prioritetsbricka, Statusbricka, Tomt, useHamta, Vanta } from '../delar/bitar.jsx';
 import { Tabell } from '../delar/tabell.jsx';
 import {
@@ -39,7 +39,10 @@ const Rubrik = ({ titel, under, knappar }) => {
 
 /** Wetbulb och produktionsfönster – används av flera vyer. */
 function Vaderkort({ kompakt = false }) {
-  const { data } = useHamta(() => api.hamta('/api/vader'));
+  const { harModul } = usePlattform();
+  const pa = harModul('snolaggning');
+  const { data } = useHamta(() => (pa ? api.hamta('/api/vader') : Promise.resolve(null)), [pa]);
+  if (!pa) return null;
   if (!data) return <Kort titel="Väder"><Vanta /></Kort>;
   const f = data.h48.fonster[0];
   return (
@@ -74,7 +77,10 @@ function Vaderkort({ kompakt = false }) {
 }
 
 function Rondkort({ titel = 'Ronder att göra i dag' }) {
-  const { data } = useHamta(() => api.hamta('/api/checklistor/lage'));
+  const { harModul } = usePlattform();
+  const pa = harModul('checklistor');
+  const { data } = useHamta(() => (pa ? api.hamta('/api/checklistor/lage') : Promise.resolve(null)), [pa]);
+  if (!pa) return null;
   if (!data) return <Kort titel={titel}><Vanta /></Kort>;
   const kvar = data.mallar.filter((m) => m.kvar);
   return (
@@ -106,7 +112,10 @@ function Rondkort({ titel = 'Ronder att göra i dag' }) {
 }
 
 function Arendekort({ titel = 'Ärenden som väntar', filter = '' }) {
-  const { data } = useHamta(() => api.hamta(`/api/arenden?status=oppna${filter}`));
+  const { harModul } = usePlattform();
+  const pa = harModul('arenden');
+  const { data } = useHamta(() => (pa ? api.hamta(`/api/arenden?status=oppna${filter}`) : Promise.resolve(null)), [pa]);
+  if (!pa) return null;
   if (!data) return <Kort titel={titel}><Vanta /></Kort>;
   const akuta = data.filter((a) => a.prioritet <= 2 || a.allvarlighet === 'sakerhetsrisk');
   return (
@@ -136,6 +145,7 @@ function Arendekort({ titel = 'Ärenden som väntar', filter = '' }) {
 // ---------- anläggningsansvarig ----------
 function Anlaggning() {
   const jag = useJag();
+  const { harModul } = usePlattform();
   const oversikt = useHamta(() => api.hamta('/api/oversikt'));
   if (!oversikt.data) return <Vanta />;
   const d = oversikt.data;
@@ -144,15 +154,18 @@ function Anlaggning() {
     <>
       <Rubrik
         titel={`Anläggningen · ${jag.namn.split(' ')[0]}`}
-        under={`${langDatum(idag())} · snöläggning, utrustning och backens skick`}
+        under={`${langDatum(idag())} · ${[harModul('snolaggning') && 'snöläggning', 'utrustning', 'backens skick']
+          .filter(Boolean)
+          .join(', ')}`}
         knappar={
           <>
-            <Lank till="/snolaggning" className="knapp">Rapportera mätning</Lank>
-            <Lank till="/arenden" className="knapp">Nytt ärende</Lank>
+            {harModul('snolaggning') && <Lank till="/snolaggning" className="knapp">Rapportera mätning</Lank>}
+            {harModul('arenden') && <Lank till="/arenden" className="knapp">Nytt ärende</Lank>}
           </>
         }
       />
       <div className="rutor bred">
+        {harModul('snolaggning') && (
         <Kort titel="Snöläggning just nu" undertext={d.sno.senasteMatning ? `Senaste mätning ${sedan(d.sno.senasteMatning.tid)}` : 'Ingen mätning'}>
           <div className={`klartecken ${kt.niva}`}>
             <div className="lampa">{kt.wetbulb != null ? tal(kt.wetbulb) : '?'}</div>
@@ -169,6 +182,7 @@ function Anlaggning() {
             </div>
           )}
         </Kort>
+        )}
 
         <Vaderkort kompakt />
 
@@ -193,12 +207,14 @@ function Anlaggning() {
         <Rondkort />
         <Arendekort />
 
-        <Kort titel="Bemanning den närmaste veckan" undertext={`${d.bemanning.hal} pass saknar folk`} verktyg={<Lank till="/bemanning" className="knapp liten">Schemat</Lank>}>
-          <div className="rad gap-16 hopp">
-            <Nyckeltal etikett="Pass i veckan" varde={d.bemanning.veckan.length} />
-            <Nyckeltal etikett="Hål" varde={d.bemanning.hal} farg={d.bemanning.hal ? 'fara' : 'ok'} />
-          </div>
-        </Kort>
+        {harModul('bemanning') && (
+          <Kort titel="Bemanning den närmaste veckan" undertext={`${d.bemanning.hal} pass saknar folk`} verktyg={<Lank till="/bemanning" className="knapp liten">Schemat</Lank>}>
+            <div className="rad gap-16 hopp">
+              <Nyckeltal etikett="Pass i veckan" varde={d.bemanning.veckan.length} />
+              <Nyckeltal etikett="Hål" varde={d.bemanning.hal} farg={d.bemanning.hal ? 'fara' : 'ok'} />
+            </div>
+          </Kort>
+        )}
       </div>
     </>
   );

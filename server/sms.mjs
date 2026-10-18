@@ -5,7 +5,9 @@ import { normaliseraMobil } from './pengar.mjs';
 
 const ANVANDARE = process.env.HAK_46ELKS_ANVANDARE || null;
 const LOSEN = process.env.HAK_46ELKS_LOSEN || null;
-const FRAN = process.env.HAK_SMS_FRAN || 'HAKbacken';
+import { instans } from './foreningar.mjs';
+
+const FRAN = () => instans('sms_fran', process.env.HAK_SMS_FRAN || 'HAKbacken');
 
 export const smsPa = () => !!(ANVANDARE && LOSEN);
 
@@ -27,7 +29,7 @@ export async function skickaSms({ till, text, slag = 'ovrigt' }) {
         authorization: `Basic ${Buffer.from(`${ANVANDARE}:${LOSEN}`).toString('base64')}`,
         'content-type': 'application/x-www-form-urlencoded',
       },
-      body: new URLSearchParams({ from: FRAN, to: nummer, message: text }),
+      body: new URLSearchParams({ from: FRAN(), to: nummer, message: text }),
       signal: AbortSignal.timeout(15000),
     });
     if (!svar.ok) throw new Error(`46elks svarade ${svar.status}: ${(await svar.text()).slice(0, 120)}`);

@@ -4,31 +4,36 @@
 // mottagare, belopp och meddelande i kundens Swish-app. Baksidan är att
 // servern inte får veta när betalningen gick igenom; kassan kvitterar.
 // Finns ett Swish Handel-avtal senare byts kvittensen mot deras callback.
-const NUMMER = process.env.HAK_SWISH_NUMMER || null;
+import { instans } from './foreningar.mjs';
+
+// Numret hör till föreningen, inte till processen.
+const NUMMER = () => instans('swish', process.env.HAK_SWISH_NUMMER || null);
 const QR_API = 'https://mpc.getswish.net/qrg-swish/api/v1/prefilled';
 const cache = new Map();
 
-export const swishPa = () => !!NUMMER;
-export const swishnummer = () => NUMMER;
+export const swishPa = () => !!NUMMER();
+export const swishnummer = () => NUMMER();
 
 /** Betalningsunderlag för en order: det kassan och kunden behöver se. */
 export function betalning({ belopp_ore, meddelande }) {
-  if (!NUMMER) return null;
+  const nummer = NUMMER();
+  if (!nummer) return null;
   return {
-    nummer: NUMMER,
+    nummer,
     belopp: belopp_ore / 100,
     meddelande,
     // Fungerar när sidan öppnas i telefonen som har Swish installerat.
     lank: `swish://payment?data=${encodeURIComponent(
-      JSON.stringify({ version: 1, payee: { value: NUMMER }, amount: { value: belopp_ore / 100 }, message: { value: meddelande } })
+      JSON.stringify({ version: 1, payee: { value: nummer }, amount: { value: belopp_ore / 100 }, message: { value: meddelande } })
     )}`,
   };
 }
 
 /** QR-kod som SVG. Faller tillbaka på null – då visar klienten siffrorna. */
 export async function qrkod({ belopp_ore, meddelande }) {
-  if (!NUMMER) return null;
-  const nyckel = `${NUMMER}|${belopp_ore}|${meddelande}`;
+  const nummer = NUMMER();
+  if (!nummer) return null;
+  const nyckel = `${nummer}|${belopp_ore}|${meddelande}`;
   if (cache.has(nyckel)) return cache.get(nyckel);
   try {
     const svar = await fetch(QR_API, {
@@ -37,7 +42,7 @@ export async function qrkod({ belopp_ore, meddelande }) {
       body: JSON.stringify({
         format: 'svg',
         size: 300,
-        payee: { value: NUMMER, editable: false },
+        payee: { value: nummer, editable: false },
         amount: { value: belopp_ore / 100, editable: false },
         message: { value: meddelande, editable: false },
       }),
