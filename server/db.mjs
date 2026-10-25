@@ -105,6 +105,36 @@ function migrera(db) {
     ['medlem', 'samtycke_bild', 'INTEGER'],
     ['medlem', 'samtycke_tid', 'TEXT'],
     ['medlem', 'belastningsregister_visat', 'TEXT'],
+    // Anläggningsregistret: tekniska uppgifter och ansvar per objekt.
+    ['utrustning', 'tillverkare', 'TEXT'],
+    ['utrustning', 'modell', 'TEXT'],
+    ['utrustning', 'serienummer', 'TEXT'],
+    ['utrustning', 'drifttimmar', 'REAL'],
+    ['utrustning', 'ansvarig_id', 'INTEGER'],
+    ['utrustning', 'leverantor_id', 'INTEGER'],
+    ['utrustning', 'i_bruk_sedan', 'TEXT'],
+    // En säkerhetskritisk punkt får inte kvitteras bort som "ej tillämplig".
+    ['checklistpunkt', 'sakerhetskritisk', 'INTEGER NOT NULL DEFAULT 0'],
+    ['checklistmall', 'rondtyp', 'TEXT'],
+    ['checklistmall', 'kraver_kvittens', 'INTEGER NOT NULL DEFAULT 0'],
+    // Fel sätts på komponenten, och kostnaden följer ärendet.
+    ['arende', 'komponent_id', 'INTEGER'],
+    ['arende', 'kostnad_ore', 'INTEGER'],
+    ['arende', 'driftpaverkan', 'TEXT'],
+    // "Ej tillämplig" måste gå att ange, men aldrig utan motivering – och
+    // aldrig på en säkerhetskritisk punkt.
+    ['checklistsvar', 'ej_tillampligt', 'INTEGER NOT NULL DEFAULT 0'],
+    ['checklistsvar', 'motivering', 'TEXT'],
+    // En ofullständig rond får inte se ut som en godkänd. Bristerna sparas
+    // med ronden så att de syns i efterhand.
+    ['checklistkorning', 'brister', 'TEXT'],
+    ['checklistkorning', 'brist_motivering', 'TEXT'],
+    // Beslutet att ta en lift i drift fattas av en människa, och skrivs ner
+    // som ett eget steg efter ronden.
+    ['checklistkorning', 'kvittens_beslut', 'TEXT'],
+    ['checklistkorning', 'kvittens_av_id', 'INTEGER'],
+    ['checklistkorning', 'kvittens_tid', 'TEXT'],
+    ['checklistkorning', 'kvittens_anteckning', 'TEXT'],
   ]) {
     const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
     if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);

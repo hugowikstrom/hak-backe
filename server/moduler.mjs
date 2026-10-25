@@ -24,6 +24,8 @@ import { rutter as bokforing } from './api/bokforing.mjs';
 import { rutter as planbok } from './api/planbok.mjs';
 import { rutter as traning } from './api/traning.mjs';
 import { rutter as ide } from './api/ide.mjs';
+import { rutter as drift } from './api/drift.mjs';
+import { rutter as incident } from './api/incident.mjs';
 
 export const MODULER = [
   {
@@ -62,6 +64,26 @@ export const MODULER = [
     beskrivning: 'Fel, brister, risker och förbättringar',
     rutter: arenden,
     sidor: [{ nyckel: 'arenden', text: 'Ärenden', stig: '/arenden' }],
+  },
+  {
+    // Driftjournalen håller ihop ronder, mätningar, fel och incidenter till
+    // en läsbar historik, och är vägen in för talade rapporter.
+    nyckel: 'drift',
+    namn: 'Driftjournal',
+    beskrivning: 'Journal, talrapportering, utrustningshistorik och återkommande fel',
+    beroenden: ['anlaggning', 'arenden'],
+    rutter: drift,
+    sidor: [{ nyckel: 'journal', text: 'Driftjournal', stig: '/journal' }],
+  },
+  {
+    // Olyckor och tillbud ligger i egen modul: en klubb kan behöva journalen
+    // utan att hantera personuppgifter om skadade gäster.
+    nyckel: 'incidenter',
+    namn: 'Incidenter',
+    beskrivning: 'Olyckor, tillbud och arbetsskador med begränsad åtkomst',
+    beroenden: ['drift'],
+    rutter: incident,
+    sidor: [{ nyckel: 'incidenter', text: 'Incidenter', stig: '/incidenter', behorighet: 'incident' }],
   },
   {
     nyckel: 'checklistor',

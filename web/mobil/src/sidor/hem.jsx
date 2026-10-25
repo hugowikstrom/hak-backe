@@ -48,6 +48,14 @@ export function Hem({ ronder }) {
         <div className="meddelande info">Visar sparade checklistor – telefonen når inte servern just nu.</div>
       )}
 
+      <button className="genvag" onClick={() => ga('handelse')}>
+        <span className="fig" aria-hidden="true">◉</span>
+        <span className="txt">
+          <strong>Rapportera händelse</strong>
+          <span className="liten svag">Prata in något du sett eller gjort</span>
+        </span>
+      </button>
+
       {!!attGora.length && (
         <section className="kort">
           <header>

@@ -59,6 +59,18 @@ export const BEHORIGHETER = {
   bemanning: { roller: ['backansvarig', 'anlaggningsansvarig', 'admin'], uppdrag: ['ordforande', 'sektionsansvarig'] },
   anlaggning: { roller: ['backansvarig', 'anlaggningsansvarig', 'admin'], uppdrag: ['anlaggningsansvarig', 'backansvarig'] },
   medlemsregister: { roller: ['anlaggningsansvarig', 'admin'], uppdrag: ['ordforande', 'kassor', 'sekreterare'] },
+  // Olyckor och tillbud. Den som arbetar i backen måste kunna rapportera och
+  // läsa sina egna händelser; personuppgifterna i dem är en snävare krets.
+  incident: {
+    roller: ['backansvarig', 'anlaggningsansvarig', 'admin'],
+    uppdrag: ['backansvarig', 'anlaggningsansvarig', 'ordforande', 'sekreterare'],
+  },
+  // Namn, kontaktuppgift och skada på en skadad gäst. Dataminimering i
+  // praktiken: de flesta som arbetar med uppföljningen behöver dem inte.
+  incident_person: {
+    roller: ['anlaggningsansvarig', 'admin'],
+    uppdrag: ['anlaggningsansvarig', 'ordforande'],
+  },
   traning: { roller: ['tranare', 'anlaggningsansvarig', 'admin'], uppdrag: ['tranare', 'sektionsansvarig', 'ordforande'] },
   uthyrning: {
     roller: ['backansvarig', 'anlaggningsansvarig', 'admin'],
@@ -113,12 +125,13 @@ export const ARBETSYTOR = {
   anlaggning: {
     namn: 'Anläggningen',
     beskrivning: 'Snöläggning, utrustning och backens skick',
-    sidor: ['snolaggning', 'checklistor', 'arenden', 'bemanning', 'rapporter', 'register', 'ideer', 'mina'],
+    sidor: ['snolaggning', 'checklistor', 'journal', 'arenden', 'incidenter', 'bemanning', 'rapporter',
+      'register', 'ideer', 'mina'],
   },
   back: {
     namn: 'Backen',
     beskrivning: 'Dagens drift: bemanning, ronder och ärenden',
-    sidor: ['bemanning', 'checklistor', 'arenden', 'snolaggning', 'ideer', 'mina'],
+    sidor: ['bemanning', 'checklistor', 'journal', 'arenden', 'incidenter', 'snolaggning', 'ideer', 'mina'],
   },
   kiosk: {
     namn: 'Kiosken',
@@ -138,7 +151,7 @@ export const ARBETSYTOR = {
   styrelse: {
     namn: 'Styrelsen',
     beskrivning: 'Överblick över hela föreningen',
-    sidor: ['forening', 'ekonomi', 'arenden', 'bemanning', 'traning', 'rapporter', 'ideer', 'mina'],
+    sidor: ['forening', 'ekonomi', 'arenden', 'incidenter', 'bemanning', 'traning', 'rapporter', 'ideer', 'mina'],
   },
   traning: {
     namn: 'Träningen',
@@ -148,7 +161,7 @@ export const ARBETSYTOR = {
   medlem: {
     namn: 'Medlem',
     beskrivning: 'Dina pass, dina ronder och läget i backen',
-    sidor: ['bemanning', 'checklistor', 'arenden', 'snolaggning', 'ideer', 'mina'],
+    sidor: ['bemanning', 'checklistor', 'journal', 'arenden', 'snolaggning', 'ideer', 'mina'],
   },
 };
 

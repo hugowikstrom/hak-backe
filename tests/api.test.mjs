@@ -153,7 +153,7 @@ test('checklistkörning med avvikelse skapar ärende', async () => {
   assert.equal(oklar.status, 400, 'obligatorisk punkt saknar svar');
 
   await ok('PUT', `/api/checklistor/svar/${k.id}/${k.punkter[0].id}`, { bockad: false, avvikelse: true, kommentar: 'Spricka i slangen' });
-  const klar = await ok('POST', `/api/checklistor/korningar/${k.id}/avsluta`, { tvinga: true });
+  const klar = await ok('POST', `/api/checklistor/korningar/${k.id}/avsluta`, {});
   assert.equal(klar.korning.status, 'klar');
   assert.equal(klar.nya_arenden.length, 1);
   assert.match(klar.nya_arenden[0].titel, /Spricka|Kopplingar/);
@@ -250,7 +250,14 @@ test('mobilrond sparar bild på avvikelsen och ärendet länkar till den', async
   const punkt = svarad.punkter.find((p) => p.id === k.punkter[0].id);
   assert.match(punkt.bild, /^[0-9a-f]{24}\.png$/);
 
-  const klar = await ok('POST', `/api/checklistor/korningar/${k.id}/avsluta`, { tvinga: true });
+  // Ronden lämnas med en obesvarad obligatorisk punkt: då avslutas den som
+  // brist, inte som godkänd, och motiveringen krävs.
+  const klar = await ok('POST', `/api/checklistor/korningar/${k.id}/avsluta`, {
+    tvinga: true,
+    motivering: 'Resten görs i morgon, lansen är avstängd',
+  });
+  assert.equal(klar.korning.status, 'klar_med_brist');
+  assert.equal(klar.korning.brister.length, 1);
   assert.equal(klar.nya_arenden.length, 1);
   assert.match(klar.nya_arenden[0].beskrivning, new RegExp(`/api/bilder/${punkt.bild}`));
 });

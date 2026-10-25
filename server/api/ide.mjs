@@ -1,20 +1,17 @@
 // Idélådan: skriv eller prata in en idé. En människa läser och skickar
 // vidare till Backlog – inget hamnar där automatiskt.
-import { randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { createReadStream, mkdirSync, statSync, writeFileSync } from 'node:fs';
+import { createReadStream, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
-import { alla, en, ROT, spara, uppdatera } from '../db.mjs';
+import { alla, en, spara, uppdatera } from '../db.mjs';
 import { far } from '../behorighet.mjs';
 import { revidera } from '../bokforing.mjs';
-import { transkribera } from '../tal.mjs';
+import { LJUDKATALOG as LJUD, sparaLjud, transkribera } from '../tal.mjs';
 import { ettAv, fel, kravTxt, rutt, svar, txt } from '../http.mjs';
 import { nu } from '../tid.mjs';
 
 const kor = promisify(execFile);
-const LJUD = join(ROT, 'data', 'ljud');
-mkdirSync(LJUD, { recursive: true });
 
 const BACKLOG = process.env.HAK_BACKLOG || '/home/hugo/.local/bin/backlog';
 const PROJEKT = process.env.HAK_BACKLOG_PROJEKT || 'inbox';
@@ -28,19 +25,6 @@ export const ideer = ({ status, antal = 200 } = {}) =>
     ...(status ? [status] : []),
     antal
   );
-
-/** Ljudet sparas som fil; transkriptet skrivs aldrig över inlämnarens text. */
-async function sparaLjud(dataUrl) {
-  const m = /^data:(audio\/[a-z0-9.+-]+);base64,(.+)$/is.exec(String(dataUrl || ''));
-  if (!m) throw fel(400, 'Ljudet måste skickas som data-URL');
-  const bytes = Buffer.from(m[2], 'base64');
-  if (!bytes.length) throw fel(400, 'Tom inspelning');
-  if (bytes.length > 25_000_000) throw fel(413, 'Inspelningen är för lång');
-  const andelse = m[1].includes('ogg') ? 'ogg' : m[1].includes('mp4') ? 'mp4' : m[1].includes('wav') ? 'wav' : 'webm';
-  const namn = `${randomBytes(10).toString('hex')}.${andelse}`;
-  writeFileSync(join(LJUD, namn), bytes);
-  return { namn, bytes };
-}
 
 export const rutter = [
   rutt('GET', '/api/ideer', 'medlem', ({ res, fraga }) =>

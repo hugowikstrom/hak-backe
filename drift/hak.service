@@ -34,6 +34,12 @@ ReadWritePaths=/home/hugo/hak/backe/data
 ReadWritePaths=/home/hugo/.backlog
 # Tal-till-text och Backlog-CLI:t ligger på samma maskin.
 Environment=HAK_STT_URL=http://127.0.0.1:8115/v1/audio/transcriptions
+# AI:n som strukturerar talade driftrapporter. Modellen 'lokal' körs på
+# maskinen – driftjournal och incidentrapporter ska inte lämna huset.
+# Nyckeln läggs i drift/hak.env, som inte ligger i git.
+Environment=HAK_LLM_URL=http://127.0.0.1:4000/v1
+Environment=HAK_AI_MODELL=lokal
+EnvironmentFile=-/home/hugo/hak/backe/drift/hak.env
 Environment=HAK_BACKLOG=/home/hugo/.local/bin/backlog
 Environment=HAK_BACKLOG_PROJEKT=inbox
 # Klubbens swishnummer. Utan det hänvisas gästen till att betala i luckan.

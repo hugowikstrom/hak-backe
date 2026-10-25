@@ -226,6 +226,9 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   margin-top: -8px; width: 38px; height: 4px; border-radius: 999px; background: var(--ram);
 }
 .ark > .kropp { padding: 8px 16px 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+/* Barnen får inte krympa: en lista med saknade punkter klipptes till en
+   halv rad när arket var fullt. Den ska rulla, inte tryckas ihop. */
+.ark > .kropp > * { flex: 0 0 auto; }
 .ark > footer { padding: 10px 16px 16px; display: flex; gap: 10px; border-top: 1px solid var(--ram); }
 .ark > footer > * { flex: 1 1 0; }
 
@@ -264,3 +267,52 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .inlogg .huvud svg { width: 84px; height: 84px; }
 .inlogg .huvud { --marke-fond: #fff; --marke-motiv: var(--klubb-ren); }
 .inlogg form { background: var(--yta); border-radius: var(--radie-xl); padding: 18px; box-shadow: var(--skugga); display: flex; flex-direction: column; gap: 14px; }
+
+/* ---------- Rapportera händelse ---------- */
+/* Mikrofonen är sidans tyngsta yta: den används med handskar, i mörker. */
+.mikrofon { margin: 0 0 16px; }
+.mikrofon .stor {
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+  width: 100%; min-height: 76px; padding: 0 18px;
+  border: 2px solid var(--klubb); border-radius: var(--radie);
+  background: var(--klubb); color: var(--pa-klubb);
+  font: 600 1.1rem/1.2 inherit; cursor: pointer;
+}
+.mikrofon .stor .fig { font-size: 1.5rem; }
+.mikrofon .stor.spelar { background: var(--fara); border-color: var(--fara); color: #fff; }
+.mikrofon .stor:disabled { opacity: 0.6; }
+.mikrofon p { margin: 10px 0 0; display: flex; align-items: center; gap: 8px; }
+
+.citat {
+  margin: 0 0 14px; padding: 10px 12px;
+  border-left: 3px solid var(--klubb); border-radius: 0 var(--radie) var(--radie) 0;
+  background: var(--bak-2); color: var(--text);
+}
+.citat span { display: block; margin-bottom: 3px; }
+
+.matvarden { margin: 6px 0 14px; padding: 12px; border: 1px solid var(--ram); border-radius: var(--radie); }
+.matvarden p { margin: 0 0 8px; }
+.varningstext { color: var(--varning); margin: -6px 0 12px; }
+
+.kryss { display: flex; align-items: center; gap: 10px; margin: 4px 0 18px; }
+.kryss input { width: 26px; height: 26px; }
+.kryss span { display: flex; align-items: center; gap: 8px; }
+
+.genvag {
+  display: flex; align-items: center; gap: 12px; width: 100%;
+  margin: 0 0 14px; padding: 14px;
+  border: 1px solid var(--klubb); border-radius: var(--radie);
+  background: var(--yta); color: var(--text); text-align: left; cursor: pointer;
+}
+.genvag .fig {
+  display: grid; place-items: center; width: 40px; height: 40px; flex: none;
+  border-radius: 50%; background: var(--klubb); color: var(--pa-klubb); font-size: 1.2rem;
+}
+.genvag .txt { display: flex; flex-direction: column; gap: 2px; }
+.rad { display: flex; align-items: center; gap: 12px; }
+.rad .knapp { flex: 1; }
+
+/* Kvittens och ej tillämplig-vägen i ronden. */
+.kvittens { margin: 14px 0; padding: 12px; border: 1px solid var(--ram); border-radius: var(--radie); }
+.ejtillamplig { display: block; width: 100%; margin-top: 10px; padding: 10px; text-align: center; }
+.punktrad .bricka.liten { font-size: 0.7rem; margin-left: 6px; }

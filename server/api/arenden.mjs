@@ -61,7 +61,9 @@ export function skapaArende(data, medlem) {
     allvarlighet: ettAv(data.allvarlighet, ALLVAR, 'Allvarlighet') || 'begransar',
     status: ettAv(data.status, STATUSAR, 'Status') || 'ny',
     utrustning_id: heltal(data.utrustning_id),
+    komponent_id: heltal(data.komponent_id),
     omrade_id: heltal(data.omrade_id),
+    driftpaverkan: txt(data.driftpaverkan, 200),
     tilldelad_id: heltal(data.tilldelad_id),
     korning_id: heltal(data.korning_id),
     deadline: datum(data.deadline, 'Deadline'),
@@ -131,6 +133,26 @@ export const rutter = [
       throw fel(403, 'Bara ansvariga ändrar andras ärenden');
 
     const nyStatus = ettAv(kropp.status, STATUSAR, 'Status');
+
+    // Ett säkerhetsärende får inte tystna av sig självt. Att skriva
+    // "åtgärdad" på en säkerhetsrisk kräver att någon med ansvar gör det,
+    // och att det står vad som gjordes.
+    if (nyStatus && ['atgardad', 'stangd'].includes(nyStatus) && a.allvarlighet === 'sakerhetsrisk') {
+      if (RANG[medlem.roll] < RANG.backansvarig)
+        throw fel(403, 'Bara backansvarig eller högre får stänga ett säkerhetsärende');
+      const atgard = txt(kropp.atgard);
+      const dokumenterad = en(
+        `SELECT id FROM arendehandelse WHERE arende_id=? AND slag='atgard'`,
+        a.id
+      );
+      if (!atgard && !dokumenterad)
+        throw fel(400, 'Beskriv åtgärden innan säkerhetsärendet stängs');
+      if (atgard)
+        spara('arendehandelse', { arende_id: a.id, av_id: medlem.id, slag: 'atgard', text: atgard });
+    } else if (txt(kropp.atgard)) {
+      spara('arendehandelse', { arende_id: a.id, av_id: medlem.id, slag: 'atgard', text: txt(kropp.atgard) });
+    }
+
     const nyTilldelad = kropp.tilldelad_id === undefined ? undefined : heltal(kropp.tilldelad_id);
     uppdatera('arende', a.id, {
       titel: txt(kropp.titel, 160),
@@ -141,6 +163,9 @@ export const rutter = [
       status: nyStatus,
       utrustning_id: kropp.utrustning_id === undefined ? undefined : heltal(kropp.utrustning_id),
       omrade_id: kropp.omrade_id === undefined ? undefined : heltal(kropp.omrade_id),
+      komponent_id: kropp.komponent_id === undefined ? undefined : heltal(kropp.komponent_id),
+      kostnad_ore: kropp.kostnad_ore === undefined ? undefined : heltal(kropp.kostnad_ore),
+      driftpaverkan: kropp.driftpaverkan === undefined ? undefined : txt(kropp.driftpaverkan, 200),
       tilldelad_id: nyTilldelad,
       deadline: kropp.deadline === undefined ? undefined : datum(kropp.deadline, 'Deadline'),
       uppdaterad: new Date().toISOString().slice(0, 19).replace('T', ' '),

@@ -14,6 +14,23 @@
   adresser ska användas, och sätt `HAK_EPOST_AV=0` under tiden för att inte
   mejla medlemmar av misstag.
 
+## AI-tolkningen
+
+Talade driftrapporter skrivs av med husets STT på 8115 och struktureras av
+LiteLLM-gatewayen på 4000. Modellen är `lokal`, alltså llama-server på samma
+maskin: journal och incidentrapporter ska inte lämna huset.
+
+Nyckeln ligger i `drift/hak.env`, som inte är med i git. Töm filen för att
+stänga av tolkningen – då fungerar allt ändå, personalen får transkriptet och
+fyller i själv.
+
+```bash
+curl -s localhost:8120/api/drift/journal -b kaka | jq .ai   # {"pa":true,"modell":"lokal"}
+```
+
+Byts modellen till en hos en leverantör (`HAK_AI_MODELL`) gäller det inte
+incidentrapporter – de tvingas tillbaka till den lokala modellen i koden.
+
 ## Flera föreningar
 
 I dag kör maskinen en förening: registret `data/foreningar.json` saknas, och

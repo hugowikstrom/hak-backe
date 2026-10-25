@@ -33,9 +33,13 @@ export function nyRond({ mall, utrustning, omrade }) {
     utrustning_id: utrustning?.id ?? null,
     objektnamn: utrustning?.namn || omrade?.namn || null,
     omrade_id: omrade?.id ?? utrustning?.omrade_id ?? null,
+    kraver_kvittens: mall.kraver_kvittens ? 1 : 0,
     punkter: mall.punkter.map((p) => ({
       id: p.id, text: p.text, hjalptext: p.hjalptext,
       svarstyp: p.svarstyp, enhet: p.enhet, obligatorisk: p.obligatorisk,
+      // Säkerhetskritiska punkter måste följa med ned i telefonen, annars
+      // kan appen inte hålla regeln offline.
+      sakerhetskritisk: p.sakerhetskritisk ? 1 : 0,
     })),
     svar: {},
     startad: new Date().toISOString(),
@@ -45,6 +49,9 @@ export function nyRond({ mall, utrustning, omrade }) {
     avslutad: false,
     resultat: null,
     fel: null,
+    // Motivering krävs när ronden lämnas med obesvarade obligatoriska punkter.
+    motivering: null,
+    kvittens: null,
   };
   skriv([rond, ...laddaRonder()]);
   return rond;
@@ -76,8 +83,19 @@ export const taBortRond = (lokalId) => skriv(laddaRonder().filter((r) => r.lokal
 export const obesvarade = (rond) =>
   rond.punkter.filter((p) => {
     const s = rond.svar[p.id];
-    return !s || (!s.bockad && s.varde == null && !s.text && !s.avvikelse);
+    return !s || (!s.bockad && s.varde == null && !s.text && !s.avvikelse && !s.ej_tillampligt);
   });
+
+/**
+ * Säkerhetskritiska punkter utan svar. De går aldrig att lämna, varken här
+ * eller på servern – appen ska säga nej på plats i backen, inte först när
+ * täckningen kommer tillbaka.
+ */
+export const obesvaradSakerhet = (rond) => obesvarade(rond).filter((p) => p.sakerhetskritisk);
+
+/** Obligatoriska punkter utan svar, säkerhetspunkterna undantagna. */
+export const obesvaradObligatorisk = (rond) =>
+  obesvarade(rond).filter((p) => p.obligatorisk && !p.sakerhetskritisk);
 
 export const antalAvvikelser = (rond) => Object.values(rond.svar).filter((s) => s.avvikelse).length;
 export const antalBesvarade = (rond) => rond.punkter.length - obesvarade(rond).length;
@@ -133,17 +151,31 @@ async function synkaEn(lokalId) {
       text: svar.text ?? null,
       avvikelse: !!svar.avvikelse,
       kommentar: svar.kommentar ?? null,
+      ej_tillampligt: !!svar.ej_tillampligt,
+      motivering: svar.motivering ?? null,
       bild: bild ?? null,
     });
     rond = uppdateraRond(lokalId, { skickade: [...hamtaRond(lokalId).skickade, punkt.id], fel: null });
   }
 
   if (rond.klar) {
-    const r = await api.skapa(`/api/checklistor/korningar/${rond.serverId}/avsluta`, { tvinga: true });
+    // Luckor i ronden skickas som just luckor, med rapportörens motivering.
+    // Appen tvingar aldrig förbi en säkerhetskritisk punkt – kommer en
+    // sådan rond ända hit är det ett fel, och servern ska säga nej.
+    const brister = obesvaradObligatorisk(rond).length;
+    const r = await api.skapa(`/api/checklistor/korningar/${rond.serverId}/avsluta`, {
+      ...(brister ? { tvinga: true, motivering: rond.motivering } : {}),
+    });
+    if (rond.kvittens)
+      await api.skapa(`/api/checklistor/korningar/${rond.serverId}/kvittens`, rond.kvittens);
     uppdateraRond(lokalId, {
       avslutad: true,
       fel: null,
-      resultat: { arenden: r.nya_arenden.map((a) => ({ id: a.id, titel: a.titel })), tid: new Date().toISOString() },
+      resultat: {
+        arenden: r.nya_arenden.map((a) => ({ id: a.id, titel: a.titel })),
+        status: r.korning?.status ?? null,
+        tid: new Date().toISOString(),
+      },
     });
   }
 }

@@ -348,3 +348,49 @@ ul.lista { margin: 0; padding: 0; }
   .innehall { overflow: visible; }
   .kort { break-inside: avoid; box-shadow: none; }
 }
+
+/* ---------- Driftjournal ---------- */
+/* Tidslinjen läses uppifrån och ned som en loggbok, inte som en tabell:
+   posterna är olika långa och texten är det viktiga. */
+.tidslinje { display: flex; flex-direction: column; gap: 10px; }
+.journalpost {
+  padding: 12px 14px;
+  background: var(--yta);
+  border: 1px solid var(--ram);
+  border-left: 3px solid var(--klubb);
+  border-radius: 0 var(--radie) var(--radie) 0;
+}
+.journalpost-topp { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.journalpost-topp .tid { font-variant-numeric: tabular-nums; color: var(--text-svag); font-size: 0.85rem; }
+.journalpost-topp .vem { font-weight: 600; font-size: 0.85rem; }
+.journaltext { margin: 8px 0 0; white-space: pre-wrap; }
+.journalpost-fot { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; }
+
+.citat {
+  margin: 0 0 14px; padding: 10px 14px;
+  background: var(--bak-2); border-left: 3px solid var(--klubb);
+  border-radius: 0 var(--radie) var(--radie) 0;
+}
+.citat span { display: block; margin-bottom: 4px; }
+
+.kryssrad { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
+.kryssrad input { width: 20px; height: 20px; }
+
+/* ---------- Incidenter ---------- */
+/* Personuppgifterna ramas in för att det ska vara synligt var de börjar
+   och slutar – både för den som skriver och den som läser koden. */
+.personuppgifter {
+  margin: 14px 0; padding: 12px 14px;
+  border: 1px solid var(--varning); border-radius: var(--radie);
+  background: var(--yta);
+}
+.personuppgifter legend { padding: 0 6px; font-weight: 600; color: var(--varning); }
+.personuppgifter p { margin: 0 0 10px; }
+
+dl.uppgifter { display: grid; grid-template-columns: minmax(130px, auto) 1fr; gap: 6px 16px; margin: 0 0 16px; }
+dl.uppgifter dt { font-weight: 600; color: var(--text-svag); }
+dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
+@media (max-width: 560px) {
+  dl.uppgifter { grid-template-columns: 1fr; gap: 2px; }
+  dl.uppgifter dd { margin-bottom: 8px; }
+}

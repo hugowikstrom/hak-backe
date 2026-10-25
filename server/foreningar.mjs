@@ -36,6 +36,8 @@ const franMiljon = () => ({
     return { namn: process.env.HAK_PLATSNAMN || 'Vårdkasbacken', lat, lon, hojd: hojd || 0 };
   })(),
   swish: process.env.HAK_SWISH_NUMMER || null,
+  // Modellen som tolkar talade driftrapporter. 'lokal' körs på maskinen.
+  ai_modell: process.env.HAK_AI_MODELL || 'lokal',
   sms_fran: process.env.HAK_SMS_FRAN || 'HAKbacken',
   epost_fran: process.env.HAK_EPOST_FRAN || 'HAK Backe <backe@nattviken.com>',
   bas_url: process.env.HAK_BAS_URL || 'https://hak.nattviken.com',

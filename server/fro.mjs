@@ -48,15 +48,6 @@ if (fanns && !nollstall) {
   console.log(`Databasen har redan ${fanns} medlemmar. Kör med --nollstall för att skriva om.`);
   process.exit(0);
 }
-if (false) {
-  for (const t of ['narvaro', 'traningstillfalle', 'gruppmedlem', 'traningsgrupp', 'uppdrag', 'sektion',
-    'medlemsavgift',
-    'checklistsvar', 'checklistkorning', 'checklistpunkt', 'checklistmall', 'arendehandelse',
-    'arende', 'matning', 'snopass', 'insats', 'bokning', 'otillganglighet', 'pass', 'position',
-    'utrustning', 'omrade', 'sasong', 'session', 'medlem', 'epostlogg',
-    'orderrad', 'kundorder', 'artikel', 'hyresrad', 'hyresavtal', 'hyrespris', 'smslogg'])
-    kor(`DELETE FROM ${t}`);
-}
 
 const IDAG = new Date().toLocaleDateString('sv-SE');
 
@@ -129,11 +120,14 @@ iForeningen(() => transaktion(() => {
 
   // ---------- Checklistor ----------
   let mallordning = 0;
-  const mall = (namn, omfattning, nyckel, intervall, beskrivning, punkter, position_nyckel = null) => {
+  // Punkt: [text, svarstyp, enhet, hjalptext, obligatorisk, sakerhetskritisk]
+  const mall = (namn, omfattning, nyckel, intervall, beskrivning, punkter, position_nyckel = null, extra = {}) => {
     const id = spara('checklistmall', {
       namn, omfattning, intervall, beskrivning, position_nyckel,
       utrustningstyp: omfattning === 'utrustningstyp' ? nyckel : null,
       omrade_id: omfattning === 'omrade' ? omr[nyckel] : null,
+      rondtyp: extra.rondtyp || null,
+      kraver_kvittens: extra.kvittens ? 1 : 0,
       ordning: mallordning++,
     });
     for (const [i, p] of punkter.entries())
@@ -141,6 +135,7 @@ iForeningen(() => transaktion(() => {
         mall_id: id, ordning: i, text: p[0],
         svarstyp: p[1] || 'bock', enhet: p[2] || null,
         hjalptext: p[3] || null, obligatorisk: p[4] === false ? 0 : 1,
+        sakerhetskritisk: p[5] === true ? 1 : 0,
       });
     return id;
   };
@@ -203,31 +198,33 @@ iForeningen(() => transaktion(() => {
   ], 'snolaggning');
 
   mall('Lift – kontroll före öppning', 'utrustningstyp', 'lift', 'dagligen',
-    'Säkerhetskritisk. Liften får inte öppna förrän alla punkter är klara.', [
-      ['Nödstopp testade i båda ändar', 'bock'],
-      ['Linan ligger rätt i alla block', 'bock'],
-      ['På- och avstigning är plan och fri från is', 'bock'],
+    'Kontrollerna märkta säkerhet går inte att hoppa över. Appen avgör inte om liften får ' +
+      'öppna – den som kvitterar gör det.', [
+      ['Nödstopp testade i båda ändar', 'bock', null, 'Testa i drift, båda ändar, och känn att linan stannar.', true, true],
+      ['Linan ligger rätt i alla block', 'bock', null, null, true, true],
+      ['Provkörning utan last genomförd', 'bock', null, null, true, true],
+      ['På- och avstigning är plan och fri från is', 'bock', null, null, true, true],
       ['Skyltar och avspärrningar på plats', 'bock'],
-      ['Provkörning utan last genomförd', 'bock'],
       ['Kommunikationsradio fungerar', 'bock'],
       ['Liftvärd har genomgått instruktion', 'bock'],
-    ], 'backansvarig');
+      ['Ovant ljud eller vibration (beskriv)', 'text', null, 'Lämna tomt om allt lät som vanligt.', false],
+    ], 'backansvarig', { rondtyp: 'liftkontroll_start', kvittens: true });
 
   mall('Bandet – daglig säkerhetskontroll', 'utrustningstyp', 'band', 'dagligen', null, [
-    ['Nödstopp testat', 'bock'],
+    ['Nödstopp testat', 'bock', null, null, true, true],
+    ['Sidoskydd och galler sitter fast', 'bock', null, null, true, true],
+    ['Provkörning genomförd', 'bock', null, null, true, true],
     ['Bandytan är fri från is och grus', 'bock'],
-    ['Sidoskydd och galler sitter fast', 'bock'],
     ['Instruktionsskylt vid påstigning finns', 'bock'],
-    ['Provkörning genomförd', 'bock'],
-  ], 'bandet');
+  ], 'bandet', { rondtyp: 'bandkontroll', kvittens: true });
 
   mall('Backansvarig – öppning av backen', 'allmant', null, 'dagligen',
     'Backansvarigs rutin innan backen öppnar för allmänheten.', [
       ['Pistning klar och backen besiktad', 'bock'],
-      ['Alla hinder är skyddade (stolpar, lansar, kanoner)', 'bock'],
+      ['Alla hinder är skyddade (stolpar, lansar, kanoner)', 'bock', null, null, true, true],
       ['Nedfarter som är stängda är tydligt avspärrade', 'bock'],
-      ['Första hjälpen-väska och bår på plats', 'bock'],
-      ['Liftkontroll är genomförd och godkänd', 'bock'],
+      ['Första hjälpen-väska och bår på plats', 'bock', null, null, true, true],
+      ['Liftkontroll är genomförd och kvitterad', 'bock', null, null, true, true],
       ['Bemanning på plats enligt schema', 'bock'],
       ['Snödjup representativt mätvärde', 'varde', 'cm', null, false],
       ['Information till åkande uppdaterad (skyltar/webb)', 'bock', null, null, false],
@@ -399,6 +396,9 @@ iForeningen(() => transaktion(() => {
       status: data.status || 'ny', utrustning_id: data.utrustning ? utr[data.utrustning] : null,
       omrade_id: data.omrade ? omr[data.omrade] : null,
       tilldelad_id: data.tilldelad ? mid[data.tilldelad] : null,
+      komponent_id: data.komponent ? komp[data.komponent] : null,
+      kostnad_ore: data.kostnad_ore || null,
+      driftpaverkan: data.driftpaverkan || null,
       deadline: data.deadline || null,
     });
     spara('arendehandelse', { arende_id: id, av_id: mid[data.av || 'annika'], slag: 'kommentar', text: 'Ärendet skapades' });
@@ -406,16 +406,65 @@ iForeningen(() => transaktion(() => {
       spara('arendehandelse', { arende_id: id, av_id: mid[data.tilldelad || 'per'], slag: 'kommentar', text: data.kommentar });
     return id;
   };
+  // Komponenter och leverantörer: fel ska kunna sättas på backventilen, inte
+  // bara på kanonen, annars går återkommande fel inte att se.
+  const lev = {};
+  for (const [namn, kontakt, telefon, epost] of [
+    ['Snökraft AB', 'Reservdelar snökanoner', '060-12 34 56', 'delar@snokraft.test'],
+    ['Liftservice Nord', 'Besiktning och lifttillbehör', '0611-22 33 44', 'service@liftnord.test'],
+    ['Härnösands Rör', 'Vatten och ventiler', '0611-55 66 77', 'order@harnorör.test'],
+  ])
+    lev[namn] = spara('leverantor', { namn, kontakt, telefon, epost });
+
+  const komp = {};
+  const komponent = (utrustning, namn, slag, leverantor, artikelnummer = null) => {
+    const id = spara('komponent', {
+      utrustning_id: utr[utrustning], namn, slag,
+      leverantor_id: leverantor ? lev[leverantor] : null,
+      artikelnummer,
+      ordning: Object.keys(komp).length,
+    });
+    komp[`${utrustning}/${namn}`] = id;
+    return id;
+  };
+  for (const kanon of ['Fläkt 1', 'Fläkt 2', 'Fläkt 3']) {
+    komponent(kanon, 'Huvudaggregat', 'motor', 'Snökraft AB');
+    komponent(kanon, 'Vattenventil', 'ventil', 'Härnösands Rör', 'HV-22');
+    komponent(kanon, 'Luftventil', 'ventil', 'Härnösands Rör', 'HL-18');
+    komponent(kanon, 'Backventil', 'ventil', 'Härnösands Rör', 'HB-15');
+    komponent(kanon, 'Vattenfilter', 'filter', 'Snökraft AB', 'SF-90');
+    komponent(kanon, 'Nukleatorer', 'ovrigt', 'Snökraft AB');
+    komponent(kanon, 'Elskåp och kabel', 'el', null);
+  }
+  for (const lans of ['Lans 4', 'Lans 7']) {
+    komponent(lans, 'Munstycksring', 'ovrigt', 'Snökraft AB');
+    komponent(lans, 'Koppling mot stamledning', 'ovrigt', 'Härnösands Rör', 'HK-40');
+    komponent(lans, 'Dräneringsventil', 'ventil', 'Härnösands Rör');
+  }
+  komponent('Stora liften', 'Drivstation', 'motor', 'Liftservice Nord');
+  komponent('Stora liften', 'Nödstoppskrets', 'el', 'Liftservice Nord', 'LN-STOP-2');
+  komponent('Stora liften', 'Lina och block', 'ovrigt', 'Liftservice Nord');
+  komponent('Stora liften', 'Brytpinnar', 'ovrigt', 'Liftservice Nord', 'LN-BP-6');
+  komponent('Transportbandet', 'Nödstopp nedre', 'el', 'Liftservice Nord');
+  komponent('Transportbandet', 'Bandmatta', 'ovrigt', 'Liftservice Nord');
+  komponent('Pumpstation 1', 'Huvudpump', 'motor', 'Härnösands Rör');
+  komponent('Pumpstation 1', 'Filterhus', 'filter', 'Härnösands Rör', 'HF-120');
+  komponent('Kompressor 1', 'Kompressorpaket', 'motor', 'Snökraft AB');
+
   arende('Läckage i koppling vid Lans 4', {
     beskrivning: 'Vatten sprutar ur kopplingen mot stamledningen. Lansen är avstängd.',
     typ: 'fel', prioritet: 1, allvarlighet: 'driftstopp', status: 'pagar',
     utrustning: 'Lans 4', omrade: 'Stora backen', tilldelad: 'per', av: 'stefan',
+    komponent: 'Lans 4/Koppling mot stamledning',
+    driftpaverkan: 'Lans 4 ur drift, produktionen flyttad till lans 5–6',
     kommentar: 'Ny packning beställd, kommer på torsdag.',
   });
   arende('Nödstopp i nedre änden av bandet trögt', {
     beskrivning: 'Går att trycka in men fjädrar inte tillbaka. Säkerhetsrisk.',
     typ: 'risk', prioritet: 1, allvarlighet: 'sakerhetsrisk', status: 'bekraftad',
     utrustning: 'Transportbandet', omrade: 'Bandet', tilldelad: 'annika',
+    komponent: 'Transportbandet/Nödstopp nedre',
+    driftpaverkan: 'Bandet körs inte förrän nödstoppet är bytt',
   });
   arende('Fläkt 2 oscillerar inte i hela rörelsen', {
     beskrivning: 'Stannar ungefär 20 grader för tidigt åt höger.',
@@ -446,6 +495,94 @@ iForeningen(() => transaktion(() => {
     `UPDATE arende SET skapad=?, stangd=?, uppdaterad=? WHERE id=?`,
     `${plusDagar(IDAG, -9)} 18:00`, `${plusDagar(IDAG, -6)} 12:00`, `${plusDagar(IDAG, -6)} 12:00`, stangt
   );
+
+  // ---------- Fel som återkommer ----------
+  // Fyra fel på samma backventil under två säsonger. Det är den här
+  // historiken som gör att mönstervyn har något att visa – och som i
+  // verkligheten är argumentet för att byta hela ventilen.
+  for (const [dagarSedan, kostnad, text] of [
+    [412, 48000, 'Backventilen på Fläkt 2 läcker tillbaka vid avstängning'],
+    [341, 52000, 'Backventilen på Fläkt 2 läcker igen efter 70 drifttimmar'],
+    [96, 61500, 'Backventilen på Fläkt 2 läcker, tredje gången'],
+    [24, 61500, 'Backventilen på Fläkt 2 läcker på nytt'],
+  ]) {
+    const id = arende(text, {
+      beskrivning: 'Samma ventil som tidigare. Byttes mot ny av samma modell.',
+      typ: 'fel', prioritet: 2, allvarlighet: 'driftstopp', status: 'stangd',
+      utrustning: 'Fläkt 2', omrade: 'Stora backen', tilldelad: 'per', av: 'stefan',
+      komponent: 'Fläkt 2/Backventil', kostnad_ore: kostnad,
+    });
+    kor(
+      `UPDATE arende SET skapad=?, stangd=?, uppdaterad=? WHERE id=?`,
+      `${plusDagar(IDAG, -dagarSedan)} 09:00`,
+      `${plusDagar(IDAG, -dagarSedan + 3)} 15:00`,
+      `${plusDagar(IDAG, -dagarSedan + 3)} 15:00`,
+      id
+    );
+  }
+
+  // ---------- Driftjournal ----------
+  // Journalen får en vecka bakåt, så att Jonas ser hur den läses.
+  const journalpost = (dagarSedan, klocka, slag, av, text, extra = {}) =>
+    spara('driftpost', {
+      tid: `${plusDagar(IDAG, -dagarSedan)} ${klocka}`,
+      skapad: `${plusDagar(IDAG, -dagarSedan)} ${klocka}`,
+      slag, av_id: mid[av], text,
+      utrustning_id: extra.utrustning ? utr[extra.utrustning] : null,
+      komponent_id: extra.komponent ? komp[extra.komponent] : null,
+      omrade_id: extra.omrade ? omr[extra.omrade] : null,
+      kalla: extra.kalla || 'mobil',
+      bekraftad: `${plusDagar(IDAG, -dagarSedan)} ${klocka}`,
+      bekraftad_av_id: mid[av],
+      transkript: extra.transkript || null,
+    });
+
+  journalpost(6, '07:40', 'rond', 'annika', 'Lift – kontroll före öppning, kvitterad driftklar',
+    { utrustning: 'Stora liften', omrade: 'Stora liften' });
+  journalpost(5, '22:15', 'atgard', 'stefan',
+    'Avisade munstyckena på lans 9 och 10. Snön blev torr igen efteråt.',
+    { utrustning: 'Lans 9', omrade: 'Lilla backen',
+      transkript: 'Jag har gått snöronden, lans nio och tio hade isat igen lite men jag avisade dem, allt annat såg bra ut' });
+  journalpost(4, '06:20', 'observation', 'per',
+    'Ovant ljud från drivstationen vid uppstart. Försvann efter ett par minuter – håll ögonen på den.',
+    { utrustning: 'Stora liften', komponent: 'Stora liften/Drivstation', omrade: 'Stora liften' });
+  journalpost(3, '23:50', 'matning', 'stefan', 'Mätning vid lans 4: wetbulb −6,2, trycket stabilt',
+    { utrustning: 'Lans 4', omrade: 'Stora backen' });
+  journalpost(2, '08:05', 'atgard', 'per',
+    'Bytte backventilen på Fläkt 2 igen. Fjärde gången – vi behöver titta på hela ventilhuset.',
+    { utrustning: 'Fläkt 2', komponent: 'Fläkt 2/Backventil', omrade: 'Stora backen' });
+  journalpost(1, '16:30', 'observation', 'annika',
+    'Isfläck vid påstigningen på bandet. Sandade och spärrade av tills det tinat.',
+    { utrustning: 'Transportbandet', omrade: 'Bandet' });
+
+  // ---------- En incident, så att uppföljningen går att visa ----------
+  const inc = spara('incident', {
+    tid: `${plusDagar(IDAG, -4)} 14:20`,
+    slag: 'gastincident',
+    plats: 'Teknikbacken, ojämnt parti nedanför mellanstationen',
+    omrade_id: omr['Lilla backen'],
+    beskrivning:
+      'Skidåkare tappade balansen i det ojämna partiet och ramlade. Backpersonalen hjälpte ner personen till fiket.',
+    uppgiven_orsak: 'Åkaren uppgav att hen inte sett gropen.',
+    forhallanden: '−3 °C, nysnö ovanpå hård pist, god sikt',
+    insatser: 'Första hjälpen på plats, åkte ner med pulka, anhörig kontaktad av åkaren själv.',
+    personal: 'Annika Ask (backansvarig), Lotta Lund (fiket)',
+    person_alder: 14,
+    skada: 'Ont i axeln, åkte själv till vårdcentralen',
+    rapporterad_av_id: mid.annika,
+    uppfoljning_av_id: mid.jonas,
+    status: 'granskad',
+    gallras: plusDagar(IDAG, 365 * 3),
+  });
+  spara('driftpost', {
+    tid: `${plusDagar(IDAG, -4)} 14:20`,
+    slag: 'incident', av_id: mid.annika, incident_id: inc,
+    omrade_id: omr['Lilla backen'],
+    text: 'gastincident rapporterad – Teknikbacken, ojämnt parti nedanför mellanstationen',
+    bekraftad: `${plusDagar(IDAG, -4)} 14:25`,
+    bekraftad_av_id: mid.annika,
+    kalla: 'mobil',
+  });
 
   // ---------- Kioskens sortiment ----------
   // Priser är klubbens egna och ska stämmas av mot kassan före säsongsstart.
@@ -834,7 +971,8 @@ console.log('Frö klart:');
 iForeningen(() => {
   for (const t of ['medlem', 'omrade', 'utrustning', 'checklistmall', 'checklistpunkt', 'position',
     'pass', 'bokning', 'matning', 'arende', 'insats', 'artikel', 'hyrespris',
-    'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift'])
+    'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift',
+    'komponent', 'leverantor', 'driftpost', 'incident'])
     console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
 });
 db.close();

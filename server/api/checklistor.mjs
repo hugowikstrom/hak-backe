@@ -1,7 +1,11 @@
 // Checklistor: mallar, punkter och körningar. En avvikelse kan direkt bli ett ärende.
 import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { bool, ettAv, fel, heltal, kravTxt, num, rutt, svar, txt } from '../http.mjs';
+import { minstRoll } from '../behorighet.mjs';
 import { skapaArende } from './arenden.mjs';
+import { skapaPost } from './drift.mjs';
+import { modulPa } from '../moduler.mjs';
+import { aktuellForening } from '../db.mjs';
 import { bildfinns, sparaBild } from './bilder.mjs';
 import { rondlage } from '../rond.mjs';
 import { aktivSasong, omradeslista, utrustningslista } from './register.mjs';
@@ -23,7 +27,8 @@ export const mallar = () =>
   }));
 
 const KORNING_SQL = `
-  SELECT k.*, mall.namn AS mall, mall.intervall, u.namn AS utrustning, u.typ AS utrustningstyp,
+  SELECT k.*, mall.namn AS mall, mall.intervall, mall.kraver_kvittens, mall.rondtyp,
+         u.namn AS utrustning, u.typ AS utrustningstyp,
          o.namn AS omrade, me.namn AS av,
          (SELECT count(*) FROM checklistpunkt WHERE mall_id=k.mall_id) AS antal_punkter,
          (SELECT count(*) FROM checklistsvar s WHERE s.korning_id=k.id AND (s.bockad=1 OR s.varde IS NOT NULL OR s.text IS NOT NULL)) AS antal_svar,
@@ -37,8 +42,10 @@ const KORNING_SQL = `
 export const korning = (id) => {
   const k = en(`${KORNING_SQL} WHERE k.id=?`, id);
   if (!k) return null;
+  k.brister = k.brister ? JSON.parse(k.brister) : null;
   const punkter = alla(
-    `SELECT p.*, s.id AS svar_id, s.bockad, s.varde, s.text AS svarstext, s.avvikelse, s.kommentar, s.bild, s.tid AS svarstid
+    `SELECT p.*, s.id AS svar_id, s.bockad, s.varde, s.text AS svarstext, s.avvikelse, s.kommentar,
+            s.bild, s.tid AS svarstid, s.ej_tillampligt, s.motivering
      FROM checklistpunkt p LEFT JOIN checklistsvar s ON s.punkt_id=p.id AND s.korning_id=?
      WHERE p.mall_id=? ORDER BY p.ordning, p.id`,
     id,
@@ -242,7 +249,18 @@ export const rutter = [
       else if (bildfinns(kropp.bild)) bild = kropp.bild;
       else throw fel(400, 'Okänd bild');
     }
+    // En säkerhetskritisk punkt går inte att vifta bort. Den som inte kan
+    // utföra kontrollen ska lämna den obesvarad så att den syns som saknad.
+    const ejTillampligt = bool(kropp.ej_tillampligt) ?? 0;
+    if (ejTillampligt && p.sakerhetskritisk)
+      throw fel(400, 'En säkerhetskritisk kontroll kan inte markeras som ej tillämplig');
+    const motivering = kropp.motivering === undefined ? undefined : txt(kropp.motivering);
+    if (ejTillampligt && !(motivering || kropp.kommentar))
+      throw fel(400, 'Ange varför kontrollen inte är tillämplig');
+
     const data = {
+      ej_tillampligt: ejTillampligt,
+      motivering,
       bockad: bool(kropp.bockad) ?? 0,
       varde: kropp.varde === undefined ? undefined : num(kropp.varde),
       text: kropp.text === undefined ? undefined : txt(kropp.text),
@@ -257,18 +275,65 @@ export const rutter = [
     svar(res, 200, korning(k.id));
   }),
 
+  /**
+   * Kvittens. Appen avgör inte om en lift får öppnas – den skriver ner vem
+   * som fattade beslutet, när, och på vilket underlag. Ett ej driftklart
+   * beslut är ett fullgott utfall och ska gå lika lätt att registrera.
+   */
+  rutt('POST', '/api/checklistor/korningar/:id/kvittens', 'medlem', ({ res, param, kropp, medlem }) => {
+    const k = korning(param.id);
+    if (!k) throw fel(404, 'Körningen finns inte');
+    if (!k.avslutad) throw fel(409, 'Avsluta ronden innan du kvitterar den');
+    const beslut = ettAv(kropp.beslut, ['driftklar', 'ej_driftklar'], 'Beslut');
+    if (!beslut) throw fel(400, 'Ange beslut: driftklar eller ej_driftklar');
+    // Den som kvitterar driftklart tar ansvaret, och måste få göra det.
+    if (beslut === 'driftklar' && !minstRoll(medlem, 'backansvarig'))
+      throw fel(403, 'Bara backansvarig eller högre får kvittera driftklart');
+    if (beslut === 'driftklar' && k.status === 'klar_med_brist' && !txt(kropp.anteckning))
+      throw fel(400, 'Ronden har obesvarade obligatoriska punkter – motivera beslutet');
+    uppdatera('checklistkorning', k.id, {
+      kvittens_beslut: beslut,
+      kvittens_av_id: medlem.id,
+      kvittens_tid: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      kvittens_anteckning: txt(kropp.anteckning),
+    });
+    svar(res, 200, { korning: korning(k.id) });
+  }),
+
   rutt('POST', '/api/checklistor/korningar/:id/avsluta', 'medlem', ({ res, param, kropp, medlem }) => {
     const k = korning(param.id);
     if (!k) throw fel(404, 'Körningen finns inte');
-    const saknas = k.punkter.filter(
-      (p) => p.obligatorisk && !p.bockad && p.varde == null && !p.svarstext
-    );
+    // En avvikelse är ett svar: frågan "är det här i ordning" har fått nej.
+    const besvarad = (p) =>
+      p.bockad || p.varde != null || p.svarstext || p.ej_tillampligt || p.avvikelse;
+    const saknas = k.punkter.filter((p) => p.obligatorisk && !besvarad(p));
+    const sakerhet = saknas.filter((p) => p.sakerhetskritisk);
+
+    // Säkerhetskritiska kontroller går aldrig att hoppa över. Det finns
+    // ingen flagga för det, med flit.
+    if (sakerhet.length)
+      throw fel(
+        409,
+        `${sakerhet.length} säkerhetskritiska kontroller saknar svar: ${sakerhet
+          .map((p) => p.text)
+          .join('; ')}`
+      );
+
+    // Övriga obligatoriska punkter får lämnas – men då är ronden avslutad
+    // med brist, inte godkänd, och bristen följer med i historiken.
     if (saknas.length && !kropp.tvinga)
       throw fel(400, `${saknas.length} obligatoriska punkter saknar svar`);
+    if (saknas.length && !txt(kropp.motivering))
+      throw fel(400, 'Ange varför ronden avslutas med obesvarade obligatoriska punkter');
+
     uppdatera('checklistkorning', k.id, {
-      status: 'klar',
+      status: saknas.length ? 'klar_med_brist' : 'klar',
       avslutad: new Date().toISOString().slice(0, 19).replace('T', ' '),
       anteckning: kropp.anteckning === undefined ? undefined : txt(kropp.anteckning),
+      brister: saknas.length
+        ? JSON.stringify(saknas.map((p) => ({ punkt_id: p.id, text: p.text })))
+        : null,
+      brist_motivering: saknas.length ? txt(kropp.motivering) : null,
     });
     // Avvikelser blir ärenden om de inte redan gjort det.
     const nya = [];
@@ -289,9 +354,9 @@ export const rutter = [
                 [p.kommentar, p.hjalptext, p.bild ? `Bild: /api/bilder/${p.bild}` : null]
                   .filter(Boolean)
                   .join('\n\n') || null,
-              typ: 'brist',
-              prioritet: 2,
-              allvarlighet: 'begransar',
+              typ: p.sakerhetskritisk ? 'risk' : 'brist',
+              prioritet: p.sakerhetskritisk ? 1 : 2,
+              allvarlighet: p.sakerhetskritisk ? 'sakerhetsrisk' : 'begransar',
               utrustning_id: k.utrustning_id,
               omrade_id: k.omrade_id,
               korning_id: k.id,
@@ -301,6 +366,22 @@ export const rutter = [
         );
       }
     }
-    svar(res, 200, { korning: korning(k.id), nya_arenden: nya });
+    // Ronden ska synas i driftjournalen utan att någon skriver in den igen.
+    const slutford = korning(k.id);
+    if (modulPa(aktuellForening(), 'drift')) skapaPost(
+      {
+        tid: slutford.avslutad,
+        slag: 'rond',
+        utrustning_id: k.utrustning_id,
+        omrade_id: k.omrade_id,
+        korning_id: k.id,
+        kalla: k.kalla === 'mobil' ? 'mobil' : 'webb',
+        text:
+          `${k.mall}${slutford.status === 'klar_med_brist' ? ' – avslutad med brist' : ''}` +
+          `${slutford.antal_avvikelser ? `, ${slutford.antal_avvikelser} avvikelser` : ''}`,
+      },
+      medlem
+    );
+    svar(res, 200, { korning: slutford, nya_arenden: nya });
   }),
 ];

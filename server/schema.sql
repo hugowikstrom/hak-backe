@@ -595,3 +595,100 @@ CREATE TABLE IF NOT EXISTS installning (
   varde       TEXT NOT NULL,
   beskrivning TEXT
 );
+
+-- ---------------------------------------------------------------------------
+-- Drift: komponenter, driftjournal och incidenter
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS leverantor (
+  id        INTEGER PRIMARY KEY,
+  namn      TEXT NOT NULL,
+  kontakt   TEXT,
+  telefon   TEXT,
+  epost     TEXT,
+  anteckning TEXT,
+  aktiv     INTEGER NOT NULL DEFAULT 1
+);
+
+-- En utrustning består av delar. Fel sätts på delen, så att statistiken kan
+-- svara på vilken backventil som krånglar – inte bara vilken kanon.
+CREATE TABLE IF NOT EXISTS komponent (
+  id            INTEGER PRIMARY KEY,
+  utrustning_id INTEGER NOT NULL REFERENCES utrustning(id) ON DELETE CASCADE,
+  namn          TEXT NOT NULL,
+  slag          TEXT,                              -- ventil | filter | slang | el | motor | ovrigt
+  artikelnummer TEXT,
+  leverantor_id INTEGER REFERENCES leverantor(id) ON DELETE SET NULL,
+  anteckning    TEXT,
+  ordning       INTEGER NOT NULL DEFAULT 0,
+  aktiv         INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_komponent_utr ON komponent(utrustning_id);
+
+-- Olyckor och tillbud. Bär personuppgifter: egen behörighet, egen gallring.
+CREATE TABLE IF NOT EXISTS incident (
+  id            INTEGER PRIMARY KEY,
+  tid           TEXT NOT NULL,
+  slag          TEXT NOT NULL DEFAULT 'gastincident', -- arbetsskada | gastincident | tillbud | driftavvikelse
+  plats         TEXT,
+  omrade_id     INTEGER REFERENCES omrade(id) ON DELETE SET NULL,
+  beskrivning   TEXT NOT NULL,
+  uppgiven_orsak TEXT,
+  forhallanden  TEXT,                              -- väder och pist vid tillfället
+  insatser      TEXT,                              -- vad som gjordes
+  vittnen       TEXT,
+  -- Personuppgifter hålls i egna fält så de kan gallras utan att
+  -- händelsebeskrivningen förstörs.
+  person_namn   TEXT,
+  person_kontakt TEXT,
+  person_alder  INTEGER,
+  skada         TEXT,
+  rapporterad_av_id INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  personal      TEXT,                              -- inblandad personal, fritext
+  uppfoljning_av_id INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  status        TEXT NOT NULL DEFAULT 'rapporterad', -- rapporterad | granskad | uppfoljd | avslutad
+  arende_id     INTEGER REFERENCES arende(id) ON DELETE SET NULL,
+  gallras       TEXT,                              -- datum då personuppgifterna ska bort
+  gallrad       TEXT,
+  skapad        TEXT NOT NULL DEFAULT (datetime('now')),
+  uppdaterad    TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_incident_tid ON incident(tid DESC);
+
+-- Driftjournalen: en rad per sak som hänt i anläggningen, oavsett om den
+-- kom från en rond, en mätning, ett tal eller en knapptryckning.
+CREATE TABLE IF NOT EXISTS driftpost (
+  id            INTEGER PRIMARY KEY,
+  tid           TEXT NOT NULL DEFAULT (datetime('now')),  -- när det hände
+  skapad        TEXT NOT NULL DEFAULT (datetime('now')),  -- när det skrevs in
+  slag          TEXT NOT NULL DEFAULT 'observation',      -- observation | atgard | rond | matning | incident | larm
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  utrustning_id INTEGER REFERENCES utrustning(id) ON DELETE SET NULL,
+  komponent_id  INTEGER REFERENCES komponent(id) ON DELETE SET NULL,
+  omrade_id     INTEGER REFERENCES omrade(id) ON DELETE SET NULL,
+  korning_id    INTEGER REFERENCES checklistkorning(id) ON DELETE SET NULL,
+  matning_id    INTEGER REFERENCES matning(id) ON DELETE SET NULL,
+  arende_id     INTEGER REFERENCES arende(id) ON DELETE SET NULL,
+  incident_id   INTEGER REFERENCES incident(id) ON DELETE SET NULL,
+  pass_id       INTEGER REFERENCES pass(id) ON DELETE SET NULL,
+  text          TEXT,                              -- det människan står för
+  transkript    TEXT,                              -- ordagrant tal, skrivs aldrig över
+  ljudfil       TEXT,                              -- filnamn under data/ljud
+  forslag       TEXT,                              -- AI:ns tolkning som JSON, oförändrad
+  ai_modell     TEXT,                              -- vilken modell som tolkade
+  bekraftad     TEXT,                              -- när en människa godkände
+  bekraftad_av_id INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  kalla         TEXT NOT NULL DEFAULT 'webb'       -- webb | mobil | sensor | system
+);
+CREATE INDEX IF NOT EXISTS idx_driftpost_tid ON driftpost(tid DESC);
+CREATE INDEX IF NOT EXISTS idx_driftpost_utr ON driftpost(utrustning_id, tid DESC);
+
+-- Vem som läst en incident. Spårbar åtkomst är ett krav, inte en finess.
+CREATE TABLE IF NOT EXISTS incidentatkomst (
+  id          INTEGER PRIMARY KEY,
+  incident_id INTEGER NOT NULL REFERENCES incident(id) ON DELETE CASCADE,
+  medlem_id   INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  tid         TEXT NOT NULL DEFAULT (datetime('now')),
+  slag        TEXT NOT NULL DEFAULT 'las'          -- las | andra | gallra
+);
+CREATE INDEX IF NOT EXISTS idx_incidentatkomst ON incidentatkomst(incident_id, tid DESC);

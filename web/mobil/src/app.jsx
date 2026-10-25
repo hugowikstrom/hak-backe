@@ -9,6 +9,7 @@ import { Rond } from './sidor/rond.jsx';
 import { Historik } from './sidor/historik.jsx';
 import { Mallar } from './sidor/mallar.jsx';
 import { Konto } from './sidor/konto.jsx';
+import { Handelse } from './sidor/handelse.jsx';
 
 const RANG = { medlem: 1, backansvarig: 2, anlaggningsansvarig: 3, admin: 4 };
 export const minstRoll = (m, roll) => (RANG[m?.roll] ?? 0) >= RANG[roll];
@@ -54,10 +55,12 @@ export function App() {
 
   const Sida = {
     hem: Hem, rond: Rond, historik: Historik, mallar: Mallar, konto: Konto,
+    handelse: Handelse,
   }[vy.namn] || Hem;
 
   const flikar = [
     { namn: 'hem', text: 'Ronder', fig: '✓' },
+    { namn: 'handelse', text: 'Rapportera', fig: '◉' },
     { namn: 'historik', text: 'Historik', fig: '≡' },
     ...(far ? [{ namn: 'mallar', text: 'Checklistor', fig: '✎' }] : []),
     { namn: 'konto', text: 'Konto', fig: '☻' },
@@ -69,7 +72,7 @@ export function App() {
         <Notiser>
           <div className="skal">
             <header className="topp">
-              {vy.namn === 'rond' || vy.namn === 'mall' ? (
+              {vy.namn === 'rond' || vy.namn === 'mall' || vy.namn === 'handelse' ? (
                 <button className="tillbaka" onClick={tillbaka} aria-label="Tillbaka">‹</button>
               ) : null}
               <div className="marke">

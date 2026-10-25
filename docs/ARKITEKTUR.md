@@ -42,6 +42,74 @@ räknas fram ur samma underlag.
 skrivs in i registret och läggs på som CSS-variabler när klienten startar.
 Se `docs/GRAFISK-PROFIL.md`.
 
+## AI:n
+
+AI används på ett enda sätt: den strukturerar text som en människa sedan
+granskar. `server/ai.mjs` är hela sömmen – ett anrop in, ett JSON-objekt ut,
+och ett tydligt `null` när något inte går.
+
+Fyra regler som koden håller, inte bara dokumentationen:
+
+- **Standardmodellen körs på maskinen** (`lokal` via gatewayen på
+  127.0.0.1:4000). Driftjournal och incidentrapporter innehåller
+  personuppgifter och uppgifter om olyckor.
+- **`kanslig: true` tvingar lokal modell.** Väljer en förening en modell hos
+  en leverantör gäller det inte incidenter – de byter tillbaka automatiskt.
+- **AI skriver aldrig i journalen.** En talad rapport sparas som `driftpost`
+  med `bekraftad = NULL`. Först när en människa trycker bekräfta blir den
+  dokumentation, och det som sparas är människans text, inte modellens.
+  Förslaget ligger kvar oförändrat i `forslag` som JSON.
+- **Mätvärden filtreras i kod, inte av modellen.** `rensaMatvarden()` kastar
+  värden som inte är tal eller ligger utanför rimliga gränser. "Trycket var
+  okej" ger inget tryck.
+
+Är AI:n avstängd fungerar allt ändå: man får transkriptet och fyller i själv.
+Det är ett fullgott utfall och inte ett fel i appen.
+
+Utrustning kopplas i två steg. Först modellens fält, sedan – om det är tomt –
+en genomsökning av transkriptet (`utrustningskandidater()`), som klarar
+talade siffror ("lans fyra"). Båda stegen kräver **entydighet**: nämns två
+objekt får människan välja.
+
+## Säkerhetskritiska kontroller
+
+Checklistpunkter kan märkas `sakerhetskritisk`. Då gäller:
+
+- De kan inte markeras "ej tillämplig".
+- En rond med en obesvarad säkerhetspunkt går inte att avsluta – det finns
+  ingen flagga för att tvinga förbi, med flit. Även mobilappens offlinekö
+  vägrar, så svaret kommer i backen och inte först när täckningen återvänder.
+- Övriga obligatoriska punkter får lämnas, men då får ronden status
+  `klar_med_brist` och kräver en motivering. En ofullständig kontroll kan
+  aldrig redovisas som godkänd.
+- En avvikelse på en säkerhetspunkt blir ett ärende med
+  `allvarlighet = 'sakerhetsrisk'` och prioritet 1, som bara backansvarig
+  eller högre kan stänga – och bara med en dokumenterad åtgärd.
+
+Mallar kan kräva **kvittens**: efter avslutad rond tar en namngiven person
+ställning till `driftklar` eller `ej_driftklar`. Appen räknar inte ut om en
+lift får öppna. Den skriver ner vem som bestämde, när, och på vilket
+underlag.
+
+## Personuppgifter i incidenter
+
+Olyckor och tillbud ligger i en egen modul, och personuppgifterna i egna
+kolumner (`person_namn`, `person_kontakt`, `person_alder`, `skada`,
+`vittnen`). Det gör tre saker möjliga:
+
+- **Dataminimering.** Behörigheten `incident` räcker för att arbeta med
+  händelsen; `incident_person` krävs för att se vem det gällde. Övriga ser
+  `[skyddad uppgift]`.
+- **Spårbar åtkomst.** Varje läsning, ändring och gallring loggas i
+  `incidentatkomst`.
+- **Gallring utan att historien förstörs.** Ett gallringsdatum sätts vid
+  registreringen; gallringen nollar personfälten och lämnar
+  händelsebeskrivningen kvar.
+
+Personuppgifter följer aldrig med vidare: journalposten om en incident bär
+bara slag och plats, och ett åtgärdsärende ur en incident får en
+beskrivning utan namn.
+
 ## Lägga till en modul
 
 1. Skriv `server/api/<modul>.mjs` som exporterar `rutter` (använd `rutt()`

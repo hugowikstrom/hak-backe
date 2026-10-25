@@ -1,6 +1,7 @@
 // Idélådan: skriv eller prata in en idé. En människa läser och skickar
 // den vidare till Backlog – ingenting går dit av sig själv.
 import { useEffect, useRef, useState } from 'react';
+import { useInspelning } from '../../delad/inspelning.js';
 import { api } from '../api.js';
 import { useJag } from '../app.jsx';
 import { Bricka, Kort, Lada, Nyckeltal, Text, Tomt, useHamta, useNotis, Val, Vanta } from '../delar/bitar.jsx';
@@ -104,44 +105,9 @@ function NyIde({ kategorier, klar }) {
   const [text, sattText] = useState('');
   const [rubrik, sattRubrik] = useState('');
   const [kategori, sattKategori] = useState('ovrigt');
-  const [spelar, sattSpelar] = useState(false);
-  const [ljud, sattLjud] = useState(null);
-  const [sekunder, sattSekunder] = useState(0);
-  const [skickar, sattSkickar] = useState(false);
-  const inspelare = useRef(null);
-  const bitar = useRef([]);
-  const klocka = useRef(null);
+  const { spelar, ljud, sekunder, fel: mikrofel, starta: startaInspelning, stoppa, nollstall } = useInspelning();
 
-  useEffect(() => () => klocka.current && clearInterval(klocka.current), []);
-
-  const startaInspelning = async () => {
-    try {
-      const strom = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const spelare = new MediaRecorder(strom);
-      bitar.current = [];
-      spelare.ondataavailable = (e) => e.data.size && bitar.current.push(e.data);
-      spelare.onstop = () => {
-        const blob = new Blob(bitar.current, { type: spelare.mimeType || 'audio/webm' });
-        const lasare = new FileReader();
-        lasare.onload = () => sattLjud(lasare.result);
-        lasare.readAsDataURL(blob);
-        for (const spar of strom.getTracks()) spar.stop();
-      };
-      spelare.start();
-      inspelare.current = spelare;
-      sattSpelar(true);
-      sattSekunder(0);
-      klocka.current = setInterval(() => sattSekunder((s) => s + 1), 1000);
-    } catch (e) {
-      notis(`Mikrofonen gick inte att starta: ${e.message}`, 'fel');
-    }
-  };
-
-  const stoppa = () => {
-    inspelare.current?.stop();
-    clearInterval(klocka.current);
-    sattSpelar(false);
-  };
+  useEffect(() => mikrofel && notis(mikrofel, 'fel'), [mikrofel]);
 
   const skicka = async () => {
     sattSkickar(true);
@@ -155,8 +121,7 @@ function NyIde({ kategorier, klar }) {
       });
       sattText('');
       sattRubrik('');
-      sattLjud(null);
-      sattSekunder(0);
+      nollstall();
       if (i.stt_fel) notis(`Ljudet sparades, men kunde inte skrivas av: ${i.stt_fel}`, 'fel');
       klar(i);
     } catch (e) {
@@ -199,7 +164,7 @@ function NyIde({ kategorier, klar }) {
         {ljud && !spelar && (
           <>
             <audio controls src={ljud} style={{ height: 32 }} />
-            <button className="tom" onClick={() => sattLjud(null)}>Ta bort inspelningen</button>
+            <button className="tom" onClick={nollstall}>Ta bort inspelningen</button>
           </>
         )}
         <span className="vaxa" />

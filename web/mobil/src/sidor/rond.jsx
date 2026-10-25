@@ -3,9 +3,10 @@ import { useMemo, useState } from 'react';
 import { krympBild } from '../api.js';
 import { useRuta } from '../app.jsx';
 import {
-  antalAvvikelser, antalBesvarade, hamtaRond, obesvarade, sattSvar, synka, taBortRond, uppdateraRond,
+  antalAvvikelser, antalBesvarade, hamtaRond, obesvarade, obesvaradObligatorisk, obesvaradSakerhet,
+  sattSvar, synka, taBortRond, uppdateraRond,
 } from '../ko.js';
-import { Ark, Bricka, Framsteg, Omrade, Tomt, useNat, useNotis, Vanta } from '../delar.jsx';
+import { Ark, Bricka, Framsteg, Omrade, Segment, Tomt, useNat, useNotis, Vanta } from '../delar.jsx';
 
 export function Rond({ vy, ronder }) {
   const { ga, tillbaka } = useRuta();
@@ -25,6 +26,10 @@ export function Rond({ vy, ronder }) {
   const punkt = rond?.punkter[index];
   const klara = rond ? antalBesvarade(rond) : 0;
   const saknas = useMemo(() => (rond ? obesvarade(rond).filter((p) => p.obligatorisk) : []), [rond]);
+  // Två slags luckor, med helt olika följder: säkerhetskontroller stoppar
+  // avslutet, övriga obligatoriska kräver en motivering.
+  const saknadSakerhet = useMemo(() => (rond ? obesvaradSakerhet(rond) : []), [rond]);
+  const saknadObligatorisk = useMemo(() => (rond ? obesvaradObligatorisk(rond) : []), [rond]);
 
   if (!rond) return <Tomt>Ronden finns inte längre.</Tomt>;
 
@@ -84,6 +89,10 @@ export function Rond({ vy, ronder }) {
           svar={rond.svar[punkt.id]}
           svara={svara}
           avvik={() => sattAvvikelse(punkt)}
+          ejTillamplig={() => {
+            const skal = prompt('Varför går kontrollen inte att utföra?');
+            if (skal?.trim()) svara({ ej_tillampligt: true, motivering: skal.trim(), bockad: false });
+          }}
           bak={() => sattIndex(Math.max(0, index - 1))}
           fram={nasta}
         />
@@ -91,7 +100,7 @@ export function Rond({ vy, ronder }) {
         <div className="kort lista">
           {rond.punkter.map((p, i) => {
             const s = rond.svar[p.id];
-            const klar = s && (s.bockad || s.varde != null || s.text || s.avvikelse);
+            const klar = s && (s.bockad || s.varde != null || s.text || s.avvikelse || s.ej_tillampligt);
             return (
               <button
                 key={p.id}
@@ -104,6 +113,7 @@ export function Rond({ vy, ronder }) {
                 <span className="markor">{s?.avvikelse ? '!' : klar ? '✓' : i + 1}</span>
                 <span>
                   {p.text}
+                  {p.sakerhetskritisk && <span className="bricka rod liten"> säkerhet</span>}
                   {s?.varde != null && <span className="liten svag"> — {s.varde} {p.enhet || ''}</span>}
                   {s?.kommentar && <span className="liten svag" style={{ display: 'block' }}>{s.kommentar}</span>}
                 </span>
@@ -146,12 +156,14 @@ export function Rond({ vy, ronder }) {
 
       {avsluta && (
         <AvslutaArk
+          saknadSakerhet={saknadSakerhet}
+          saknadObligatorisk={saknadObligatorisk}
           rond={rond}
           saknas={saknas}
           online={online}
           stang={() => sattAvsluta(false)}
-          slutfor={async (anteckning) => {
-            uppdateraRond(rond.lokalId, { klar: true, anteckning });
+          slutfor={async ({ anteckning, motivering, kvittens }) => {
+            uppdateraRond(rond.lokalId, { klar: true, anteckning, motivering, kvittens });
             sattAvsluta(false);
             await synka().catch(() => {});
           }}
@@ -166,7 +178,7 @@ export function Rond({ vy, ronder }) {
   );
 }
 
-function Punktkort({ punkt, index, antal, svar, svara, avvik, bak, fram }) {
+function Punktkort({ punkt, index, antal, svar, svara, avvik, ejTillamplig, bak, fram }) {
   const [varde, sattVarde] = useState(svar?.varde ?? '');
   const [text, sattText] = useState(svar?.text ?? '');
   // Byt punkt => nollställ fälten.
@@ -181,8 +193,13 @@ function Punktkort({ punkt, index, antal, svar, svara, avvik, bak, fram }) {
     <div className="punktkort">
       <div className="rad-mellan">
         <span className="rakning">Punkt {index + 1} av {antal}</span>
-        {!punkt.obligatorisk && <span className="bricka">frivillig</span>}
+        {punkt.sakerhetskritisk ? (
+          <span className="bricka rod">säkerhetskontroll</span>
+        ) : !punkt.obligatorisk ? (
+          <span className="bricka">frivillig</span>
+        ) : null}
         {svar?.avvikelse && <span className="bricka rod">avvikelse</span>}
+        {svar?.ej_tillampligt && <span className="bricka">ej tillämplig</span>}
       </div>
       <div className="fraga">{punkt.text}</div>
       {punkt.hjalptext && <div className="hjalp">{punkt.hjalptext}</div>}
@@ -233,6 +250,14 @@ function Punktkort({ punkt, index, antal, svar, svara, avvik, bak, fram }) {
         )}
         <button className="avvik" onClick={avvik}>Avvikelse</button>
       </div>
+
+      {/* En säkerhetskontroll går inte att skriva bort. Den utförs eller
+          lämnas obesvarad, och då syns den som saknad hela vägen. */}
+      {!punkt.sakerhetskritisk && (
+        <button className="tom ejtillamplig" onClick={ejTillamplig}>
+          Går inte att utföra just nu
+        </button>
+      )}
 
       <div className="rad-mellan">
         <button className="tom" onClick={bak} disabled={index === 0}>‹ Föregående</button>
@@ -300,9 +325,30 @@ function AvvikelseArk({ punkt, svar, stang, spara }) {
   );
 }
 
-function AvslutaArk({ rond, saknas, online, stang, slutfor, tillPunkt }) {
+function AvslutaArk({ rond, saknas, saknadSakerhet, saknadObligatorisk, online, stang, slutfor, tillPunkt }) {
   const [anteckning, sattAnteckning] = useState('');
+  const [motivering, sattMotivering] = useState('');
+  const [beslut, sattBeslut] = useState('');
+  const [kvittensord, sattKvittensord] = useState('');
   const avvikelser = rond.punkter.filter((p) => rond.svar[p.id]?.avvikelse);
+
+  // Säkerhetskontroller går inte att lämna. Knappen stängs, och det står
+  // varför – inte som en gåta att klura ut.
+  const stoppad = saknadSakerhet.length > 0;
+  const kravMotivering = saknadObligatorisk.length > 0 && !motivering.trim();
+  const kravKvittens = rond.kraver_kvittens && !beslut;
+  const kravBeslutsord = beslut === 'driftklar' && saknadObligatorisk.length > 0 && !kvittensord.trim();
+
+  const hinder = stoppad
+    ? 'Säkerhetskontroller saknar svar'
+    : kravMotivering
+      ? 'Motivera de obesvarade punkterna'
+      : kravKvittens
+        ? 'Ta ställning till driftläget'
+        : kravBeslutsord
+          ? 'Motivera beslutet'
+          : null;
+
   return (
     <Ark
       titel="Avsluta ronden"
@@ -310,8 +356,21 @@ function AvslutaArk({ rond, saknas, online, stang, slutfor, tillPunkt }) {
       fot={
         <>
           <button onClick={stang}>Tillbaka</button>
-          <button className="primar" onClick={() => slutfor(anteckning.trim() || null)}>
-            Slutför
+          <button
+            className="primar"
+            disabled={!!hinder}
+            title={hinder || undefined}
+            onClick={() =>
+              slutfor({
+                anteckning: anteckning.trim() || null,
+                motivering: motivering.trim() || null,
+                kvittens: beslut
+                  ? { beslut, anteckning: kvittensord.trim() || null }
+                  : null,
+              })
+            }
+          >
+            {hinder || 'Slutför'}
           </button>
         </>
       }
@@ -322,13 +381,32 @@ function AvslutaArk({ rond, saknas, online, stang, slutfor, tillPunkt }) {
         {!online && <Bricka farg="varning">offline</Bricka>}
       </div>
 
-      {!!saknas.length && (
+      {stoppad && (
         <>
-          <div className="meddelande varning">
-            {saknas.length} obligatoriska punkter saknar svar. Du kan slutföra ändå – de noteras som obesvarade.
+          <div className="meddelande fel">
+            <strong>Ronden kan inte avslutas.</strong> {saknadSakerhet.length} säkerhetskontroller
+            saknar svar. De går inte att hoppa över – utför dem, eller rapportera en avvikelse.
           </div>
           <div className="kort lista">
-            {saknas.map((p) => (
+            {saknadSakerhet.map((p) => (
+              <button key={p.id} className="punktrad avvikande" onClick={() => tillPunkt(p)}>
+                <span className="markor">!</span>
+                <span>{p.text}</span>
+                <span className="pil">›</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+
+      {!!saknadObligatorisk.length && (
+        <>
+          <div className="meddelande varning">
+            {saknadObligatorisk.length} obligatoriska punkter saknar svar. Ronden avslutas då
+            <strong> med brist</strong>, inte som godkänd, och det syns i historiken.
+          </div>
+          <div className="kort lista">
+            {saknadObligatorisk.map((p) => (
               <button key={p.id} className="punktrad" onClick={() => tillPunkt(p)}>
                 <span className="markor">!</span>
                 <span>{p.text}</span>
@@ -336,6 +414,12 @@ function AvslutaArk({ rond, saknas, online, stang, slutfor, tillPunkt }) {
               </button>
             ))}
           </div>
+          <Omrade
+            etikett="Varför lämnas de obesvarade?"
+            varde={motivering}
+            satt={sattMotivering}
+            placeholder="Skyltarna kommer med leveransen i morgon"
+          />
         </>
       )}
 
@@ -355,6 +439,35 @@ function AvslutaArk({ rond, saknas, online, stang, slutfor, tillPunkt }) {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Kvittensen är ett eget beslut av en människa. Appen räknar inte
+          ut om liften får köra – den frågar den som ansvarar. */}
+      {!!rond.kraver_kvittens && (
+        <div className="kvittens">
+          <p className="liten svag" style={{ margin: '0 0 8px' }}>
+            Den här ronden ska kvitteras. Du tar ställning, inte appen.
+          </p>
+          <Segment
+            poster={[
+              { varde: 'driftklar', text: 'Driftklar' },
+              { varde: 'ej_driftklar', text: 'Ej driftklar' },
+            ]}
+            varde={beslut}
+            satt={sattBeslut}
+          />
+          {!!beslut && (
+            <Omrade
+              etikett={
+                beslut === 'driftklar'
+                  ? 'Underlag för beslutet'
+                  : 'Vad gör att den inte är driftklar?'
+              }
+              varde={kvittensord}
+              satt={sattKvittensord}
+            />
+          )}
         </div>
       )}
 
