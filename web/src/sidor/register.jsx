@@ -21,13 +21,15 @@ export function Register() {
           { nyckel: 'medlemmar', text: 'Medlemmar' },
           { nyckel: 'utrustning', text: 'Utrustning' },
           { nyckel: 'omraden', text: 'Områden' },
-          { nyckel: 'positioner', text: 'Positioner' },
+          { nyckel: 'backen', text: 'Positioner i backen' },
+          { nyckel: 'positioner', text: 'Funktioner' },
           { nyckel: 'sasonger', text: 'Säsonger' },
         ]}
         aktiv={flik}
         satt={sattFlik}
       />
       {flik === 'medlemmar' && <Medlemmar />}
+      {flik === 'backen' && <Backpositioner />}
       {flik === 'utrustning' && <Utrustning />}
       {flik === 'omraden' && <Omraden />}
       {flik === 'positioner' && <Positioner />}
@@ -357,6 +359,266 @@ function Omraden() {
           klar={() => { sattNy(null); omraden.uppdatera(); notis('Sparat.'); }}
         />
       )}
+    </>
+  );
+}
+
+/**
+ * Positionerna i backen, och vilken maskin som står på var och en.
+ *
+ * Skillnaden mellan plats och maskin är hela poängen: vattenuttaget sitter
+ * på platsen, munstycket på kanonen. Därför byts maskinen här i en egen
+ * kolumn, och bytet hamnar i historiken.
+ */
+function Backpositioner() {
+  const notis = useNotis();
+  const data = useHamta(() => api.hamta('/api/platser'));
+  const omraden = useHamta(() => api.hamta('/api/omraden'));
+  const [ny, sattNy] = useState(false);
+  const [historik, sattHistorik] = useState(null);
+
+  if (data.laddar && !data.data) return <Vanta />;
+  const { platser, olacerade, slagnamn } = data.data;
+
+  const spara = (p, d) =>
+    api.spara(`/api/platser/${p.id}`, d).then(data.uppdatera).catch((e) => notis(e.message, 'fel'));
+
+  const stallUpp = async (p, utrustning_id) => {
+    try {
+      const r = await api.skapa(`/api/platser/${p.id}/maskin`, {
+        utrustning_id: utrustning_id === '' ? null : Number(utrustning_id),
+      });
+      data.uppdatera();
+      if (r.varning) notis(r.varning, 'info');
+      else if (r.avflyttade?.length) notis('Den förra maskinen är avflyttad och ligger i historiken', 'ok');
+    } catch (e) {
+      notis(e.message, 'fel');
+    }
+  };
+
+  // Maskiner som går att ställa på en plats: de som står lediga, plus den
+  // som redan står där.
+  const valbara = (p) =>
+    [
+      { varde: '', text: '– tom –' },
+      ...(p.utrustning_id ? [{ varde: String(p.utrustning_id), text: p.maskin }] : []),
+      ...olacerade.map((u) => ({ varde: String(u.id), text: u.namn })),
+    ];
+
+  return (
+    <>
+      <Kort
+        titel={`Positioner i backen (${platser.length})`}
+        undertext="Platsen är fast – vattenuttag, el och slangdragning hör till den. Maskinen som står där byts."
+        verktyg={<button className="primar" onClick={() => sattNy(true)}>Ny position</button>}
+      >
+        <Tabell
+          rader={platser}
+          tomtext="Inga positioner upplagda."
+          kolumner={[
+            { falt: 'namn', rubrik: 'Position', redigera: { spara: (p, v) => spara(p, { namn: v }) } },
+            {
+              falt: 'slag', rubrik: 'För',
+              visa: (p) => slagnamn[p.slag] || p.slag,
+              redigera: {
+                typ: 'val',
+                varde: (p) => p.slag,
+                poster: Object.entries(slagnamn).map(([varde, text]) => ({ varde, text })),
+                spara: (p, v) => spara(p, { slag: v }),
+              },
+            },
+            { falt: 'omrade', rubrik: 'Område' },
+            { falt: 'placering', rubrik: 'Placering', redigera: { spara: (p, v) => spara(p, { placering: v }) } },
+            { falt: 'vattenuttag', rubrik: 'Vattenuttag', redigera: { spara: (p, v) => spara(p, { vattenuttag: v }) } },
+            { falt: 'elanslutning', rubrik: 'El', redigera: { spara: (p, v) => spara(p, { elanslutning: v }) } },
+            {
+              falt: 'maskin',
+              rubrik: 'Maskin som står här',
+              visa: (p) =>
+                p.tom ? <span className="svag">tom</span> : (
+                  <>
+                    {p.maskin}
+                    {p.maskin_modell && <span className="liten svag"> {p.maskin_modell}</span>}
+                    {p.maskin_status === 'ur_drift' && <Bricka farg="fara">ur drift</Bricka>}
+                  </>
+                ),
+              redigera: {
+                // Cellen visar maskinens namn men väljer på id.
+                typ: 'val',
+                varde: (p) => (p.utrustning_id ? String(p.utrustning_id) : ''),
+                poster: valbara,
+                spara: (p, v) => stallUpp(p, v),
+              },
+            },
+            {
+              falt: 'aktiv', rubrik: 'Aktiv',
+              visa: (p) => <Ruta pa={!!p.aktiv} satt={(v) => spara(p, { aktiv: v })} etikett={`Aktiv ${p.namn}`} />,
+            },
+            {
+              // Egen knapp: raden är full av redigerbara celler, och ett
+              // klick i en sådan ska sätta markören – inte öppna en ruta.
+              falt: 'historik',
+              rubrik: '',
+              sortlos: true,
+              visa: (p) => (
+                <button className="tom" onClick={() => sattHistorik(p)}>
+                  Historik
+                </button>
+              ),
+            },
+          ]}
+        />
+      </Kort>
+
+      {!!olacerade.length && (
+        <Kort titel={`Maskiner utan plats (${olacerade.length})`} undertext="Står i förrådet, på verkstaden eller i reserv." tat>
+          <div className="brickrad">
+            {olacerade.map((u) => (
+              <span key={u.id} className="periodbricka">
+                {u.namn}
+                {u.modell ? ` · ${u.modell}` : u.tillverkare ? ` · ${u.tillverkare}` : ''}
+              </span>
+            ))}
+          </div>
+        </Kort>
+      )}
+
+      {ny && (
+        <Lada titel="Ny position i backen" stang={() => sattNy(false)}>
+          <NyBackposition
+            omraden={omraden.data || []}
+            slagnamn={slagnamn}
+            klar={() => {
+              sattNy(false);
+              data.uppdatera();
+              notis('Positionen är upplagd', 'ok');
+            }}
+          />
+        </Lada>
+      )}
+
+      {historik && (
+        <Lada titel={historik.namn} stang={() => sattHistorik(null)} bred>
+          <Platshistorik plats={historik} />
+        </Lada>
+      )}
+    </>
+  );
+}
+
+function NyBackposition({ omraden, slagnamn, klar }) {
+  const notis = useNotis();
+  const [f, sattF] = useState({ namn: '', nummer: '', slag: 'lans', omrade_id: '', placering: '', vattenuttag: '', elanslutning: '' });
+  const satt = (n) => (v) => sattF((x) => ({ ...x, [n]: v }));
+  return (
+    <>
+      <div className="rad" style={{ alignItems: 'flex-end' }}>
+        <Text etikett="Namn" varde={f.namn} satt={satt('namn')} krav placeholder="Lans 13" />
+        <Text etikett="Nummer" typ="number" varde={f.nummer} satt={satt('nummer')} />
+        <Val
+          etikett="För"
+          varde={f.slag}
+          satt={satt('slag')}
+          tomtext={null}
+          poster={Object.entries(slagnamn).map(([varde, text]) => ({ varde, text }))}
+        />
+      </div>
+      <div className="rad" style={{ alignItems: 'flex-end' }}>
+        <Val
+          etikett="Område"
+          varde={f.omrade_id}
+          satt={satt('omrade_id')}
+          poster={omraden.map((o) => ({ varde: String(o.id), text: o.namn }))}
+        />
+        <Text etikett="Placering" varde={f.placering} satt={satt('placering')} placeholder="Stora backen, 480 m från toppen" />
+      </div>
+      <div className="rad" style={{ alignItems: 'flex-end' }}>
+        <Text etikett="Vattenuttag" varde={f.vattenuttag} satt={satt('vattenuttag')} placeholder="V13" />
+        <Text etikett="Elanslutning" varde={f.elanslutning} satt={satt('elanslutning')} placeholder="E13" />
+      </div>
+      <div className="knapprad">
+        <button
+          className="primar"
+          disabled={!f.namn.trim()}
+          onClick={async () => {
+            try {
+              await api.skapa('/api/platser', {
+                ...f,
+                nummer: f.nummer ? Number(f.nummer) : null,
+                omrade_id: f.omrade_id ? Number(f.omrade_id) : null,
+              });
+              klar();
+            } catch (e) {
+              notis(e.message, 'fel');
+            }
+          }}
+        >
+          Spara
+        </button>
+      </div>
+    </>
+  );
+}
+
+/** Vad som stått på platsen, och vilka fel som hör till platsen respektive maskinen. */
+function Platshistorik({ plats }) {
+  const h = useHamta(() => api.hamta(`/api/platser/${plats.id}`));
+  if (h.laddar && !h.data) return <Vanta />;
+  const { maskin, historik, arenden_plats, arenden_maskin } = h.data;
+
+  return (
+    <>
+      <dl className="uppgifter">
+        <dt>Står här nu</dt><dd>{maskin ? `${maskin.namn}${maskin.modell ? ` · ${maskin.modell}` : ''}` : 'tom'}</dd>
+        <dt>Placering</dt><dd>{plats.placering || '–'}</dd>
+        <dt>Vattenuttag</dt><dd>{plats.vattenuttag || '–'}</dd>
+        <dt>El</dt><dd>{plats.elanslutning || '–'}</dd>
+      </dl>
+
+      <Kort titel="Vad som stått här" tat>
+        <Tabell
+          rader={historik}
+          tomtext="Ingen maskin har stått här ännu."
+          kolumner={[
+            { falt: 'maskin', rubrik: 'Maskin' },
+            { falt: 'fran', rubrik: 'Från', visa: (r) => r.fran.slice(0, 10) },
+            { falt: 'till', rubrik: 'Till', visa: (r) => (r.till ? r.till.slice(0, 10) : 'står kvar') },
+            { falt: 'av', rubrik: 'Av', visa: (r) => r.av || '–' },
+          ]}
+        />
+      </Kort>
+
+      <Kort
+        titel={`Fel på platsen (${arenden_plats.length})`}
+        undertext="Vattenuttag, slang, el – sådant som stannar här när kanonen byts."
+        tat
+      >
+        {arenden_plats.length === 0 ? (
+          <span className="liten svag">Inga.</span>
+        ) : (
+          arenden_plats.map((a) => (
+            <div key={a.id} className="liten">
+              <strong>#{a.id}</strong> {a.titel} <span className="svag">· {a.status}</span>
+            </div>
+          ))
+        )}
+      </Kort>
+
+      <Kort
+        titel={`Fel på maskinen som står här (${arenden_maskin.length})`}
+        undertext="Följer med maskinen om den flyttas."
+        tat
+      >
+        {arenden_maskin.length === 0 ? (
+          <span className="liten svag">Inga.</span>
+        ) : (
+          arenden_maskin.map((a) => (
+            <div key={a.id} className="liten">
+              <strong>#{a.id}</strong> {a.titel} <span className="svag">· {a.status}</span>
+            </div>
+          ))
+        )}
+      </Kort>
     </>
   );
 }

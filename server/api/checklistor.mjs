@@ -2,9 +2,10 @@
 import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { bool, ettAv, fel, heltal, kravTxt, num, rutt, svar, txt } from '../http.mjs';
 import { minstRoll } from '../behorighet.mjs';
+import { maskinPa, platser as snoplatser, PLATSSLAG } from '../platser.mjs';
 import { skapaArende } from './arenden.mjs';
 import { skapaPost } from './drift.mjs';
-import { modulPa } from '../moduler.mjs';
+import { modulPa } from '../moduldata.mjs';
 import { aktuellForening } from '../db.mjs';
 import { bildfinns, sparaBild } from './bilder.mjs';
 import { rondlage } from '../rond.mjs';
@@ -12,7 +13,7 @@ import { aktivSasong, omradeslista, utrustningslista } from './register.mjs';
 import { idag } from '../tid.mjs';
 
 const INTERVALL = ['vid_start', 'per_pass', 'dagligen', 'veckovis', 'sasong'];
-const OMFATTNING = ['utrustningstyp', 'omrade', 'allmant'];
+const OMFATTNING = ['utrustningstyp', 'snoplats', 'omrade', 'allmant'];
 
 export const mallMedPunkter = (id) => {
   const m = en('SELECT * FROM checklistmall WHERE id=?', id);
@@ -28,7 +29,7 @@ export const mallar = () =>
 
 const KORNING_SQL = `
   SELECT k.*, mall.namn AS mall, mall.intervall, mall.kraver_kvittens, mall.rondtyp,
-         u.namn AS utrustning, u.typ AS utrustningstyp,
+         u.namn AS utrustning, u.typ AS utrustningstyp, plats.namn AS plats, plats.slag AS platsslag,
          o.namn AS omrade, me.namn AS av,
          (SELECT count(*) FROM checklistpunkt WHERE mall_id=k.mall_id) AS antal_punkter,
          (SELECT count(*) FROM checklistsvar s WHERE s.korning_id=k.id AND (s.bockad=1 OR s.varde IS NOT NULL OR s.text IS NOT NULL)) AS antal_svar,
@@ -36,6 +37,7 @@ const KORNING_SQL = `
   FROM checklistkorning k
   JOIN checklistmall mall ON mall.id=k.mall_id
   LEFT JOIN utrustning u ON u.id=k.utrustning_id
+  LEFT JOIN snoplats plats ON plats.id=k.snoplats_id
   LEFT JOIN omrade o ON o.id=k.omrade_id
   LEFT JOIN medlem me ON me.id=k.av_id`;
 
@@ -55,16 +57,31 @@ export const korning = (id) => {
 };
 
 /** Mallar som gäller för en viss utrustning (typ) eller ett område. */
-export function mallarFor({ utrustning_id, omrade_id }) {
-  const u = utrustning_id ? en('SELECT * FROM utrustning WHERE id=?', utrustning_id) : null;
+/**
+ * Vilka checklistor som gäller för ett objekt.
+ *
+ * En snöläggningsrond går på en **position** i backen, inte på maskinen –
+ * man går lansrad fyra, och vad som står där i dag är en annan fråga. Därför
+ * matchar positionens slag, och maskinens typ tas med som andrahandskälla
+ * när ronden ändå gäller en maskin.
+ */
+export function mallarFor({ utrustning_id, omrade_id, snoplats_id }) {
+  const plats = snoplats_id ? en('SELECT * FROM snoplats WHERE id=?', snoplats_id) : null;
+  // Står en maskin på platsen gäller dess egna listor också.
+  const maskin = plats ? maskinPa(plats.id) : null;
+  const u = utrustning_id
+    ? en('SELECT * FROM utrustning WHERE id=?', utrustning_id)
+    : maskin || null;
   return alla(
     `SELECT * FROM checklistmall WHERE aktiv=1 AND (
         omfattning='allmant'
         OR (omfattning='utrustningstyp' AND utrustningstyp=?)
+        OR (omfattning='snoplats' AND platsslag=?)
         OR (omfattning='omrade' AND omrade_id=?))
      ORDER BY ordning, namn`,
     u?.typ ?? null,
-    omrade_id ?? u?.omrade_id ?? null
+    plats?.slag ?? null,
+    omrade_id ?? plats?.omrade_id ?? u?.omrade_id ?? null
   );
 }
 
@@ -79,8 +96,9 @@ export function lage(datum = idag()) {
     })),
     utrustning: utrustningslista(),
     omraden: omradeslista(),
+    platser: snoplatser(),
     korningar: alla(
-      `SELECT k.mall_id, k.utrustning_id, k.omrade_id, k.avslutad, m.namn AS av
+      `SELECT k.mall_id, k.utrustning_id, k.omrade_id, k.snoplats_id, k.avslutad, m.namn AS av
        FROM checklistkorning k LEFT JOIN medlem m ON m.id=k.av_id
        WHERE k.status='klar' AND k.avslutad IS NOT NULL AND k.avslutad >= date('now','-21 days')`
     ),
@@ -101,6 +119,7 @@ export const rutter = [
     svar(res, 200, mallarFor({
       utrustning_id: heltal(fraga.get('utrustning_id')),
       omrade_id: heltal(fraga.get('omrade_id')),
+      snoplats_id: heltal(fraga.get('snoplats_id')),
     }))
   ),
 
@@ -108,6 +127,7 @@ export const rutter = [
     const id = spara('checklistmall', {
       namn: kravTxt(kropp.namn, 'Namn', 120),
       omfattning: ettAv(kropp.omfattning, OMFATTNING, 'Omfattning') || 'allmant',
+      platsslag: ettAv(kropp.platsslag, PLATSSLAG, 'Platsslag'),
       utrustningstyp: txt(kropp.utrustningstyp, 40),
       omrade_id: heltal(kropp.omrade_id),
       intervall: ettAv(kropp.intervall, INTERVALL, 'Intervall') || 'per_pass',
@@ -135,6 +155,7 @@ export const rutter = [
       uppdatera('checklistmall', m.id, {
         namn: txt(kropp.namn, 120),
         omfattning: ettAv(kropp.omfattning, OMFATTNING, 'Omfattning'),
+        platsslag: ettAv(kropp.platsslag, PLATSSLAG, 'Platsslag'),
         utrustningstyp: kropp.utrustningstyp === undefined ? undefined : txt(kropp.utrustningstyp, 40),
         omrade_id: kropp.omrade_id === undefined ? undefined : heltal(kropp.omrade_id),
         intervall: ettAv(kropp.intervall, INTERVALL, 'Intervall'),
@@ -172,6 +193,7 @@ export const rutter = [
       const ny = spara('checklistmall', {
         namn: `${m.namn} (kopia)`.slice(0, 120),
         omfattning: m.omfattning,
+        platsslag: m.platsslag,
         utrustningstyp: m.utrustningstyp,
         omrade_id: m.omrade_id,
         intervall: m.intervall,
@@ -225,9 +247,14 @@ export const rutter = [
   rutt('POST', '/api/checklistor/korningar', 'medlem', ({ res, kropp, medlem }) => {
     const mall = en('SELECT * FROM checklistmall WHERE id=?', heltal(kropp.mall_id));
     if (!mall) throw fel(400, 'Välj en checklista');
+    // Ronden går på en position; maskinen som står där noteras med, så att
+    // ett fel går att hänga på rätt sak efteråt.
+    const snoplats_id = heltal(kropp.snoplats_id);
+    const maskin = snoplats_id ? maskinPa(snoplats_id) : null;
     const id = spara('checklistkorning', {
       mall_id: mall.id,
-      utrustning_id: heltal(kropp.utrustning_id),
+      snoplats_id,
+      utrustning_id: heltal(kropp.utrustning_id) ?? maskin?.id ?? null,
       omrade_id: heltal(kropp.omrade_id),
       snopass_id: heltal(kropp.snopass_id),
       av_id: medlem.id,
@@ -357,7 +384,10 @@ export const rutter = [
               typ: p.sakerhetskritisk ? 'risk' : 'brist',
               prioritet: p.sakerhetskritisk ? 1 : 2,
               allvarlighet: p.sakerhetskritisk ? 'sakerhetsrisk' : 'begransar',
-              utrustning_id: k.utrustning_id,
+              // Gick ronden på en position hamnar felet där. Att det var
+              // maskinens fel får den som bedömer ärendet avgöra.
+              snoplats_id: k.snoplats_id,
+              utrustning_id: k.snoplats_id ? null : k.utrustning_id,
               omrade_id: k.omrade_id,
               korning_id: k.id,
             },

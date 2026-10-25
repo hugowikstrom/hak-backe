@@ -1,5 +1,6 @@
 // Ärenden: fel, brister, risker och förbättringar med prioritet och allvarlighet.
 import { alla, en, spara, uppdatera } from '../db.mjs';
+import { maskinPa } from '../platser.mjs';
 import { RANG } from '../auth.mjs';
 import { csv, datum, ettAv, fel, heltal, kravTxt, rutt, svar, text, txt } from '../http.mjs';
 import { brevArende, skicka } from '../epost.mjs';
@@ -11,10 +12,13 @@ export const OPPNA = ['ny', 'bekraftad', 'pagar', 'vantar'];
 
 const ARENDE_SQL = `
   SELECT a.*, u.namn AS utrustning, u.typ AS utrustningstyp, o.namn AS omrade,
+         k.namn AS komponent, p.namn AS plats, p.slag AS platsslag,
          sk.namn AS skapad_av, ti.namn AS tilldelad, ti.epost AS tilldelad_epost,
          (SELECT count(*) FROM arendehandelse h WHERE h.arende_id=a.id) AS antal_handelser
   FROM arende a
   LEFT JOIN utrustning u ON u.id=a.utrustning_id
+  LEFT JOIN komponent k ON k.id=a.komponent_id
+  LEFT JOIN snoplats p ON p.id=a.snoplats_id
   LEFT JOIN omrade o ON o.id=a.omrade_id
   LEFT JOIN medlem sk ON sk.id=a.skapad_av_id
   LEFT JOIN medlem ti ON ti.id=a.tilldelad_id`;
@@ -24,6 +28,10 @@ export const hamtaArende = (id) => {
   if (!a) return null;
   return {
     ...a,
+    // Satt på en position: visa vilken maskin som stod där när felet
+    // rapporterades. Den uppgiften är sammanhang, inte skuld – felet kan
+    // lika gärna sitta i vattenuttaget.
+    maskin_da: a.snoplats_id ? maskinPa(a.snoplats_id, a.skapad) : null,
     handelser: alla(
       `SELECT h.*, m.namn AS av FROM arendehandelse h LEFT JOIN medlem m ON m.id=h.av_id
        WHERE h.arende_id=? ORDER BY h.tid, h.id`,
@@ -60,6 +68,9 @@ export function skapaArende(data, medlem) {
     prioritet: Math.min(4, Math.max(1, heltal(data.prioritet, 3))),
     allvarlighet: ettAv(data.allvarlighet, ALLVAR, 'Allvarlighet') || 'begransar',
     status: ettAv(data.status, STATUSAR, 'Status') || 'ny',
+    // Positionen i backen och maskinen är två olika saker, och ärendet
+    // kan gälla endera. Sätts bara positionen är det platsen som är fel.
+    snoplats_id: heltal(data.snoplats_id),
     utrustning_id: heltal(data.utrustning_id),
     komponent_id: heltal(data.komponent_id),
     omrade_id: heltal(data.omrade_id),
@@ -162,6 +173,7 @@ export const rutter = [
       allvarlighet: ettAv(kropp.allvarlighet, ALLVAR, 'Allvarlighet'),
       status: nyStatus,
       utrustning_id: kropp.utrustning_id === undefined ? undefined : heltal(kropp.utrustning_id),
+      snoplats_id: kropp.snoplats_id === undefined ? undefined : heltal(kropp.snoplats_id),
       omrade_id: kropp.omrade_id === undefined ? undefined : heltal(kropp.omrade_id),
       komponent_id: kropp.komponent_id === undefined ? undefined : heltal(kropp.komponent_id),
       kostnad_ore: kropp.kostnad_ore === undefined ? undefined : heltal(kropp.kostnad_ore),

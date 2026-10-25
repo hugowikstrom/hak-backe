@@ -14,6 +14,9 @@ export function Hem({ ronder }) {
   const mallar = useHamta(() => hamtaMedCache('/api/checklistor/mallar'));
   const lage = useHamta(() => hamtaMedCache('/api/checklistor/lage'));
   const utrustning = useHamta(() => hamtaMedCache('/api/utrustning'));
+  // Positionerna i backen. En snöläggningsrond går på platsen, inte på
+  // kanonen som råkar stå där.
+  const platser = useHamta(() => hamtaMedCache('/api/platser'));
   const omraden = useHamta(() => hamtaMedCache('/api/omraden'));
 
   const lista = useMemo(() => {
@@ -33,6 +36,7 @@ export function Hem({ ronder }) {
       mall,
       utrustning: objekt?.slag === 'utrustning' ? objekt.post : null,
       omrade: objekt?.slag === 'omrade' ? objekt.post : null,
+      snoplats: objekt?.slag === 'snoplats' ? objekt.post : null,
     });
     sattVald(null);
     synka().catch(() => {});
@@ -156,13 +160,25 @@ export function Hem({ ronder }) {
           {lista.map((m) => (
             <Post
               key={m.id}
-              figur={m.omfattning === 'utrustningstyp' ? '⚙' : m.omfattning === 'omrade' ? '⌂' : '✓'}
+              figur={
+                m.omfattning === 'snoplats'
+                  ? '⊙'
+                  : m.omfattning === 'utrustningstyp'
+                    ? '⚙'
+                    : m.omfattning === 'omrade'
+                      ? '⌂'
+                      : '✓'
+              }
               titel={m.namn}
               under={`${INTERVALL[m.intervall]} · ${m.punkter.length} punkter${
-                m.omfattning === 'utrustningstyp' ? ` · alla ${flertal(m.utrustningstyp)}` : ''
+                m.omfattning === 'utrustningstyp'
+                  ? ` · alla ${flertal(m.utrustningstyp)}`
+                  : m.omfattning === 'snoplats'
+                    ? ' · positioner i backen'
+                    : ''
               }`}
               onClick={() => {
-                if (m.omfattning === 'utrustningstyp') sattVald(m);
+                if (m.omfattning === 'utrustningstyp' || m.omfattning === 'snoplats') sattVald(m);
                 else if (m.omfattning === 'omrade') {
                   const omrade = (omraden.data?.data || []).find((o) => o.id === m.omrade_id);
                   starta(m, omrade ? { slag: 'omrade', post: omrade } : null);
@@ -177,37 +193,65 @@ export function Hem({ ronder }) {
       {vald && (
         <ValjObjekt
           mall={vald}
-          utrustning={(utrustning.data?.data || [])
-            .filter((u) => u.aktiv && u.typ === vald.utrustningstyp)
-            .filter((u) => !vald.bara || vald.bara.includes(u.id))}
+          // En positionsrond väljer plats; en utrustningsrond väljer maskin.
+          poster={
+            vald.omfattning === 'snoplats'
+              ? (platser.data?.data?.platser || [])
+                  .filter((p) => p.slag === vald.platsslag)
+                  .filter((p) => !vald.bara || vald.bara.includes(p.id))
+                  .map((p) => ({
+                    slag: 'snoplats',
+                    id: p.id,
+                    namn: p.namn,
+                    under: p.tom
+                      ? `${p.omrade || ''} · ingen maskin uppställd`
+                      : `${p.omrade || ''} · ${p.maskin}`,
+                    varning: p.tom,
+                  }))
+              : (utrustning.data?.data || [])
+                  .filter((u) => u.aktiv && u.typ === vald.utrustningstyp)
+                  .filter((u) => !vald.bara || vald.bara.includes(u.id))
+                  .map((u) => ({
+                    slag: 'utrustning',
+                    id: u.id,
+                    namn: u.namn,
+                    under: `${u.omrade || ''}${u.status !== 'drift' ? ` · ${u.status === 'service' ? 'service' : 'ur drift'}` : ''}`,
+                    varning: u.status !== 'drift',
+                  }))
+          }
           stang={() => sattVald(null)}
-          valj={(u) => starta(vald, { slag: 'utrustning', post: u })}
+          valj={(o) => starta(vald, { slag: o.slag, post: o })}
         />
       )}
     </>
   );
 }
 
-function ValjObjekt({ mall, utrustning, stang, valj }) {
+function ValjObjekt({ mall, poster, stang, valj }) {
   const [sok, sattSok] = useState('');
   const lista = sok
-    ? utrustning.filter((u) => u.namn.toLowerCase().includes(sok.toLowerCase()))
-    : utrustning;
+    ? poster.filter((o) => o.namn.toLowerCase().includes(sok.toLowerCase()))
+    : poster;
+
   return (
-    <Ark titel={`${mall.namn} – välj enhet`} stang={stang}>
-      <input placeholder="Sök enhet" value={sok} onChange={(e) => sattSok(e.target.value)} autoFocus />
-      <div className="lista kort">
-        {lista.map((u) => (
+    <Ark titel={`${mall.namn} – välj ${mall.omfattning === 'snoplats' ? 'position' : 'enhet'}`} stang={stang}>
+      <input
+        placeholder={mall.omfattning === 'snoplats' ? 'Sök position' : 'Sök enhet'}
+        value={sok}
+        onChange={(e) => sattSok(e.target.value)}
+        autoFocus
+      />
+      <div className="lista">
+        {lista.map((o) => (
           <Post
-            key={u.id}
-            figur={u.namn.replace(/\D/g, '') || '•'}
-            figurfarg={u.status === 'drift' ? '' : 'varning'}
-            titel={u.namn}
-            under={`${u.omrade || ''}${u.status !== 'drift' ? ` · ${u.status === 'service' ? 'service' : 'ur drift'}` : ''}`}
-            onClick={() => valj(u)}
+            key={`${o.slag}-${o.id}`}
+            titel={o.namn}
+            under={o.under}
+            figurfarg={o.varning ? 'varning' : ''}
+            onClick={() => valj(o)}
           />
         ))}
-        {!lista.length && <Tomt>Ingen enhet av den typen.</Tomt>}
+        {!lista.length && <Tomt>Inget att välja.</Tomt>}
       </div>
     </Ark>
   );

@@ -84,7 +84,19 @@ export function Arenden() {
                   </div>
                 ),
               },
-              { falt: 'utrustning', rubrik: 'Gäller', visa: (a) => a.utrustning || a.omrade || '–' },
+              {
+                falt: 'utrustning',
+                rubrik: 'Gäller',
+                // Positionen och maskinen ska gå att skilja åt på en rad.
+                visa: (a) =>
+                  a.plats ? (
+                    <>
+                      {a.plats} <span className="liten svag">position</span>
+                    </>
+                  ) : (
+                    a.utrustning || a.omrade || '–'
+                  ),
+              },
               { falt: 'status', rubrik: 'Status', visa: (a) => <Statusbricka status={a.status} /> },
               {
                 falt: 'tilldelad', rubrik: 'Tilldelad',
@@ -173,7 +185,14 @@ function Arende({ id, jag, medlemmar, stang, notis }) {
         <Statusbricka status={a.status} />
         <Bricka>{ARENDETYP[a.typ]}</Bricka>
         <Bricka farg={a.allvarlighet === 'sakerhetsrisk' ? 'fara' : ''}>{ALLVARLIGHET[a.allvarlighet]}</Bricka>
+        {a.plats && <Bricka farg="info">{a.plats} · position</Bricka>}
         {a.utrustning && <Bricka>{a.utrustning}</Bricka>}
+        {a.komponent && <Bricka>{a.komponent}</Bricka>}
+        {a.maskin_da && (
+          <Bricka>
+            {a.maskin_da.namn} stod här då
+          </Bricka>
+        )}
         {a.omrade && <Bricka>{a.omrade}</Bricka>}
         <span className="liten svag">Skapat {tidpunkt(a.skapad)} av {a.skapad_av || 'okänd'}</span>
       </div>
@@ -232,9 +251,14 @@ function Arende({ id, jag, medlemmar, stang, notis }) {
 
 function ArendeFormular({ utrustning, omraden, medlemmar, stang, klar }) {
   const notis = useNotis();
+  // Felet sitter antingen på en position i backen eller på en maskin. Det
+  // är två olika saker och ska inte slarvas ihop: ett läckande vattenuttag
+  // stannar på platsen, ett trasigt munstycke följer kanonen.
+  const [galler, sattGaller] = useState('maskin');
+  const platser = useHamta(() => api.hamta('/api/platser'));
   const [f, sattF] = useState({
     titel: '', beskrivning: '', typ: 'fel', prioritet: '3', allvarlighet: 'begransar',
-    utrustning_id: '', omrade_id: '', tilldelad_id: '', deadline: '',
+    utrustning_id: '', snoplats_id: '', omrade_id: '', tilldelad_id: '', deadline: '',
   });
   const satt = (k) => (v) => sattF((g) => ({ ...g, [k]: v }));
 
@@ -245,11 +269,23 @@ function ArendeFormular({ utrustning, omraden, medlemmar, stang, klar }) {
     if (u?.omrade_id) sattF((g) => ({ ...g, omrade_id: String(u.omrade_id) }));
   }, [f.utrustning_id, utrustning]);
 
+  // Samma sak för positionen.
+  useEffect(() => {
+    if (!f.snoplats_id) return;
+    const p = (platser.data?.platser || []).find((x) => String(x.id) === String(f.snoplats_id));
+    if (p?.omrade_id) sattF((g) => ({ ...g, omrade_id: String(p.omrade_id) }));
+  }, [f.snoplats_id, platser.data]);
+
+  const vald_plats = (platser.data?.platser || []).find((x) => String(x.id) === String(f.snoplats_id));
+
   const skicka = async () => {
     try {
       await api.skapa('/api/arenden', {
         ...f,
-        utrustning_id: f.utrustning_id || null,
+        // Bara det ena skickas med – annars går det inte att läsa i
+        // efterhand vad felet faktiskt satt på.
+        utrustning_id: galler === 'maskin' ? f.utrustning_id || null : null,
+        snoplats_id: galler === 'plats' ? f.snoplats_id || null : null,
         omrade_id: f.omrade_id || null,
         tilldelad_id: f.tilldelad_id || null,
         deadline: f.deadline || null,
@@ -272,6 +308,12 @@ function ArendeFormular({ utrustning, omraden, medlemmar, stang, klar }) {
       }
     >
       <Text etikett="Titel" krav varde={f.titel} satt={satt('titel')} autoFocus placeholder="Kort beskrivning av felet" />
+      {galler === 'plats' && vald_plats?.maskin && (
+        <div className="meddelande info">
+          {vald_plats.maskin} står på {vald_plats.namn} just nu. Felet läggs på <strong>positionen</strong> –
+          är det kanonen som gått sönder, välj ”En maskin” i stället.
+        </div>
+      )}
       <label className="falt">
         <span>Beskrivning</span>
         <textarea value={f.beskrivning} onChange={(e) => satt('beskrivning')(e.target.value)} placeholder="Var, när, hur – och vad som redan är gjort." />
@@ -289,9 +331,27 @@ function ArendeFormular({ utrustning, omraden, medlemmar, stang, klar }) {
       </div>
       <div className="faltrad">
         <Val
-          etikett="Utrustning" varde={f.utrustning_id} satt={satt('utrustning_id')} tomtext="– ingen –"
-          poster={utrustning.filter((u) => u.aktiv).map((u) => ({ varde: u.id, text: u.namn }))}
+          etikett="Vad är felet på?" varde={galler} satt={sattGaller} tomtext={null}
+          poster={[
+            { varde: 'plats', text: 'En position i backen' },
+            { varde: 'maskin', text: 'En maskin' },
+            { varde: 'inget', text: 'Varken eller' },
+          ]}
         />
+        {galler === 'plats' ? (
+          <Val
+            etikett="Position" varde={f.snoplats_id} satt={satt('snoplats_id')} tomtext="– välj –"
+            poster={(platser.data?.platser || []).map((p) => ({
+              varde: p.id,
+              text: `${p.namn}${p.maskin ? ` (${p.maskin} står här)` : ' (tom)'}`,
+            }))}
+          />
+        ) : galler === 'maskin' ? (
+          <Val
+            etikett="Maskin" varde={f.utrustning_id} satt={satt('utrustning_id')} tomtext="– ingen –"
+            poster={utrustning.filter((u) => u.aktiv).map((u) => ({ varde: u.id, text: u.namn }))}
+          />
+        ) : null}
         <Val
           etikett="Område" varde={f.omrade_id} satt={satt('omrade_id')} tomtext="– inget –"
           poster={omraden.map((o) => ({ varde: o.id, text: o.namn }))}

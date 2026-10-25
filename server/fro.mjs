@@ -110,36 +110,26 @@ iForeningen(() => transaktion(() => {
       namn, typ, omrade_id: omr[omrade], placering,
       ordning: Object.keys(utr).length, ...extra,
     }));
-  for (let i = 1; i <= 8; i++)
-    laggTill(`Lans ${i}`, 'lans', 'Stora backen', `Stora backen, position ${i} (${i * 120} m från toppen)`, { munstycken: 12 });
-  laggTill('Fläkt 1', 'flakt', 'Stora backen', 'Stora backen, nedre tredjedelen', { munstycken: 24 });
-  laggTill('Fläkt 2', 'flakt', 'Stora backen', 'Stora backen, vid målområdet', { munstycken: 24 });
-  for (let i = 9; i <= 12; i++)
-    laggTill(`Lans ${i}`, 'lans', 'Lilla backen', `Lilla backen, position ${i - 8}`, { munstycken: 8 });
-  laggTill('Fläkt 3', 'flakt', 'Lilla backen', 'Lilla backen, vid barnområdet', { munstycken: 18 });
-  // Klubbens Lenkokanoner. Nummer 1–6 står i stora backen, 7–10 i lilla.
+  // Maskinerna. Namnen säger vad de är – inte var de står; det är
+  // positionernas sak.
+  laggTill('Fläkt 1', 'flakt', 'Stora backen', null, { munstycken: 24 });
+  laggTill('Fläkt 2', 'flakt', 'Stora backen', null, { munstycken: 24 });
+  laggTill('Fläkt 3', 'flakt', 'Lilla backen', null, { munstycken: 18 });
+  // Klubbens tio Lenkokanoner, numrerade som maskiner.
   for (let i = 1; i <= 10; i++)
-    laggTill(
-      `Lenko ${i}`,
-      'flakt',
-      i <= 6 ? 'Stora backen' : 'Lilla backen',
-      i <= 6
-        ? `Stora backen, position ${i} (${i * 110} m från toppen)`
-        : `Lilla backen, position ${i - 6}`,
-      { munstycken: 21, tillverkare: 'Lenko' }
-    );
+    laggTill(`Lenko ${i}`, 'flakt', null, null, {
+      munstycken: 21, tillverkare: 'Lenko', serienummer: `LK-${2200 + i}`,
+    });
 
-  // Lansarna av olika fabrikat. Tillverkare och modell står på objektet, så
-  // att reservdelar och manualer kan knytas till rätt sort.
-  laggTill('V3-lansen', 'lans', 'Stora backen', 'Stora backen, övre delen', {
-    munstycken: 12, modell: 'V3',
-  });
-  laggTill('Nessy Land', 'lans', 'Stora backen', 'Stora backen, mitten', {
-    munstycken: 12, modell: 'Nessy Land',
-  });
-  laggTill('Innosnow Cobra', 'lans', 'Lilla backen', 'Lilla backen, vid barnområdet', {
-    munstycken: 10, tillverkare: 'Innosnow', modell: 'Cobra',
-  });
+  // Lansarna av olika fabrikat. Flera av samma sort, numrerade var för sig.
+  for (let i = 1; i <= 4; i++)
+    laggTill(`V3-lans ${i}`, 'lans', null, null, { munstycken: 12, modell: 'V3' });
+  for (let i = 1; i <= 3; i++)
+    laggTill(`Nessy ${i}`, 'lans', null, null, { munstycken: 12, modell: 'Nessy Land' });
+  for (let i = 1; i <= 2; i++)
+    laggTill(`Innosnow Cobra ${i}`, 'lans', null, null, {
+      munstycken: 10, tillverkare: 'Innosnow', modell: 'Cobra',
+    });
   laggTill('Pumpstation 1', 'pumpstation', 'Pumphuset', 'Pumphuset, huvudpump');
   laggTill('Kompressor 1', 'kompressor', 'Pumphuset', 'Pumphuset, tryckluft');
   laggTill('Stora liften', 'lift', 'Stora liften', 'Släplift, 420 m');
@@ -147,6 +137,61 @@ iForeningen(() => transaktion(() => {
   laggTill('Lilla liften', 'lift', 'Lilla liften', 'Släplift, lilla backen');
   laggTill('Transportbandet', 'band', 'Bandet', 'Nedre delen av lilla backen');
   laggTill('Pistmaskin', 'pistmaskin', 'Stora backen', 'Garaget');
+
+  // ---------- Positioner i backen ----------
+  // Platsen är fast: vattenuttaget, elen och slangdragningen hör till den.
+  // Maskinen som står där byts mellan säsonger och ibland mitt i.
+  const plats = {};
+  const laggPlats = (nummer, namn, slag, omrade, placering, extra = {}) =>
+    (plats[namn] = spara('snoplats', {
+      nummer, namn, slag, omrade_id: omr[omrade], placering,
+      ordning: Object.keys(plats).length, ...extra,
+    }));
+
+  for (let i = 1; i <= 8; i++)
+    laggPlats(i, `Lans ${i}`, 'lans', 'Stora backen', `Stora backen, ${i * 120} m från toppen`, {
+      meter_fran_topp: i * 120, vattenuttag: `V${i}`, elanslutning: `E${i}`,
+    });
+  for (let i = 9; i <= 12; i++)
+    laggPlats(i, `Lans ${i}`, 'lans', 'Lilla backen', `Lilla backen, position ${i - 8}`, {
+      meter_fran_topp: (i - 8) * 90, vattenuttag: `V${i}`, elanslutning: `E${i}`,
+    });
+  for (let i = 1; i <= 6; i++)
+    laggPlats(i, `Fläktplats ${i}`, 'flakt', i <= 4 ? 'Stora backen' : 'Lilla backen',
+      i <= 4 ? `Stora backen, fläktläge ${i}` : `Lilla backen, fläktläge ${i - 4}`,
+      { vattenuttag: `FV${i}`, elanslutning: `FE${i}` });
+
+  // Uppställningen just nu. Lansplatserna 1–9 är besatta, resten står tomma
+  // tills snöläggningen drar i gång på allvar.
+  const stallUppFro = (platsnamn, maskinnamn, dagarSedan) =>
+    spara('uppstallning', {
+      snoplats_id: plats[platsnamn],
+      utrustning_id: utr[maskinnamn],
+      fran: `${plusDagar(IDAG, -dagarSedan)} 09:00`,
+      av_id: mid.per,
+    });
+
+  for (const [platsnamn, maskinnamn, dagar] of [
+    ['Lans 1', 'V3-lans 1', 40], ['Lans 2', 'Nessy 1', 40], ['Lans 3', 'V3-lans 2', 40],
+    ['Lans 5', 'V3-lans 3', 38], ['Lans 6', 'Innosnow Cobra 1', 38],
+    ['Lans 7', 'V3-lans 4', 35], ['Lans 8', 'Nessy 3', 35], ['Lans 9', 'Innosnow Cobra 2', 35],
+    ['Fläktplats 1', 'Lenko 1', 45], ['Fläktplats 2', 'Lenko 2', 45],
+    ['Fläktplats 3', 'Lenko 3', 45], ['Fläktplats 4', 'Fläkt 1', 45],
+    ['Fläktplats 5', 'Lenko 4', 42], ['Fläktplats 6', 'Fläkt 3', 42],
+  ])
+    stallUppFro(platsnamn, maskinnamn, dagar);
+
+  // Lans 4 hade V3-lansen först och fick en Nessy i stället. Historiken är
+  // poängen: felen på V3:an följer med den till lans 7, medan läckaget i
+  // kopplingen stannar på lans 4.
+  spara('uppstallning', {
+    snoplats_id: plats['Lans 4'], utrustning_id: utr['V3-lans 4'],
+    fran: `${plusDagar(IDAG, -60)} 09:00`, till: `${plusDagar(IDAG, -38)} 09:00`, av_id: mid.per,
+  });
+  spara('uppstallning', {
+    snoplats_id: plats['Lans 4'], utrustning_id: utr['Nessy 2'],
+    fran: `${plusDagar(IDAG, -38)} 09:00`, av_id: mid.per,
+  });
 
   // ---------- Checklistor ----------
   let mallordning = 0;
@@ -157,6 +202,7 @@ iForeningen(() => transaktion(() => {
       utrustningstyp: omfattning === 'utrustningstyp' ? nyckel : null,
       omrade_id: omfattning === 'omrade' ? omr[nyckel] : null,
       rondtyp: extra.rondtyp || null,
+      platsslag: extra.platsslag || null,
       kraver_kvittens: extra.kvittens ? 1 : 0,
       ordning: mallordning++,
     });
@@ -169,6 +215,28 @@ iForeningen(() => transaktion(() => {
       });
     return id;
   };
+
+  // Positionsronden: den man faktiskt går i backen. Den gäller platsen –
+  // vattenuttaget, slangen och avspärrningen – oavsett vilken kanon som
+  // står där just nu.
+  mall('Lansposition – inför pass', 'snoplats', null, 'vid_start',
+    'Gås på positionen. Maskinen som står där har sin egen lista.', [
+      ['Vattenuttaget är tätt och ventilen går att stänga', 'bock'],
+      ['Slangen är hel och rätt dragen', 'bock'],
+      ['Elanslutningen är torr och oskadad', 'bock'],
+      ['Positionen är avspärrad från åkande', 'bock', null, null, true, true],
+      ['Vattentryck vid uttaget', 'varde', 'bar'],
+      ['Rätt maskin står på platsen', 'bock', null, 'Stämmer det som står i registret?'],
+      ['Anteckning om platsen', 'text', null, null, false],
+    ], 'snolaggning', { rondtyp: 'lansposition', platsslag: 'lans' });
+
+  mall('Fläktposition – inför pass', 'snoplats', null, 'vid_start', null, [
+      ['Vattenuttaget är tätt', 'bock'],
+      ['Elanslutning och jordfelsbrytare kontrollerad', 'bock'],
+      ['Kastriktningen är fri från åkande', 'bock', null, null, true, true],
+      ['Vattentryck vid uttaget', 'varde', 'bar'],
+      ['Anteckning om platsen', 'text', null, null, false],
+    ], 'snolaggning', { rondtyp: 'flaktposition', platsslag: 'flakt' });
 
   mall('Lans – start av snöläggning', 'utrustningstyp', 'lans', 'vid_start',
     'Gå igenom innan vatten släpps på lansen.', [
@@ -391,13 +459,22 @@ iForeningen(() => transaktion(() => {
   // ---------- Snöpass och mätningar ----------
   const snopassId = spara('snopass', {
     start: `${plusDagar(IDAG, -1)} 21:30`, ansvarig_id: mid.per, status: 'pagar',
-    anteckning: 'Första kylan. Kör lansar 1–5 och fläkt 1.',
+    anteckning: 'Första kylan. Kör lans 1–5 och fläktplats 1.',
   });
-  const matning = (timmarBak, utrustning, temp, fukt, flode, extra = {}) => {
+  // Mätningen görs på en position. Maskinen som står där hämtas ur
+  // uppställningen, precis som API:et gör.
+  const matning = (timmarBak, platsnamn, temp, fukt, flode, extra = {}) => {
     const t = new Date(Date.now() - timmarBak * 3.6e6).toISOString().slice(0, 19).replace('T', ' ');
+    const platsrad = en('SELECT * FROM snoplats WHERE id=?', plats[platsnamn]);
+    const star_dar = en(
+      'SELECT utrustning_id FROM uppstallning WHERE snoplats_id=? AND till IS NULL',
+      plats[platsnamn]
+    );
     spara('matning', {
-      tid: t, snopass_id: snopassId, utrustning_id: utr[utrustning],
-      omrade_id: en('SELECT omrade_id FROM utrustning WHERE id=?', utr[utrustning]).omrade_id,
+      tid: t, snopass_id: snopassId,
+      snoplats_id: plats[platsnamn],
+      utrustning_id: star_dar?.utrustning_id ?? null,
+      omrade_id: platsrad.omrade_id,
       lufttemp: temp, luftfukt: fukt, vattenflode: flode,
       vattentryck: extra.vattentryck ?? 32, lufttryck: extra.lufttryck ?? 7.2,
       barometer: extra.barometer ?? 1012, vind_styrka: extra.vind ?? 2.5,
@@ -413,7 +490,7 @@ iForeningen(() => transaktion(() => {
   for (const [h, temp, fukt, flode] of serie) {
     matning(h, 'Lans 1', temp, fukt, flode);
     matning(h, 'Lans 3', temp + 0.2, fukt - 1, flode - 0.4);
-    matning(h, 'Fläkt 1', temp - 0.1, fukt, flode * 3.4, { vattentryck: 28, kvalitet: 'torr', av: 'stefan' });
+    matning(h, 'Fläktplats 1', temp - 0.1, fukt, flode * 3.4, { vattentryck: 28, kvalitet: 'torr', av: 'stefan' });
   }
   matning(0.5, 'Lans 5', -3.9, 78, 5.4, { kvalitet: 'blot', anteckning: 'Blir blöt snö, drar ner vattnet', av: 'stefan' });
 
@@ -423,7 +500,9 @@ iForeningen(() => transaktion(() => {
       titel, skapad_av_id: mid[data.av || 'annika'],
       beskrivning: data.beskrivning, typ: data.typ || 'fel',
       prioritet: data.prioritet || 3, allvarlighet: data.allvarlighet || 'begransar',
-      status: data.status || 'ny', utrustning_id: data.utrustning ? utr[data.utrustning] : null,
+      status: data.status || 'ny',
+      utrustning_id: data.utrustning ? utr[data.utrustning] : null,
+      snoplats_id: data.plats ? plats[data.plats] : null,
       omrade_id: data.omrade ? omr[data.omrade] : null,
       tilldelad_id: data.tilldelad ? mid[data.tilldelad] : null,
       komponent_id: data.komponent ? komp[data.komponent] : null,
@@ -466,7 +545,8 @@ iForeningen(() => transaktion(() => {
     komponent(kanon, 'Nukleatorer', 'ovrigt', 'Snökraft AB');
     komponent(kanon, 'Elskåp och kabel', 'el', null);
   }
-  for (const lans of ['Lans 4', 'Lans 7', 'V3-lansen', 'Nessy Land', 'Innosnow Cobra']) {
+  for (const lans of ['V3-lans 1', 'V3-lans 2', 'V3-lans 3', 'V3-lans 4',
+    'Nessy 1', 'Nessy 2', 'Nessy 3', 'Innosnow Cobra 1', 'Innosnow Cobra 2']) {
     komponent(lans, 'Munstycksring', 'ovrigt', 'Snökraft AB');
     komponent(lans, 'Koppling mot stamledning', 'ovrigt', 'Härnösands Rör', 'HK-40');
     komponent(lans, 'Dräneringsventil', 'ventil', 'Härnösands Rör');
@@ -490,11 +570,12 @@ iForeningen(() => transaktion(() => {
   komponent('Pumpstation 1', 'Filterhus', 'filter', 'Härnösands Rör', 'HF-120');
   komponent('Kompressor 1', 'Kompressorpaket', 'motor', 'Snökraft AB');
 
-  arende('Läckage i koppling vid Lans 4', {
-    beskrivning: 'Vatten sprutar ur kopplingen mot stamledningen. Lansen är avstängd.',
+  // Felet sitter på positionen: det är vattenuttaget som läcker, inte
+  // lansen som råkar stå där.
+  arende('Läckage i kopplingen vid lans 4', {
+    beskrivning: 'Vatten sprutar ur kopplingen mot stamledningen. Positionen är avstängd.',
     typ: 'fel', prioritet: 1, allvarlighet: 'driftstopp', status: 'pagar',
-    utrustning: 'Lans 4', omrade: 'Stora backen', tilldelad: 'per', av: 'stefan',
-    komponent: 'Lans 4/Koppling mot stamledning',
+    plats: 'Lans 4', omrade: 'Stora backen', tilldelad: 'per', av: 'stefan',
     driftpaverkan: 'Lans 4 ur drift, produktionen flyttad till lans 5–6',
     kommentar: 'Ny packning beställd, kommer på torsdag.',
   });
@@ -515,10 +596,10 @@ iForeningen(() => transaktion(() => {
     typ: 'fel', prioritet: 2, allvarlighet: 'begransar', status: 'vantar',
     omrade: 'Fiket', tilldelad: 'karin', av: 'lotta',
   });
-  arende('Skylt om avspärrning vid Lans 7 saknas', {
+  arende('Skylt om avspärrning vid lans 7 saknas', {
     beskrivning: 'Blåste bort. Behöver ny skylt och buntband.',
     typ: 'brist', prioritet: 3, allvarlighet: 'kosmetisk', status: 'ny',
-    utrustning: 'Lans 7', omrade: 'Stora backen',
+    plats: 'Lans 7', omrade: 'Stora backen',
   });
   arende('Önskemål: fler krokar i uthyrningen', {
     beskrivning: 'Pjäxor hamnar på golvet när det är kö.',
@@ -568,6 +649,7 @@ iForeningen(() => transaktion(() => {
       skapad: `${plusDagar(IDAG, -dagarSedan)} ${klocka}`,
       slag, av_id: mid[av], text,
       utrustning_id: extra.utrustning ? utr[extra.utrustning] : null,
+      snoplats_id: extra.plats ? plats[extra.plats] : null,
       komponent_id: extra.komponent ? komp[extra.komponent] : null,
       omrade_id: extra.omrade ? omr[extra.omrade] : null,
       kalla: extra.kalla || 'mobil',
@@ -580,13 +662,13 @@ iForeningen(() => transaktion(() => {
     { utrustning: 'Stora liften', omrade: 'Stora liften' });
   journalpost(5, '22:15', 'atgard', 'stefan',
     'Avisade munstyckena på lans 9 och 10. Snön blev torr igen efteråt.',
-    { utrustning: 'Lans 9', omrade: 'Lilla backen',
+    { plats: 'Lans 9', omrade: 'Lilla backen',
       transkript: 'Jag har gått snöronden, lans nio och tio hade isat igen lite men jag avisade dem, allt annat såg bra ut' });
   journalpost(4, '06:20', 'observation', 'per',
     'Ovant ljud från drivstationen vid uppstart. Försvann efter ett par minuter – håll ögonen på den.',
     { utrustning: 'Stora liften', komponent: 'Stora liften/Drivstation', omrade: 'Stora liften' });
   journalpost(3, '23:50', 'matning', 'stefan', 'Mätning vid lans 4: wetbulb −6,2, trycket stabilt',
-    { utrustning: 'Lans 4', omrade: 'Stora backen' });
+    { plats: 'Lans 4', omrade: 'Stora backen' });
   journalpost(2, '08:05', 'atgard', 'per',
     'Bytte backventilen på Fläkt 2 igen. Fjärde gången – vi behöver titta på hela ventilhuset.',
     { utrustning: 'Fläkt 2', komponent: 'Fläkt 2/Backventil', omrade: 'Stora backen' });
@@ -1193,7 +1275,7 @@ iForeningen(() => {
     'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift',
     'komponent', 'leverantor', 'driftpost', 'incident',
     'serviceplan', 'serviceatgard', 'reservdel', 'reservdelsuttag', 'hogbelastning', 'tillganglighet',
-    'dokument'])
+    'dokument', 'snoplats', 'uppstallning'])
     console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
 });
 db.close();

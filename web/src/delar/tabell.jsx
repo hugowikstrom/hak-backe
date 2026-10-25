@@ -4,7 +4,12 @@ import { Tomt } from './bitar.jsx';
 import { sorteraEfter } from '../nytta.js';
 
 /**
- * kolumner: [{ falt, rubrik, sifra?, bredd?, visa?(rad), redigera?: {typ, poster?, spara(rad, varde)}, sortlos? }]
+ * kolumner: [{ falt, rubrik, sifra?, bredd?, visa?(rad), sortlos?,
+ *   redigera?: {typ, poster?, varde?(rad), spara(rad, varde)} }]
+ *
+ * `poster` får vara en funktion av raden när valen beror på den, och
+ * `varde` när cellens värde inte är samma sak som det som visas – en
+ * maskinkolumn visar namnet men väljer på id.
  */
 export function Tabell({
   rader,
@@ -104,8 +109,10 @@ function Cell({ kolumn, rad }) {
       </td>
     );
   }
+  const nuvarande = r.varde ? r.varde(rad) : rad[kolumn.falt];
+  const val = typeof r.poster === 'function' ? r.poster(rad) : r.poster;
   const skicka = async (varde) => {
-    if (String(varde) === String(rad[kolumn.falt] ?? '')) return;
+    if (String(varde) === String(nuvarande ?? '')) return;
     sattSparar(true);
     try {
       await r.spara(rad, varde);
@@ -116,8 +123,8 @@ function Cell({ kolumn, rad }) {
   return (
     <td className={`redigerbar${kolumn.sifra ? ' sifra' : ''}`} style={sparar ? { opacity: 0.5 } : undefined}>
       {r.typ === 'val' ? (
-        <select defaultValue={rad[kolumn.falt] ?? ''} onChange={(e) => skicka(e.target.value)}>
-          {r.poster.map((p) => (
+        <select value={nuvarande ?? ''} onChange={(e) => skicka(e.target.value)}>
+          {val.map((p) => (
             <option key={p.varde} value={p.varde}>{p.text}</option>
           ))}
         </select>
@@ -125,7 +132,7 @@ function Cell({ kolumn, rad }) {
         <input
           type={r.typ || 'text'}
           step={r.steg}
-          defaultValue={rad[kolumn.falt] ?? ''}
+          defaultValue={nuvarande ?? ''}
           onBlur={(e) => skicka(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && e.target.blur()}
         />

@@ -91,6 +91,48 @@ ställning till `driftklar` eller `ej_driftklar`. Appen räknar inte ut om en
 lift får öppna. Den skriver ner vem som bestämde, när, och på vilket
 underlag.
 
+## Position och maskin
+
+Den viktigaste skillnaden i hela anläggningsdelen, och den som är lättast
+att slarva bort: **platsen i backen och maskinen som står där är två olika
+saker.**
+
+- `snoplats` är platsen. "Lans 4" är ett ställe i stora backen: vattenuttag
+  V4, elanslutning E4, en viss slangdragning, 480 meter från toppen. Den
+  flyttar sig inte.
+- `utrustning` är maskinen. En V3-lans, en Nessy, en Lenkokanon. Den flyttas
+  mellan platser, lagas på verkstaden och står ibland i förrådet.
+- `uppstallning` binder ihop dem över tid: vilken maskin som stod på vilken
+  plats, från när till när.
+
+Varför det spelar roll: **ett fel kan sitta på endera, och de följs åt olika
+håll.** Ett läckande vattenuttag stannar på lans 4 när kanonen byts. Ett
+trasigt munstycke följer med kanonen till lans 7. Blandar man ihop dem blir
+felstatistiken obrukbar – den pekar ut en kanon som aldrig varit trasig,
+eller missar att samma plats krånglar oavsett vad man ställer där.
+
+Därför:
+
+- `arende` har både `snoplats_id` och `utrustning_id`, och formuläret
+  tvingar fram ett val: är det positionen eller maskinen som är fel? Bara
+  det ena sparas. Vilken maskin som stod där vid tillfället räknas fram ur
+  uppställningen och visas som sammanhang – inte som skuld.
+- `aterkommandeFel()` räknar per maskin och komponent; `aterkommandePlatsfel()`
+  räknar per position och flaggar `pekar_pa_platsen` när samma fel
+  återkommit med olika maskiner uppställda.
+- Snöläggningsronden går på **positionen**: `checklistmall.omfattning =
+  'snoplats'` med `platsslag`. Man går lansrad fyra, och vad som står där i
+  dag är en annan fråga. Maskinen noteras på körningen som sammanhang.
+- Mätningar görs på en position; maskinen fylls i automatiskt ur
+  uppställningen, så att den som rapporterar inte behöver veta den utantill.
+- En plats håller en maskin i taget och en maskin står på ett ställe. Ställer
+  man upp en maskin någon annanstans flyttas den av där den stod, och båda
+  flyttarna hamnar i historiken.
+
+Namnet `snoplats` och inte `position` är inte godtyckligt: `position` är
+redan bemanningens positioner (Backansvarig, Fiket, Snöläggning). I
+gränssnittet heter de "Positioner i backen" och "Funktioner".
+
 ## Förebyggande underhåll
 
 En **serviceplan** säger att något ska göras med jämna mellanrum. När den
@@ -167,6 +209,15 @@ kolumner (`person_namn`, `person_kontakt`, `person_alder`, `skada`,
 Personuppgifter följer aldrig med vidare: journalposten om en incident bär
 bara slag och plats, och ett åtgärdsärende ur en incident får en
 beskrivning utan namn.
+
+## Modulregistret i två delar
+
+`moduldata.mjs` håller metadatan – nycklar, beroenden, sidor – och
+`moduler.mjs` kopplar på rutterna. Delningen är inte kosmetisk: en modul som
+behöver veta om en annan är påslagen (checklistorna frågar efter
+driftjournalen innan de skriver en journalpost) måste kunna göra det utan
+att importera hela ruttabellen, och därmed sig själv. Den cirkeln fanns och
+sprack så fort en modulfil importerades fristående.
 
 ## Lägga till en modul
 

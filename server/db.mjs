@@ -140,6 +140,14 @@ function migrera(db) {
     // Förhandsanmälan: när gästen fyllt i sina uppgifter före besöket.
     ['hyresavtal', 'anmald', 'TEXT'],
     ['hyresavtal', 'besok_datum', 'TEXT'],
+    // Positionen i backen, vid sidan av maskinen. Ett fel under snöläggning
+    // sitter oftast på platsen – vattenuttaget, slangen, elen – och inte på
+    // kanonen som råkar stå där.
+    ['arende', 'snoplats_id', 'INTEGER'],
+    ['matning', 'snoplats_id', 'INTEGER'],
+    ['checklistkorning', 'snoplats_id', 'INTEGER'],
+    ['driftpost', 'snoplats_id', 'INTEGER'],
+    ['checklistmall', 'platsslag', 'TEXT'],
   ]) {
     const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
     if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);

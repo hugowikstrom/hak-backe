@@ -67,7 +67,14 @@ export function Rond({ vy, ronder }) {
         <div className="rad-mellan">
           <div className="vaxa">
             <h1 style={{ fontSize: 19 }}>{rond.mallnamn}</h1>
-            {rond.objektnamn && <div className="liten svag">{rond.objektnamn}</div>}
+            {rond.objektnamn && (
+              <div className="liten svag">
+                {rond.objektnamn}
+                {/* Ronden gäller platsen – men man vill veta vad som står där. */}
+                {rond.snoplats_id && rond.maskin ? ` · ${rond.maskin} står här` : ''}
+                {rond.snoplats_id && !rond.maskin ? ' · ingen maskin uppställd' : ''}
+              </div>
+            )}
           </div>
           <div className="segment" style={{ flex: '0 0 auto' }}>
             <button aria-pressed={lage === 'steg'} onClick={() => sattLage('steg')}>Steg</button>

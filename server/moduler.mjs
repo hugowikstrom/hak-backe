@@ -7,6 +7,7 @@
 //
 // Kärnmoduler går inte att stänga av: utan konto, medlemmar och föreningen
 // finns ingen plattform.
+import { aktivaModuler, modul, MODULDATA, modulPa, publikaModuler } from './moduldata.mjs';
 import { rutter as konto } from './api/konto.mjs';
 import { rutter as register } from './api/register.mjs';
 import { rutter as forening } from './api/forening.mjs';
@@ -28,195 +29,35 @@ import { rutter as drift } from './api/drift.mjs';
 import { rutter as incident } from './api/incident.mjs';
 import { rutter as underhall } from './api/underhall.mjs';
 import { rutter as snoplan } from './api/snoplan.mjs';
+import { rutter as platser } from './api/platser.mjs';
 
-export const MODULER = [
-  {
-    nyckel: 'konto',
-    namn: 'Konto och inloggning',
-    karna: true,
-    rutter: [...konto, ...bilder],
-    sidor: [{ nyckel: 'mina', text: 'Mina sidor', stig: '/mina' }],
-  },
-  {
-    nyckel: 'forening',
-    namn: 'Föreningen',
-    beskrivning: 'Matrikel, sektioner, träningsgrupper och förtroendeuppdrag',
-    karna: true,
-    rutter: forening,
-    sidor: [{ nyckel: 'forening', text: 'Föreningen', stig: '/forening' }],
-  },
-  {
-    nyckel: 'anlaggning',
-    namn: 'Anläggning',
-    beskrivning: 'Områden, utrustning, positioner och säsonger',
-    karna: true,
-    rutter: register,
-    sidor: [{ nyckel: 'register', text: 'Register', stig: '/register', roll: 'backansvarig' }],
-  },
-  {
-    nyckel: 'oversikt',
-    namn: 'Översikt',
-    karna: true,
-    rutter: oversikt,
-    sidor: [{ nyckel: 'oversikt', text: 'Hela läget', stig: '/oversikt' }],
-  },
-  {
-    nyckel: 'arenden',
-    namn: 'Ärenden',
-    beskrivning: 'Fel, brister, risker och förbättringar',
-    rutter: arenden,
-    sidor: [{ nyckel: 'arenden', text: 'Ärenden', stig: '/arenden' }],
-  },
-  {
-    // Driftjournalen håller ihop ronder, mätningar, fel och incidenter till
-    // en läsbar historik, och är vägen in för talade rapporter.
-    nyckel: 'drift',
-    namn: 'Driftjournal',
-    beskrivning: 'Journal, talrapportering, utrustningshistorik och återkommande fel',
-    beroenden: ['anlaggning', 'arenden'],
-    rutter: drift,
-    sidor: [{ nyckel: 'journal', text: 'Driftjournal', stig: '/journal' }],
-  },
-  {
-    // Förebyggande underhåll: årshjul, serviceplaner ur manualerna och
-    // reservdelar. Hänger på driften, för en utförd service journalförs.
-    nyckel: 'underhall',
-    namn: 'Underhåll',
-    beskrivning: 'Serviceplaner, årshjul, manualer, reservdelar och kostnader',
-    beroenden: ['anlaggning', 'drift'],
-    rutter: underhall,
-    sidor: [{ nyckel: 'underhall', text: 'Underhåll', stig: '/underhall', behorighet: 'anlaggning' }],
-  },
-  {
-    // Olyckor och tillbud ligger i egen modul: en klubb kan behöva journalen
-    // utan att hantera personuppgifter om skadade gäster.
-    nyckel: 'incidenter',
-    namn: 'Incidenter',
-    beskrivning: 'Olyckor, tillbud och arbetsskador med begränsad åtkomst',
-    beroenden: ['drift'],
-    rutter: incident,
-    sidor: [{ nyckel: 'incidenter', text: 'Incidenter', stig: '/incidenter', behorighet: 'incident' }],
-  },
-  {
-    nyckel: 'checklistor',
-    namn: 'Checklistor och ronder',
-    beroenden: ['anlaggning', 'arenden'],
-    rutter: checklistor,
-    sidor: [{ nyckel: 'checklistor', text: 'Checklistor', stig: '/checklistor' }],
-  },
-  {
-    nyckel: 'snolaggning',
-    namn: 'Snöläggning',
-    beskrivning: 'Mätningar, wetbulb och väderprognos',
-    beroenden: ['anlaggning'],
-    rutter: [...sno, ...vader],
-    sidor: [{ nyckel: 'snolaggning', text: 'Snöläggning', stig: '/snolaggning' }],
-  },
-  {
-    nyckel: 'bemanning',
-    namn: 'Bemanning',
-    beskrivning: 'Pass, bokningar, kvoter och automatplanering',
-    beroenden: ['anlaggning'],
-    rutter: bemanning,
-    sidor: [{ nyckel: 'bemanning', text: 'Bemanning', stig: '/bemanning' }],
-  },
-  {
-    // Prognosfönster blir bemanningsbehov. Egen modul, för en klubb kan ha
-    // bemanning utan att tillverka snö.
-    nyckel: 'snoplan',
-    namn: 'Snöplanering',
-    beskrivning: 'Produktionsfönster, säsongstillgänglighet och förfrågningar',
-    beroenden: ['bemanning', 'snolaggning'],
-    rutter: snoplan,
-    sidor: [{ nyckel: 'snoplan', text: 'Snöplanering', stig: '/snoplan', behorighet: 'bemanning' }],
-  },
-  {
-    nyckel: 'ekonomi',
-    namn: 'Ekonomi',
-    beskrivning: 'Bokföring, verifikationer, SIE-export och plånbok',
-    rutter: [...bokforing, ...planbok],
-    sidor: [{ nyckel: 'ekonomi', text: 'Ekonomi', stig: '/ekonomi', behorighet: 'ekonomi_las' }],
-  },
-  {
-    nyckel: 'kiosk',
-    namn: 'Kiosk',
-    beskrivning: 'Beställning med QR, kassa och sortiment',
-    beroenden: ['ekonomi'],
-    rutter: fik,
-    sidor: [{ nyckel: 'kassa', text: 'Kassa', stig: '/kassa', behorighet: 'kassa' }],
-    gastklient: '/fik/',
-  },
-  {
-    nyckel: 'uthyrning',
-    namn: 'Uthyrning',
-    beskrivning: 'Prislista, utlämning och återlämning',
-    beroenden: ['ekonomi', 'kiosk'],
-    rutter: uthyrning,
-    sidor: [],
-    gastklient: '/fik/uthyrning',
-  },
-  {
-    nyckel: 'traning',
-    namn: 'Träning',
-    beskrivning: 'Träningstillfällen, närvaro och aktivitetsstöd',
-    beroenden: ['forening'],
-    rutter: traning,
-    sidor: [{ nyckel: 'traning', text: 'Träning', stig: '/traning', behorighet: 'traning' }],
-  },
-  {
-    nyckel: 'ideer',
-    namn: 'Idélåda',
-    beskrivning: 'Skrivna och inspelade idéer, vidare till Backlog',
-    rutter: ide,
-    sidor: [{ nyckel: 'ideer', text: 'Idélådan', stig: '/ideer' }],
-  },
-  {
-    nyckel: 'rapporter',
-    namn: 'Rapporter',
-    beroenden: ['arenden', 'bemanning'],
-    rutter: rapport,
-    sidor: [{ nyckel: 'rapporter', text: 'Rapporter', stig: '/rapporter' }],
-  },
-];
+// Rutterna kopplas på metadatan i moduldata.mjs. Lägg till modulen där,
+// och dess rutter här.
+const RUTTER = {
+  konto: [...konto, ...bilder],
+  forening: forening,
+  anlaggning: register,
+  oversikt: oversikt,
+  arenden: arenden,
+  drift: drift,
+  underhall: underhall,
+  incidenter: incident,
+  checklistor: checklistor,
+  snolaggning: [...sno, ...vader, ...platser],
+  bemanning: bemanning,
+  snoplan: snoplan,
+  ekonomi: [...bokforing, ...planbok],
+  kiosk: fik,
+  uthyrning: uthyrning,
+  traning: traning,
+  ideer: ide,
+  rapporter: rapport,
+};
 
-export const modul = (nyckel) => MODULER.find((m) => m.nyckel === nyckel) || null;
-export const karnmoduler = MODULER.filter((m) => m.karna).map((m) => m.nyckel);
-
-/**
- * Vilka moduler som gäller för en förening. "*" betyder alla. Beroenden
- * dras in automatiskt – en modul som saknar sin grund är värre än en som
- * är påslagen i onödan.
- */
-export function aktivaModuler(forening) {
-  const onskade = forening?.moduler?.includes('*')
-    ? MODULER.map((m) => m.nyckel)
-    : [...new Set([...karnmoduler, ...(forening?.moduler || [])])];
-  const med = new Set();
-  const lagg = (nyckel, spar = []) => {
-    const m = modul(nyckel);
-    if (!m || med.has(nyckel) || spar.includes(nyckel)) return;
-    for (const b of m.beroenden || []) lagg(b, [...spar, nyckel]);
-    med.add(nyckel);
-  };
-  for (const n of onskade) lagg(n);
-  return MODULER.filter((m) => med.has(m.nyckel)).map((m) => m.nyckel);
-}
-
-export const modulPa = (forening, nyckel) => !nyckel || aktivaModuler(forening).includes(nyckel);
+export const MODULER = MODULDATA.map((m) => ({ ...m, rutter: RUTTER[m.nyckel] || [] }));
 
 /** Hela ruttabellen, där varje rutt vet vilken modul den tillhör. */
 export const allaRutter = () =>
   MODULER.flatMap((m) => m.rutter.map((r) => ({ ...r, modul: m.nyckel })));
 
-/** Modulerna som klienten behöver känna till. */
-export const publikaModuler = (forening) => {
-  const aktiva = aktivaModuler(forening);
-  return MODULER.filter((m) => aktiva.includes(m.nyckel)).map((m) => ({
-    nyckel: m.nyckel,
-    namn: m.namn,
-    beskrivning: m.beskrivning || null,
-    karna: !!m.karna,
-    sidor: m.sidor || [],
-    gastklient: m.gastklient || null,
-  }));
-};
+export { aktivaModuler, modul, MODULDATA, modulPa, publikaModuler };

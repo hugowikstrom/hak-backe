@@ -879,3 +879,43 @@ CREATE TABLE IF NOT EXISTS hyresgast (
   framplockat_av_id INTEGER REFERENCES medlem(id) ON DELETE SET NULL
 );
 CREATE INDEX IF NOT EXISTS idx_hyresgast ON hyresgast(avtal_id);
+
+-- ---------------------------------------------------------------------------
+-- Positioner i backen, och vilken maskin som står där
+-- ---------------------------------------------------------------------------
+
+-- En plats i backen där snö läggs. Platsen är fast: vattenuttaget, elen och
+-- slangdragningen hör till den. Maskinen som står där byts.
+--
+-- Tabellen heter snoplats och inte position, för `position` är redan
+-- bemanningens positioner. I gränssnittet heter den "position", som i backen.
+CREATE TABLE IF NOT EXISTS snoplats (
+  id           INTEGER PRIMARY KEY,
+  nummer       INTEGER,                          -- 1–12, som folk säger
+  namn         TEXT NOT NULL,                    -- "Lans 4", "Fläktplats 2"
+  slag         TEXT NOT NULL DEFAULT 'lans',     -- lans | flakt | annat
+  omrade_id    INTEGER REFERENCES omrade(id) ON DELETE SET NULL,
+  placering    TEXT,
+  meter_fran_topp REAL,
+  vattenuttag  TEXT,                             -- märkning på uttaget
+  elanslutning TEXT,
+  anteckning   TEXT,
+  ordning      INTEGER NOT NULL DEFAULT 0,
+  aktiv        INTEGER NOT NULL DEFAULT 1
+);
+CREATE INDEX IF NOT EXISTS idx_snoplats ON snoplats(slag, ordning);
+
+-- Vilken maskin som stått på vilken plats, och när. Historiken är poängen:
+-- ett fel på en kanon ska följa kanonen när den flyttas, och ett fel på ett
+-- vattenuttag ska stanna på platsen.
+CREATE TABLE IF NOT EXISTS uppstallning (
+  id            INTEGER PRIMARY KEY,
+  snoplats_id   INTEGER NOT NULL REFERENCES snoplats(id) ON DELETE CASCADE,
+  utrustning_id INTEGER NOT NULL REFERENCES utrustning(id) ON DELETE CASCADE,
+  fran          TEXT NOT NULL DEFAULT (datetime('now')),
+  till          TEXT,
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  anteckning    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_uppstallning_plats ON uppstallning(snoplats_id, till);
+CREATE INDEX IF NOT EXISTS idx_uppstallning_utr ON uppstallning(utrustning_id, till);

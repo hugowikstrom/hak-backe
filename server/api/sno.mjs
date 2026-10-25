@@ -1,5 +1,6 @@
 // Snöläggning: pass, mätningar och nuläge.
 import { alla, en, spara, uppdatera } from '../db.mjs';
+import { maskinPa } from '../platser.mjs';
 import { kompletteraMatning, klartecken, wetbulb } from '../snoteknik.mjs';
 import { csv, ettAv, fel, heltal, num, rutt, svar, text, txt } from '../http.mjs';
 
@@ -9,9 +10,11 @@ const MATFALT = [
 ];
 
 const MATNING_SQL = `
-  SELECT m.*, u.namn AS utrustning, u.typ AS utrustningstyp, o.namn AS omrade, me.namn AS av
+  SELECT m.*, u.namn AS utrustning, u.typ AS utrustningstyp, o.namn AS omrade, me.namn AS av,
+         p.namn AS plats, p.slag AS platsslag
   FROM matning m
   LEFT JOIN utrustning u ON u.id=m.utrustning_id
+  LEFT JOIN snoplats p ON p.id=m.snoplats_id
   LEFT JOIN omrade o ON o.id=m.omrade_id
   LEFT JOIN medlem me ON me.id=m.av_id`;
 
@@ -25,6 +28,9 @@ function lasMatning(kropp) {
     ...data,
     tid: txt(kropp.tid) || undefined,
     snopass_id: kropp.snopass_id === undefined ? undefined : heltal(kropp.snopass_id),
+    // Mätningen görs på en position i backen. Maskinen som står där fylls
+    // i automatiskt, så att värdena går att följa åt båda hållen.
+    snoplats_id: kropp.snoplats_id === undefined ? undefined : heltal(kropp.snoplats_id),
     utrustning_id: kropp.utrustning_id === undefined ? undefined : heltal(kropp.utrustning_id),
     omrade_id: kropp.omrade_id === undefined ? undefined : heltal(kropp.omrade_id),
     vind_riktning: kropp.vind_riktning === undefined ? undefined : txt(kropp.vind_riktning, 8),
@@ -86,6 +92,12 @@ export const rutter = [
   rutt('POST', '/api/sno/matningar', 'medlem', ({ res, kropp, medlem }) => {
     const data = lasMatning(kropp);
     if (MATFALT.every((f) => data[f] == null)) throw fel(400, 'Minst ett mätvärde krävs');
+    // Mäter man på en position vet systemet vilken maskin som står där.
+    // Då behöver den som rapporterar inte veta det utantill.
+    if (data.snoplats_id && data.utrustning_id === undefined) {
+      const maskin = maskinPa(data.snoplats_id);
+      if (maskin) data.utrustning_id = maskin.id;
+    }
     const id = spara('matning', { ...data, av_id: medlem.id });
     svar(res, 201, kompletteraMatning(en(`${MATNING_SQL} WHERE m.id=?`, id)));
   }),

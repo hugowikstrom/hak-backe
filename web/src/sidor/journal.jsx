@@ -108,6 +108,7 @@ export function Journal() {
                   </div>
                   <p className="journaltext">{p.text || p.transkript}</p>
                   <div className="journalpost-fot liten svag">
+                    {p.plats && <span>{p.plats} <span className="svag">position</span></span>}
                     {p.utrustning && <span>{p.utrustning}{p.komponent ? ` · ${p.komponent}` : ''}</span>}
                     {p.omrade && <span>{p.omrade}</span>}
                     {p.arende_id && <a href={`/arenden#${p.arende_id}`}>Ärende #{p.arende_id}</a>}

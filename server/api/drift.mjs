@@ -89,6 +89,7 @@ export const hamtaPost = (id) =>
        LEFT JOIN medlem b ON b.id=d.bekraftad_av_id
        LEFT JOIN utrustning u ON u.id=d.utrustning_id
        LEFT JOIN komponent k ON k.id=d.komponent_id
+       LEFT JOIN snoplats sp ON sp.id=d.snoplats_id
        LEFT JOIN omrade o ON o.id=d.omrade_id
       WHERE d.id=?`,
       id
@@ -106,12 +107,13 @@ export function journal({ fran, till, slag, utrustning_id, utkast, antal = 200 }
   if (utkast === false) villkor.push('d.bekraftad IS NOT NULL');
   return alla(
     `SELECT d.*, m.namn AS av, b.namn AS bekraftad_av, u.namn AS utrustning, k.namn AS komponent,
-            o.namn AS omrade
+            sp.namn AS plats, o.namn AS omrade
        FROM driftpost d
        LEFT JOIN medlem m ON m.id=d.av_id
        LEFT JOIN medlem b ON b.id=d.bekraftad_av_id
        LEFT JOIN utrustning u ON u.id=d.utrustning_id
        LEFT JOIN komponent k ON k.id=d.komponent_id
+       LEFT JOIN snoplats sp ON sp.id=d.snoplats_id
        LEFT JOIN omrade o ON o.id=d.omrade_id
       ${villkor.length ? `WHERE ${villkor.join(' AND ')}` : ''}
       ORDER BY d.tid DESC, d.id DESC LIMIT ?`,
@@ -132,6 +134,7 @@ export function skapaPost(data, medlem, { bekraftad = true } = {}) {
     av_id: medlem?.id ?? null,
     utrustning_id: heltal(data.utrustning_id),
     komponent_id: heltal(data.komponent_id),
+    snoplats_id: heltal(data.snoplats_id),
     omrade_id: heltal(data.omrade_id),
     korning_id: heltal(data.korning_id),
     matning_id: heltal(data.matning_id),
@@ -230,6 +233,44 @@ export function aterkommandeFel(utrustning_id = null) {
             ((new Date(`${r.senaste}Z`) - new Date(`${r.forsta}Z`)) / 86400000 / (r.antal - 1)) * 10
           ) / 10,
     utred: r.antal >= 3 || r.sakerhetsfel > 0,
+  }));
+}
+
+/**
+ * Fel som återkommer på samma position i backen.
+ *
+ * Det här är den andra halvan av bilden. Ett vattenuttag som läcker gör det
+ * oavsett vilken kanon som står där, och syns bara om man räknar per plats.
+ */
+export function aterkommandePlatsfel() {
+  return alla(
+    `SELECT a.snoplats_id, p.namn AS plats, p.slag AS platsslag, o.namn AS omrade,
+            count(*) AS antal,
+            min(a.skapad) AS forsta, max(a.skapad) AS senaste,
+            sum(coalesce(a.kostnad_ore,0)) AS kostnad_ore,
+            sum(CASE WHEN a.allvarlighet='sakerhetsrisk' THEN 1 ELSE 0 END) AS sakerhetsfel,
+            count(DISTINCT (SELECT s.utrustning_id FROM uppstallning s
+                             WHERE s.snoplats_id=a.snoplats_id
+                               AND s.fran <= a.skapad
+                               AND (s.till IS NULL OR s.till > a.skapad))) AS olika_maskiner
+       FROM arende a
+       JOIN snoplats p ON p.id=a.snoplats_id
+       LEFT JOIN omrade o ON o.id=p.omrade_id
+      WHERE a.typ IN ('fel','brist')
+      GROUP BY a.snoplats_id
+      HAVING count(*) >= 2
+      ORDER BY antal DESC, senaste DESC`
+  ).map((r) => ({
+    ...r,
+    dagar_mellan_fel:
+      r.antal < 2
+        ? null
+        : Math.round(
+            ((new Date(`${r.senaste}Z`) - new Date(`${r.forsta}Z`)) / 86400000 / (r.antal - 1)) * 10
+          ) / 10,
+    // Samma fel med olika maskiner på platsen pekar på platsen själv.
+    utred: r.antal >= 3 || r.olika_maskiner > 1,
+    pekar_pa_platsen: r.olika_maskiner > 1,
   }));
 }
 
@@ -425,7 +466,12 @@ export const rutter = [
   ),
 
   rutt('GET', '/api/drift/monster', '@anlaggning', ({ res }) =>
-    svar(res, 200, { monster: aterkommandeFel() })
+    svar(res, 200, {
+      // Två mönster, som ska läsas åt olika håll. Maskinfel följer
+      // maskinen när den flyttas; platsfel stannar i backen.
+      monster: aterkommandeFel(),
+      platsmonster: aterkommandePlatsfel(),
+    })
   ),
 
   // ---------- Komponenter ----------

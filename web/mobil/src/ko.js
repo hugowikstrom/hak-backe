@@ -24,14 +24,17 @@ export const prenumerera = (fn) => {
   return () => lyssnare.delete(fn);
 };
 
-export function nyRond({ mall, utrustning, omrade }) {
+export function nyRond({ mall, utrustning, omrade, snoplats }) {
   const rond = {
     lokalId: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     mall_id: mall.id,
     mallnamn: mall.namn,
     intervall: mall.intervall,
     utrustning_id: utrustning?.id ?? null,
-    objektnamn: utrustning?.namn || omrade?.namn || null,
+    // Ronden går på positionen; maskinen som står där noteras med.
+    snoplats_id: snoplats?.id ?? null,
+    objektnamn: snoplats?.namn || utrustning?.namn || omrade?.namn || null,
+    maskin: snoplats?.under?.split('·').pop()?.trim() || null,
     omrade_id: omrade?.id ?? utrustning?.omrade_id ?? null,
     kraver_kvittens: mall.kraver_kvittens ? 1 : 0,
     punkter: mall.punkter.map((p) => ({
@@ -129,8 +132,9 @@ async function synkaEn(lokalId) {
   if (!rond.serverId) {
     const k = await api.skapa('/api/checklistor/korningar', {
       mall_id: rond.mall_id,
+      snoplats_id: rond.snoplats_id,
       utrustning_id: rond.utrustning_id,
-      omrade_id: rond.utrustning_id ? null : rond.omrade_id,
+      omrade_id: rond.utrustning_id || rond.snoplats_id ? null : rond.omrade_id,
       kalla: 'mobil',
     });
     rond = uppdateraRond(lokalId, { serverId: k.id, fel: null });
