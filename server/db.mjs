@@ -154,6 +154,9 @@ function migrera(db) {
     ['dokument', 'sammanfattning', 'TEXT'],
     ['dokument', 'ai_modell', 'TEXT'],
     ['dokument', 'tolkad_tid', 'TEXT'],
+    // Ur protokoll och intyg: när arbetet gjordes och hur länge det gäller.
+    ['dokument', 'avser_datum', 'TEXT'],
+    ['dokument', 'giltigt_till', 'TEXT'],
   ]) {
     const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
     if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);

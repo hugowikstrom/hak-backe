@@ -105,7 +105,8 @@ async function hanteraApi({ req, res, url, stig, forening }) {
   if (req.method !== 'GET' && req.headers['x-hak'] !== '1')
     throw fel(403, 'Saknar klientheader');
 
-  const kropp = await lasKropp(req);
+  // Rutter som strömmar själva får begäran oläst.
+  const kropp = r.ravkropp ? {} : await lasKropp(req);
   await r.fn({ req, res, medlem, kropp, fraga: url.searchParams, param, forening });
 }
 

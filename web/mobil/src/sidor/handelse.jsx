@@ -41,7 +41,7 @@ export function Handelse() {
       if (r.stt_fel) notis(`Ljudet sparades men kunde inte skrivas av: ${r.stt_fel}`, 'fel');
       // Att AI:n är avstängd är inget fel – sidan säger redan att ingen
       // tolkning gjordes, och texten finns kvar.
-      if (r.ai_fel && !/inte konfigurerad/i.test(r.ai_fel))
+      if (r.ai_fel && !/inte påslagen/i.test(r.ai_fel))
         notis('Tolkningen gick inte – fyll i själv, texten finns kvar.', 'info');
       sattUtkast(r.post);
     } catch (e) {

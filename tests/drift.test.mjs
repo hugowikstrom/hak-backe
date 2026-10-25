@@ -401,3 +401,16 @@ test('läsning av en incident lämnar spår, och gallring tar bara personuppgift
   const ater = await anrop('PATCH', `/api/incidenter/${id}`, { insatser: 'nytt' });
   assert.equal(ater.status, 409, 'en gallrad incident ändras inte');
 });
+
+test('gatewayens fel översätts till något en människa kan göra något av', async () => {
+  const { begripligt } = await import('../server/ai.mjs');
+  assert.match(
+    begripligt('429: {"error":{"message":"No deployments available for selected model, cooldown_list=[...]"}}'),
+    /ur funktion.*för hand/i
+  );
+  assert.match(begripligt('InternalServerError: Context size has been exceeded.'), /för långt/i);
+  assert.match(begripligt('429 You have no credits remaining'), /kvot/i);
+  assert.match(begripligt('fetch failed'), /går inte att nå/i);
+  // Okända fel kapas men behålls, så att de går att felsöka.
+  assert.equal(begripligt('nånting ovanligt gick fel'), 'nånting ovanligt gick fel');
+});

@@ -5,11 +5,12 @@
 // någon godkänt dem – de räknas inte som anläggningens serviceplan förrän
 // en människa sagt ja.
 import { useState } from 'react';
-import { api } from '../api.js';
+import { api, fragestrang, laddaUppFil } from '../api.js';
 import {
   Bricka, Falt, Flikar, Kort, Lada, Nyckeltal, Text, Tomt, useHamta, useNotis, Val, Vanta,
 } from '../delar/bitar.jsx';
 import { Tabell } from '../delar/tabell.jsx';
+import { Arshjul as Hjul } from '../delar/hjul.jsx';
 import { idag, kortDatum } from '../nytta.js';
 
 const kronor = (ore) => `${Math.round((ore || 0) / 100).toLocaleString('sv-SE')} kr`;
@@ -74,11 +75,14 @@ function Arshjul() {
   const notis = useNotis();
   const h = useHamta(() => api.hamta('/api/underhall/arshjul'));
   const [period, sattPeriod] = useState(false);
+  // Klickar man på en månad i hjulet visas bara den i listan under.
+  const [vald, sattVald] = useState(null);
 
   if (h.laddar && !h.data) return <Vanta />;
   const { hjul, poster, samordna, perioder } = h.data;
   const forsenade = poster.filter((p) => p.lage === 'forsenad');
   const krockar = poster.filter((p) => p.krock || p.forslag_flytt);
+  const visade = vald ? hjul.manader.filter((m) => m.nyckel === vald) : hjul.manader;
 
   return (
     <>
@@ -133,8 +137,25 @@ function Arshjul() {
         )}
       </Kort>
 
+      <Kort
+        titel="Året i backen"
+        undertext="Varje prick är ett arbete, lagt där det förfaller. Klicka på en månad för att se bara den."
+      >
+        <Hjul manader={hjul.manader} perioder={perioder} vald={vald} valj={sattVald} />
+      </Kort>
+
+      {vald && (
+        <div className="rad hopp" style={{ marginBottom: 10 }}>
+          <strong>
+            {hjul.manader.find((m) => m.nyckel === vald)?.namn}{' '}
+            {hjul.manader.find((m) => m.nyckel === vald)?.ar}
+          </strong>
+          <button className="tom" onClick={() => sattVald(null)}>Visa hela året</button>
+        </div>
+      )}
+
       <div className="arshjul">
-        {hjul.manader.map((m) => (
+        {visade.map((m) => (
           <section key={m.nyckel} className={`hjulmanad${m.poster.length ? '' : ' tom'}`}>
             <header>
               <h3>{m.namn}</h3>
@@ -623,7 +644,13 @@ function Manualer({ uppdateraPlaner }) {
       </Kort>
       {resultat && (
         <Lada titel="Det här läste jag ut" stang={() => { sattResultat(null); sattNy(false); }} bred>
-          <Uppladdningsresultat resultat={resultat} />
+          <Uppladdningsresultat
+            resultat={resultat}
+            klar={() => {
+              d.uppdatera();
+              uppdateraPlaner();
+            }}
+          />
         </Lada>
       )}
 
@@ -651,93 +678,251 @@ function Manualer({ uppdateraPlaner }) {
  * Allt här är förslag som redan fyllts i – det går att rätta i listan
  * efteråt, och servicepunkterna gäller ingenting förrän de godkänts.
  */
-function Uppladdningsresultat({ resultat }) {
-  const punkter = resultat.flatMap((r) => r.punkter || []);
-  const granska = resultat.flatMap((r) => r.granska_om || []);
+function Uppladdningsresultat({ resultat, klar }) {
   return (
     <>
       {resultat.map((r) => (
-        <Kort key={r.dokument.id} titel={r.dokument.namn} tat>
-          <dl className="uppgifter">
-            <dt>Tolkat som</dt>
-            <dd>
-              {r.tolkning ? (
-                <>
-                  {r.dokument.slag}
-                  {r.tolkning.tillverkare || r.tolkning.modell
-                    ? ` · ${[r.tolkning.tillverkare, r.tolkning.modell].filter(Boolean).join(' ')}`
-                    : ''}
-                  {r.dokument.sammanfattning && (
-                    <div className="liten svag">{r.dokument.sammanfattning}</div>
-                  )}
-                </>
-              ) : (
-                <span className="svag">
-                  ingen tolkning{r.tolkning_fel ? ` – ${r.tolkning_fel}` : ''}
-                </span>
-              )}
-            </dd>
-            <dt>Kopplat till</dt>
-            <dd>
-              {r.foreslagen_utrustning ? (
-                <>
-                  {r.foreslagen_utrustning.namn}{' '}
-                  <span className="liten svag">matchade på tillverkare och modell</span>
-                </>
-              ) : r.galler_flera ? (
-                <>
-                  <span className="svag">ingen särskild</span>
-                  <div className="liten svag">
-                    Gäller {r.galler_flera.length} maskiner av samma modell:{' '}
-                    {r.galler_flera.map((u) => u.namn).join(', ')}. Välj en i listan om dokumentet
-                    hör till just den.
-                  </div>
-                </>
-              ) : r.dokument.utrustning_id ? (
-                'vald utrustning'
-              ) : (
-                <span className="svag">ingen – välj i listan om det hör till en maskin</span>
-              )}
-            </dd>
-            <dt>Sidor</dt>
-            <dd>{r.dokument.sidor ?? '–'}</dd>
-            <dt>Servicepunkter</dt>
-            <dd>
-              {r.punkter?.length
-                ? `${r.punkter.length} föreslagna`
-                : r.punkt_fel
-                  ? `kunde inte läsas – ${r.punkt_fel}`
-                  : 'inga hittades'}
-            </dd>
-          </dl>
-        </Kort>
+        <Dokumentresultat key={r.dokument.id} r={r} klar={klar} />
       ))}
+    </>
+  );
+}
 
-      {!!punkter.length && (
-        <Kort
-          titel={`${punkter.length} servicepunkter att granska`}
-          undertext="De gäller ingenting förrän du godkänt dem. Finns under fliken Förslag."
-          tat
-        >
-          {punkter.map((p) => (
-            <div key={p.id} className="liten" style={{ padding: '3px 0' }}>
-              <strong>{p.namn}</strong>{' '}
+/**
+ * Vad läsningen kom fram till om ett dokument.
+ *
+ * Olika sorters dokument bär olika saker: en manual har serviceintervall
+ * och reservdelsnummer, ett protokoll har utfört arbete och anmärkningar,
+ * ett intyg har ett sista giltighetsdatum. Allt visas som förslag – det som
+ * ska bli ärenden eller register läggs in med ett tryck, inte av sig självt.
+ */
+function Dokumentresultat({ r, klar }) {
+  const notis = useNotis();
+  const f = r.forslag || {};
+  const ut = r.utvinning?.data || null;
+  const [valda, sattValda] = useState({
+    komponenter: (f.komponenter || []).map((_, i) => i),
+    reservdelar: (f.reservdelar || []).map((_, i) => i),
+    leverantor: !!f.leverantor,
+    anmarkningar: (ut?.anmarkningar || []).map((_, i) => i),
+    planer: [],
+  });
+  const [sparar, sattSparar] = useState(false);
+  const [klart, sattKlart] = useState(null);
+
+  const vaxla = (falt, i) =>
+    sattValda((v) => ({
+      ...v,
+      [falt]: v[falt].includes(i) ? v[falt].filter((x) => x !== i) : [...v[falt], i],
+    }));
+
+  const antal =
+    valda.komponenter.length +
+    valda.reservdelar.length +
+    valda.anmarkningar.length +
+    valda.planer.length +
+    (valda.leverantor ? 1 : 0);
+
+  const laggIn = async () => {
+    sattSparar(true);
+    try {
+      const svar = await api.skapa(`/api/underhall/dokument/${r.dokument.id}/forslag`, {
+        utrustning_id: f.utrustning_id || r.dokument.utrustning_id || null,
+        komponenter: (f.komponenter || []).filter((_, i) => valda.komponenter.includes(i)),
+        reservdelar: (f.reservdelar || []).filter((_, i) => valda.reservdelar.includes(i)),
+        leverantor: valda.leverantor ? f.leverantor : null,
+        anmarkningar: (ut?.anmarkningar || []).filter((_, i) => valda.anmarkningar.includes(i)),
+        markera_utford: valda.planer,
+        utford_datum: ut?.datum || null,
+      });
+      sattKlart(svar);
+      klar?.();
+      notis('Inlagt', 'ok');
+    } catch (e) {
+      notis(e.message, 'fel');
+    } finally {
+      sattSparar(false);
+    }
+  };
+
+  const Kryss = ({ pa, satt, children }) => (
+    <label className="kryssrad liten">
+      <input type="checkbox" checked={pa} onChange={satt} />
+      <span>{children}</span>
+    </label>
+  );
+
+  return (
+    <Kort titel={r.dokument.namn} tat>
+      <dl className="uppgifter">
+        <dt>Tolkat som</dt>
+        <dd>
+          {r.tolkning ? (
+            <>
+              {r.dokument.slag}
+              {r.tolkning.tillverkare || r.tolkning.modell
+                ? ` · ${[r.tolkning.tillverkare, r.tolkning.modell].filter(Boolean).join(' ')}`
+                : ''}
+              {r.tolkning.utgava ? ` · utgåva ${r.tolkning.utgava}` : ''}
+              {r.dokument.sammanfattning && <div className="liten svag">{r.dokument.sammanfattning}</div>}
+            </>
+          ) : (
+            <span className="svag">ingen tolkning{r.fel ? ` – ${r.fel}` : ''}</span>
+          )}
+        </dd>
+        <dt>Kopplat till</dt>
+        <dd>
+          {r.foreslagen_utrustning ? (
+            <>
+              {r.foreslagen_utrustning.namn}{' '}
+              <span className="liten svag">matchade på tillverkare och modell</span>
+            </>
+          ) : r.galler_flera ? (
+            <>
+              <span className="svag">ingen särskild</span>
+              <div className="liten svag">
+                Gäller {r.galler_flera.length} maskiner av samma modell:{' '}
+                {r.galler_flera.map((u) => u.namn).join(', ')}.
+              </div>
+            </>
+          ) : r.dokument.utrustning ? (
+            r.dokument.utrustning
+          ) : (
+            <span className="svag">ingen – välj i listan om det hör till en maskin</span>
+          )}
+        </dd>
+        {!!r.ifyllt?.length && (
+          <>
+            <dt>Ifyllt på maskinen</dt>
+            <dd className="liten">{r.ifyllt.join(', ')}</dd>
+          </>
+        )}
+        <dt>Sidor</dt>
+        <dd>{r.dokument.sidor ?? '–'}</dd>
+        {ut?.datum && (
+          <>
+            <dt>Avser</dt>
+            <dd>
+              {ut.datum}
+              {ut.utford_av ? ` · ${ut.utford_av}` : ''}
+              {ut.resultat ? ` · ${ut.resultat}` : ''}
+            </dd>
+          </>
+        )}
+        {(ut?.giltigt_till || r.dokument.giltigt_till) && (
+          <>
+            <dt>Giltigt till</dt>
+            <dd>{ut?.giltigt_till || r.dokument.giltigt_till}</dd>
+          </>
+        )}
+      </dl>
+
+      {!!r.punkter?.length && (
+        <div className="forslagsblock">
+          <strong className="liten">{r.punkter.length} servicepunkter föreslagna</strong>
+          <p className="liten svag" style={{ margin: '2px 0 6px' }}>
+            De gäller ingenting förrän du godkänt dem, under fliken Förslag.
+          </p>
+          {r.punkter.map((p) => (
+            <div key={p.id} className="liten">
+              {p.namn}{' '}
               <span className="svag">
                 {p.kallsida ? `${p.kallsida} · ` : ''}
                 {p.osaker ? 'intervallet otydligt i manualen' : intervalltext(p)}
+                {p.kritisk ? ' · kritiskt' : ''}
               </span>
             </div>
           ))}
-        </Kort>
-      )}
-
-      {!!granska.length && (
-        <div className="meddelande varning">
-          {granska.length} godkända servicepunkter kom ur den gamla versionen av manualen och bör
-          granskas om: {granska.map((g) => g.namn).join(', ')}.
         </div>
       )}
-    </>
+
+      {klart ? (
+        <div className="meddelande ok">
+          Inlagt: {klart.komponenter} komponenter, {klart.reservdelar} reservdelar,{' '}
+          {klart.arenden} ärenden{klart.kvitterade ? `, ${klart.kvitterade} serviceplaner kvitterade` : ''}.
+        </div>
+      ) : (
+        <>
+          {!!ut?.anmarkningar?.length && (
+            <div className="forslagsblock">
+              <strong className="liten">Anmärkningar i protokollet</strong>
+              {ut.anmarkningar.map((a, i) => (
+                <Kryss key={i} pa={valda.anmarkningar.includes(i)} satt={() => vaxla('anmarkningar', i)}>
+                  {a.text}{' '}
+                  <span className="svag">
+                    · {a.allvarlighet}
+                    {a.atgardas_senast ? ` · senast ${a.atgardas_senast}` : ''}
+                  </span>
+                </Kryss>
+              ))}
+              <p className="liten svag">Varje ikryssad anmärkning blir ett ärende.</p>
+            </div>
+          )}
+
+          {!!ut?.planer?.length && ut.datum && (
+            <div className="forslagsblock">
+              <strong className="liten">Kvittera som utfört {ut.datum}</strong>
+              {ut.planer.map((p) => (
+                <Kryss key={p.id} pa={valda.planer.includes(p.id)} satt={() => vaxla('planer', p.id)}>
+                  {p.namn}{' '}
+                  <span className="svag">
+                    {p.senast_utford ? `senast ${p.senast_utford}` : 'aldrig utförd'}
+                  </span>
+                </Kryss>
+              ))}
+            </div>
+          )}
+
+          {!!f.komponenter?.length && (
+            <div className="forslagsblock">
+              <strong className="liten">Komponenter ur dokumentet</strong>
+              {f.komponenter.map((k, i) => (
+                <Kryss key={i} pa={valda.komponenter.includes(i)} satt={() => vaxla('komponenter', i)}>
+                  {k.namn} {k.slag && <span className="svag">· {k.slag}</span>}
+                </Kryss>
+              ))}
+            </div>
+          )}
+
+          {!!f.reservdelar?.length && (
+            <div className="forslagsblock">
+              <strong className="liten">Reservdelar med artikelnummer</strong>
+              {f.reservdelar.map((x, i) => (
+                <Kryss key={i} pa={valda.reservdelar.includes(i)} satt={() => vaxla('reservdelar', i)}>
+                  {x.namn} <span className="svag">· {x.artikelnummer}</span>
+                </Kryss>
+              ))}
+            </div>
+          )}
+
+          {f.leverantor && (
+            <div className="forslagsblock">
+              <strong className="liten">Leverantör i dokumentet</strong>
+              <Kryss pa={valda.leverantor} satt={() => sattValda((v) => ({ ...v, leverantor: !v.leverantor }))}>
+                {f.leverantor.namn}
+                {f.leverantor.telefon ? ` · ${f.leverantor.telefon}` : ''}
+                {f.leverantor.epost ? ` · ${f.leverantor.epost}` : ''}
+              </Kryss>
+            </div>
+          )}
+
+          {antal > 0 && (
+            <div className="knapprad">
+              <button className="primar" disabled={sparar} onClick={laggIn}>
+                {sparar ? 'Lägger in …' : `Lägg in ${antal} valda`}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {!!r.granska_om?.length && (
+        <div className="meddelande varning">
+          {r.granska_om.length} godkända servicepunkter kom ur den gamla versionen och bör granskas
+          om: {r.granska_om.map((g) => g.namn).join(', ')}.
+        </div>
+      )}
+    </Kort>
   );
 }
 
@@ -746,71 +931,155 @@ function Uppladdningsresultat({ resultat }) {
  * megabyte i samma anrop är inget att göra en mobiluppkoppling till, och
  * en fil som strular ska inte sänka de andra.
  */
+/**
+ * Flera manualer i taget, i tre synliga steg per fil.
+ *
+ * Stegen är riktiga anrop och inte en påhittad animation: filen in, läsa
+ * vad dokumentet är, läsa ut servicepunkterna. Tolkningen tar tiotalet
+ * sekunder, och då ska det synas vad som pågår – och vad som redan är
+ * klart, så att en fil som strular inte ser ut att ha tagit med sig de
+ * andra.
+ */
+const STEG = [
+  { nyckel: 'upp', text: 'Laddar upp och läser texten' },
+  { nyckel: 'analys', text: 'Läser vad dokumentet är' },
+  { nyckel: 'punkter', text: 'Läser ut servicepunkter' },
+];
+
 function LaddaUpp({ dokument, klar }) {
   const notis = useNotis();
   const utrustning = useHamta(() => api.hamta('/api/utrustning'));
   const [filer, sattFiler] = useState([]);
   const [slag, sattSlag] = useState('manual');
   const [gemensamUtrustning, sattGemensam] = useState('');
+  // Per fil: { steg, klart, fel }. Körs det något alls är lage satt.
   const [lage, sattLage] = useState(null);
 
-  // Namnet lämnas tomt: läsningen föreslår en titel ur dokumentets egen
-  // framsida, vilket brukar vara bättre än filnamnet. Server faller
-  // tillbaka på filnamnet om ingen titel går att få fram.
+  // Filerna hålls som de är och skickas som byte. Att läsa in dem som
+  // base64 först skulle svälla dem med en tredjedel och lägga hela
+  // manualen i webbläsarens minne.
   const las = (e) => {
-    const valda = [...(e.target.files || [])];
-    Promise.all(
-      valda.map(
-        (f) =>
-          new Promise((klar_) => {
-            const lasare = new FileReader();
-            lasare.onload = () =>
-              klar_({
-                data: lasare.result,
-                filnamn: f.name,
-                namn: '',
-                storlek: f.size,
-                utrustning_id: '',
-                ersatter_id: '',
-              });
-            lasare.readAsDataURL(f);
-          })
-      )
-    ).then((nya) => sattFiler((f) => [...f, ...nya]));
+    const nya = [...(e.target.files || [])].map((f) => ({
+      fil: f,
+      filnamn: f.name,
+      // Namnet lämnas tomt: läsningen föreslår en titel ur dokumentets
+      // egen framsida, vilket brukar slå filnamnet.
+      namn: '',
+      storlek: f.size,
+      utrustning_id: '',
+      ersatter_id: '',
+    }));
+    sattFiler((f) => [...f, ...nya]);
     e.target.value = '';
   };
 
   const andra = (i, falt) => (v) => sattFiler((f) => f.map((x, j) => (i === j ? { ...x, [falt]: v } : x)));
 
+  const satt = (i, data) =>
+    sattLage((l) => ({ ...l, rader: l.rader.map((r, j) => (i === j ? { ...r, ...data } : r)) }));
+
   const ladda = async () => {
+    sattLage({ rader: filer.map((f) => ({ namn: f.filnamn, steg: null, klart: false, fel: null })) });
     const klara = [];
     for (const [i, f] of filer.entries()) {
-      sattLage({ i, namn: f.namn, antal: filer.length });
       try {
-        klara.push(
-          await api.skapa('/api/underhall/dokument', {
-            namn: f.namn,
+        satt(i, { steg: 'upp', andel: 0 });
+        const upp = await laddaUppFil(
+          `/api/underhall/dokument${fragestrang({
+            filnamn: f.filnamn,
+            namn: f.namn || '',
             slag,
-            fil: f.data,
-            utrustning_id: Number(f.utrustning_id || gemensamUtrustning) || null,
-            ersatter_id: f.ersatter_id ? Number(f.ersatter_id) : null,
-          })
+            utrustning_id: Number(f.utrustning_id || gemensamUtrustning) || '',
+            ersatter_id: f.ersatter_id || '',
+          })}`,
+          f.fil,
+          { vidForlopp: (andel) => satt(i, { andel }) }
         );
+        satt(i, { namn: upp.dokument.namn, andel: 1 });
+
+        let analys = null;
+        let punkter = [];
+        if (upp.kan_tolkas) {
+          satt(i, { steg: 'analys' });
+          analys = await api.skapa(`/api/underhall/dokument/${upp.dokument.id}/analysera`, {
+            behall_namn: !!f.namn,
+          });
+          satt(i, { namn: analys.dokument.namn });
+
+          if (analys.har_underhall !== false) {
+            satt(i, { steg: 'punkter' });
+            const r = await api.skapa(`/api/underhall/dokument/${upp.dokument.id}/tolka`, {}).catch(() => null);
+            punkter = r?.punkter || [];
+          }
+        }
+        satt(i, { steg: null, klart: true, punkter: punkter.length });
+        klara.push({ ...upp, ...(analys || {}), dokument: analys?.dokument || upp.dokument, punkter });
       } catch (e) {
         // En trasig fil stoppar inte de andra, men den tystas inte heller.
-        notis(`${f.namn}: ${e.message}`, 'fel');
+        satt(i, { steg: null, fel: e.message });
+        notis(`${f.filnamn}: ${e.message}`, 'fel');
       }
     }
     sattLage(null);
     if (klara.length) klar(klara);
   };
 
+  if (lage) {
+    const totalt = lage.rader.length * STEG.length;
+    const gjort = lage.rader.reduce((s, r) => {
+      if (r.klart || r.fel) return s + STEG.length;
+      const i = STEG.findIndex((x) => x.nyckel === r.steg);
+      if (i < 0) return s;
+      // Uppladdningssteget räknas i byte; de andra är klara eller inte.
+      return s + i + (r.steg === 'upp' ? (r.andel ?? 0) : 0.5);
+    }, 0);
+    return (
+      <>
+        <p className="liten svag">
+          Tolkningen tar några sekunder per dokument. Ingenting av det den föreslår gäller förrän
+          du godkänt det.
+        </p>
+        <div className="framsteg stor">
+          <span style={{ width: `${Math.round((gjort / totalt) * 100)}%` }} />
+        </div>
+        <div className="uppladdningslista">
+          {lage.rader.map((r, i) => (
+            <div key={i} className={`uppladdning${r.klart ? ' klar' : ''}${r.fel ? ' fel' : ''}`}>
+              <span className="markor" aria-hidden="true">
+                {r.fel ? '!' : r.klart ? '✓' : r.steg ? '•' : '·'}
+              </span>
+              <span className="txt">
+                <strong>{r.namn}</strong>
+                <span className="liten svag">
+                  {r.fel
+                    ? r.fel
+                    : r.klart
+                      ? `klart${r.punkter ? ` · ${r.punkter} servicepunkter` : ''}`
+                      : r.steg === 'upp'
+                        ? `Laddar upp – ${Math.round((r.andel ?? 0) * 100)} %`
+                        : r.steg
+                          ? STEG.find((x) => x.nyckel === r.steg).text
+                          : 'väntar'}
+                </span>
+              </span>
+              {!r.klart && !r.fel && r.steg && (
+                <span className="stegtal liten svag">
+                  {STEG.findIndex((x) => x.nyckel === r.steg) + 1}/{STEG.length}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   return (
     <>
       <Falt etikett="Filer (PDF, bild eller text)" krav>
-        {/* Fältet nollställs efter inläsningen så att fler filer kan väljas
-            i en andra omgång. Då ljuger webbläsarens egen text om läget –
-            raden under säger vad som faktiskt ligger i kön. */}
+        {/* Fältet nollställs efter inläsningen så att fler filer kan väljas.
+            Då ljuger webbläsarens egen text om läget – raden under säger
+            vad som faktiskt ligger i kön. */}
         <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.txt" onChange={las} />
       </Falt>
       <p className="liten svag">
@@ -876,19 +1145,9 @@ function LaddaUpp({ dokument, klar }) {
         </div>
       ))}
 
-      {lage && (
-        <div className="meddelande info">
-          Laddar upp {lage.i + 1} av {lage.antal}: {lage.namn} …
-        </div>
-      )}
-
       <div className="knapprad">
-        <button className="primar" disabled={!filer.length || !!lage} onClick={ladda}>
-          {lage
-            ? `Laddar upp (${lage.i + 1}/${lage.antal}) …`
-            : filer.length > 1
-              ? `Ladda upp ${filer.length} dokument`
-              : 'Ladda upp'}
+        <button className="primar" disabled={!filer.length} onClick={ladda}>
+          {filer.length > 1 ? `Ladda upp ${filer.length} dokument` : 'Ladda upp'}
         </button>
       </div>
     </>

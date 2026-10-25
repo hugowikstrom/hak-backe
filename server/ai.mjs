@@ -35,8 +35,8 @@ export const arLokal = (m) => m === LOKAL_MODELL || m.startsWith('lokal');
  * Returnerar alltid ett objekt – `data: null` betyder att människan får
  * fylla i själv, vilket är ett fullgott utfall och inte ett fel i appen.
  */
-export async function tolka({ system, text, schema, kanslig = false, tecken = 1200 }) {
-  if (!aiPa()) return { data: null, modell: null, fel: 'AI är inte konfigurerad' };
+export async function tolka({ system, text, schema, kanslig = false, tecken = 1200, forsok = 0 }) {
+  if (!aiPa()) return { data: null, modell: null, fel: 'AI-tolkningen är inte påslagen' };
   let vald = modell();
   if (kanslig && !arLokal(vald)) vald = LOKAL_MODELL;
 
@@ -78,8 +78,43 @@ export async function tolka({ system, text, schema, kanslig = false, tecken = 12
     const data = JSON.parse(stadaJson(innehall));
     return { data, modell: vald, fel: null };
   } catch (e) {
-    return { data: null, modell: vald, fel: String(e.message || e) };
+    // Modellernas kontextfönster är olika stora och sällan dokumenterade.
+    // Går texten inte in halveras den och vi försöker en gång till – hellre
+    // en tolkning av halva dokumentet än ingen alls.
+    const meddelande = String(e.message || e);
+    if (forsok < 2 && /context|too long|maximum context|token limit/i.test(meddelande) && text.length > 1200)
+      return tolka({
+        system,
+        text: text.slice(0, Math.floor(text.length / 2)),
+        schema,
+        kanslig,
+        tecken,
+        forsok: forsok + 1,
+      });
+    return { data: null, modell: vald, fel: begripligt(meddelande), ravfel: meddelande.slice(0, 400) };
   }
+}
+
+/**
+ * Översätter gatewayens fel till något en människa kan göra något av.
+ *
+ * Den som laddar upp en manual ska inte behöva läsa "cooldown_list" för
+ * att förstå att tolkningen är ur funktion just nu och att uppgifterna får
+ * fyllas i för hand.
+ */
+export function begripligt(fel) {
+  const s = String(fel || '');
+  if (/no deployments available|cooldown/i.test(s))
+    return 'Modellen svarar inte just nu – den är tillfälligt ur funktion. Fyll i för hand så länge.';
+  if (/context|too long|maximum context|token limit/i.test(s))
+    return 'Dokumentet är för långt för modellen. Den läste så mycket den kunde.';
+  if (/no credits|quota|insufficient/i.test(s))
+    return 'Modellens kvot är slut. Fyll i för hand, eller byt modell i inställningarna.';
+  if (/timeout|aborted|ETIMEDOUT/i.test(s)) return 'Modellen svarade inte i tid.';
+  if (/429/.test(s)) return 'För många anrop till modellen just nu. Försök igen om en stund.';
+  if (/401|403|api key|authentication/i.test(s)) return 'Nyckeln till modellen saknas eller gäller inte.';
+  if (/ECONNREFUSED|fetch failed/i.test(s)) return 'Modellen går inte att nå från servern.';
+  return s.slice(0, 200);
 }
 
 /** Modeller lägger ibland JSON i en kodruta eller skriver en rad före. */

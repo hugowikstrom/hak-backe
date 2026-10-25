@@ -456,3 +456,111 @@ dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
 }
 .filrad { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--ram); border-radius: var(--radie); }
 .filrad p { margin: 4px 0 0; }
+
+/* ---------- Årshjulet ---------- */
+/* Tolv månader i en ring. Hjulet är överblicken; listan under är detaljen.
+   Allt ritas i SVG – geometrin är enkel nog att slippa ett bibliotek. */
+.hjul { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+.hjul svg { width: 100%; max-width: 520px; height: auto; display: block; }
+
+.hjul-manad path {
+  fill: var(--bak-2);
+  stroke: var(--ram);
+  stroke-width: 1;
+  transition: fill var(--snabbt);
+  cursor: pointer;
+}
+.hjul-manad.kommande path { fill: color-mix(in srgb, var(--klubb) 18%, var(--yta)); }
+.hjul-manad.snart path { fill: color-mix(in srgb, var(--varning) 20%, var(--yta)); }
+.hjul-manad.forsenad path { fill: color-mix(in srgb, var(--fara) 20%, var(--yta)); }
+.hjul-manad:hover path { fill: color-mix(in srgb, var(--klubb) 28%, var(--yta)); }
+.hjul-manad.vald path { stroke: var(--klubb); stroke-width: 2.5; }
+
+.hjul-namn {
+  text-anchor: middle; dominant-baseline: middle;
+  font-size: 15px; font-weight: 600; fill: var(--text);
+  text-transform: capitalize; pointer-events: none;
+}
+.hjul-antal {
+  text-anchor: middle; dominant-baseline: middle;
+  font-size: 12px; fill: var(--text-svag);
+  font-variant-numeric: tabular-nums; pointer-events: none;
+}
+
+.hjul-bana { fill: none; stroke: var(--bak-2); stroke-width: 12; }
+.hjul-band { fill: var(--lila); opacity: .7; }
+.hjul-tick { stroke: var(--ram); stroke-width: 1; }
+.hjul-nal line { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 3 3; opacity: .5; }
+.hjul-nal circle { fill: var(--text); opacity: .6; }
+
+.hjul-prick {
+  stroke: var(--yta); stroke-width: 2; cursor: pointer;
+  transition: opacity var(--snabbt), r var(--snabbt);
+}
+.hjul-prick:hover { stroke: var(--text); }
+.hjul-prick.kritisk { stroke: var(--fara); stroke-width: 2.5; }
+.hjul-prick.dim { opacity: .25; }
+
+.hjul-mitt { fill: var(--yta); stroke: var(--ram); }
+.hjul-mitt-stor {
+  text-anchor: middle; dominant-baseline: middle;
+  font-size: 30px; font-weight: 700; fill: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.hjul-mitt-stor.liten { font-size: 14px; font-weight: 600; }
+.hjul-mitt-rad {
+  text-anchor: middle; dominant-baseline: middle;
+  font-size: 12px; fill: var(--text-svag);
+}
+.hjul-mitt-rad.fara { fill: var(--fara); font-weight: 600; }
+
+.hjul-tecken {
+  display: flex; flex-wrap: wrap; gap: 14px; justify-content: center;
+  font-size: 12px; color: var(--text-svag);
+}
+.hjul-tecken span { display: inline-flex; align-items: center; gap: 6px; }
+.hjul-tecken i { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
+.hjul-tecken i.kritisk { background: var(--yta); border: 2.5px solid var(--fara); }
+.hjul-tecken i.band { background: var(--lila); opacity: .55; border-radius: 2px; }
+
+@media (max-width: 560px) {
+  .hjul-namn { font-size: 17px; }
+  .hjul-antal { font-size: 14px; }
+}
+
+/* ---------- Uppladdningsförlopp ---------- */
+/* Stegen är riktiga anrop, så stapeln säger sanningen: uppladdningen
+   räknas i byte, tolkningsstegen i avklarade steg. */
+.framsteg {
+  height: 6px; background: var(--bak-2); border-radius: 999px; overflow: hidden;
+  border: 1px solid var(--ram);
+}
+.framsteg.stor { height: 10px; margin: 8px 0 14px; }
+.framsteg span {
+  display: block; height: 100%; background: var(--klubb);
+  transition: width .25s ease-out;
+}
+
+.uppladdningslista { display: flex; flex-direction: column; gap: 2px; }
+.uppladdning {
+  display: flex; align-items: center; gap: 10px; padding: 8px 10px;
+  border: 1px solid var(--ram); border-radius: var(--radie); background: var(--yta);
+}
+.uppladdning .markor {
+  width: 22px; height: 22px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; background: var(--bak-2); color: var(--text-svag);
+  font-size: 12px; font-weight: 700;
+}
+.uppladdning.klar .markor { background: var(--klubb); color: var(--pa-klubb); }
+.uppladdning.fel .markor { background: var(--fara); color: #fff; }
+.uppladdning .txt { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
+.uppladdning .txt strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.uppladdning .stegtal { flex: none; font-variant-numeric: tabular-nums; }
+
+/* Förslagen ur ett dokument: avgränsade block man bockar i. */
+.forslagsblock {
+  margin: 10px 0; padding: 10px 12px;
+  border: 1px solid var(--ram); border-radius: var(--radie); background: var(--bak-2);
+}
+.forslagsblock .kryssrad { margin: 3px 0; align-items: flex-start; }
+.forslagsblock .kryssrad input { margin-top: 2px; }

@@ -5,7 +5,8 @@
 // är viktigare än att tolkningen fungerar.
 import { randomBytes } from 'node:crypto';
 import { execFile } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { createWriteStream, mkdirSync, rmSync } from 'node:fs';
+import { once } from 'node:events';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { ROT } from './db.mjs';
@@ -20,7 +21,9 @@ export const sidorUr = (text) => String(text || '').split(SIDBRYT);
 
 export const DOKUMENTKATALOG = join(ROT, 'data', 'dokument');
 const PDFTOTEXT = process.env.HAK_PDFTOTEXT || '/usr/bin/pdftotext';
-const MAX = 40_000_000;
+// Manualer kan vara stora. Taket är satt så att en rejäl servicemanual
+// med bilder går in, men så att ingen fyller disken med en film.
+const MAX = 250_000_000;
 
 const TYPER = {
   'application/pdf': 'pdf',
@@ -28,22 +31,6 @@ const TYPER = {
   'image/jpeg': 'jpg',
   'text/plain': 'txt',
 };
-
-/** Tar emot en fil som data-URL och lägger den på disk. */
-export function sparaDokument(dataUrl) {
-  const m = /^data:([a-z0-9.+/-]+);base64,(.+)$/is.exec(String(dataUrl || ''));
-  if (!m) throw fel(400, 'Filen måste skickas som data-URL');
-  const mediatyp = m[1].toLowerCase();
-  const andelse = TYPER[mediatyp];
-  if (!andelse) throw fel(415, `Filtypen ${mediatyp} tas inte emot`);
-  const bytes = Buffer.from(m[2], 'base64');
-  if (!bytes.length) throw fel(400, 'Tom fil');
-  if (bytes.length > MAX) throw fel(413, 'Filen är för stor');
-  const namn = `${randomBytes(10).toString('hex')}.${andelse}`;
-  mkdirSync(DOKUMENTKATALOG, { recursive: true });
-  writeFileSync(join(DOKUMENTKATALOG, namn), bytes);
-  return { filnamn: namn, mediatyp, storlek: bytes.length };
-}
 
 /**
  * Plockar ut texten ur en PDF, sida för sida.
@@ -74,13 +61,13 @@ export async function lasPdf(filnamn) {
  * modellen ska läsa de delar som faktiskt säger något om service, inte hela
  * boken – det blir både bättre och billigare.
  */
-export function underhallsavsnitt(sidor, { maxTecken = 24000 } = {}) {
+export function underhallsavsnitt(sidor, { maxTecken = 9000 } = {}) {
   const ord = /underh[åa]ll|service|sm[öo]rj|byt[ea]?\b|kontroll|inspekt|rengör|rengor|intervall|var\s+\d+\s*(tim|dag|vecka|m[åa]nad)|maintenance|lubricat|replace|inspect/i;
   const valda = [];
   let tecken = 0;
   for (const [i, text] of sidor.entries()) {
     if (!ord.test(text)) continue;
-    const bit = text.slice(0, 4000);
+    const bit = text.slice(0, 3000);
     if (tecken + bit.length > maxTecken) break;
     valda.push({ sida: i + 1, text: bit });
     tecken += bit.length;
@@ -116,4 +103,55 @@ export function sokIText(text, fras, { omgivning = 160, hogst = 5 } = {}) {
     if (traffar.length >= hogst) break;
   }
   return traffar;
+}
+
+/**
+ * Tar emot en fil som ström och skriver den direkt till disk.
+ *
+ * Filen passerar aldrig minnet i sin helhet, så storleken begränsas av
+ * disken och inte av processen.
+ */
+export async function strommaDokument(req, { mediatyp, filnamn: originalnamn }) {
+  const typ = String(mediatyp || '').split(';')[0].toLowerCase();
+  const andelse = TYPER[typ] || (originalnamn || '').match(/\.([a-z0-9]+)$/i)?.[1]?.toLowerCase();
+  if (!andelse || !Object.values(TYPER).includes(andelse))
+    throw fel(415, `Filtypen ${typ || 'okänd'} tas inte emot`);
+
+  mkdirSync(DOKUMENTKATALOG, { recursive: true });
+  const namn = `${randomBytes(10).toString('hex')}.${andelse}`;
+  const sokvag = join(DOKUMENTKATALOG, namn);
+  const ut = createWriteStream(sokvag);
+  // En ström som förstörs avger ett fel asynkront. Utan lyssnare tar det
+  // ned hela processen – och en för stor fil ska inte stänga appen för
+  // alla andra. Samma sak om klienten bryter mitt i.
+  ut.on('error', () => {});
+  req.on('error', () => {});
+
+  const stad = () => {
+    ut.destroy();
+    rmSync(sokvag, { force: true });
+  };
+
+  let storlek = 0;
+  try {
+    for await (const bit of req) {
+      storlek += bit.length;
+      if (storlek > MAX) {
+        stad();
+        throw fel(413, `Filen är större än ${Math.round(MAX / 1e6)} MB`);
+      }
+      if (!ut.write(bit) && !ut.destroyed) await once(ut, 'drain');
+    }
+    await new Promise((klar, bryt) => ut.end((f) => (f ? bryt(f) : klar())));
+  } catch (e) {
+    stad();
+    // Bryter klienten eller proxyn mitt i är det inte ett fel i appen.
+    if (e?.status) throw e;
+    throw fel(400, `Uppladdningen avbröts: ${String(e.message || e).slice(0, 120)}`);
+  }
+  if (!storlek) {
+    rmSync(sokvag, { force: true });
+    throw fel(400, 'Tom fil');
+  }
+  return { filnamn: namn, mediatyp: typ || `application/${andelse}`, storlek };
 }

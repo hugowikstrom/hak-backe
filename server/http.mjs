@@ -28,7 +28,8 @@ export async function lasKropp(req) {
   let n = 0;
   for await (const b of req) {
     n += b.length;
-    if (n > 2_000_000) throw fel(413, 'För stor begäran');
+    // Taket gäller JSON. Stora filer går en annan väg, se ravkropp.
+    if (n > 16_000_000) throw fel(413, 'För stor begäran');
     bitar.push(b);
   }
   if (!bitar.length) return {};
@@ -40,7 +41,12 @@ export async function lasKropp(req) {
 }
 
 /** rutt('POST', '/api/arenden/:id/handelse', 'medlem', fn) */
-export function rutt(metod, monster, roll, fn) {
+/**
+ * En rutt. `val.ravkropp` lämnar begäran oläst åt hanteraren, för det som
+ * ska strömmas till disk i stället för att buffras som JSON – en manual på
+ * trettio megabyte har inget i minnet att göra.
+ */
+export function rutt(metod, monster, roll, fn, val = {}) {
   const namn = [];
   const re = new RegExp(
     '^' +
@@ -56,7 +62,7 @@ export function rutt(metod, monster, roll, fn) {
         .join('/') +
       '$'
   );
-  return { metod, re, namn, roll, fn, monster };
+  return { metod, re, namn, roll, fn, monster, ...val };
 }
 
 export function matcha(rutter, metod, stig) {

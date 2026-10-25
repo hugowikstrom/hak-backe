@@ -20,6 +20,18 @@ let db;
 let kaka = '';
 let passId;
 
+/** Dokumentuppladdning: råa byte, som klienten gör. */
+const laddaUpp = async (fil, filnamn, fraga = '') => {
+  const r = await fetch(`${BAS}/api/underhall/dokument?filnamn=${encodeURIComponent(filnamn)}${fraga}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/pdf', 'x-hak': '1', ...(kaka ? { cookie: kaka } : {}) },
+    body: fil,
+  });
+  const kropp = await r.json();
+  assert.ok(r.status < 400, `uppladdning gav ${r.status}: ${JSON.stringify(kropp)}`);
+  return kropp;
+};
+
 const anrop = async (metod, stig, kropp) => {
   const r = await fetch(BAS + stig, {
     method: metod,
@@ -95,11 +107,7 @@ test('en serviceplan räknar ut när den förfaller', async () => {
 test('manualen tolkas till förslag som ingen får använda förrän de godkänts', async () => {
   await loggaIn('jonas');
   const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));
-  const d = await ok('POST', '/api/underhall/dokument', {
-    utrustning_id: 1,
-    namn: 'FK-200 servicemanual',
-    fil: `data:application/pdf;base64,${pdf.toString('base64')}`,
-  });
+  const d = await laddaUpp(pdf, 'manual.pdf', '&utrustning_id=1&namn=FK-200%20servicemanual');
   assert.equal(d.dokument.sidor, 2);
   assert.equal(d.las_fel, null);
 
@@ -107,7 +115,7 @@ test('manualen tolkas till förslag som ingen får använda förrän de godkänt
   // uppfinna servicepunkter.
   const t = await ok('POST', `/api/underhall/dokument/${d.dokument.id}/tolka`, {});
   assert.deepEqual(t.punkter, []);
-  assert.match(t.fel, /inte konfigurerad/i);
+  assert.match(t.fel, /inte påslagen/i);
 
   // Ett förslag, som om tolkningen lyckats: det får inte räknas förrän
   // någon godkänt det.
@@ -153,11 +161,9 @@ test('manualen tolkas till förslag som ingen får använda förrän de godkänt
 test('flera manualer kan läggas in, och går att söka i', async () => {
   await loggaIn('jonas');
   const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));
-  const bas = `data:application/pdf;base64,${pdf.toString('base64')}`;
-
   // Klienten skickar en fil i taget; servern ska klara flera i följd.
   for (const namn of ['FK-200 reservdelslista', 'FK-200 elschema'])
-    await ok('POST', '/api/underhall/dokument', { namn, fil: bas, utrustning_id: 1, slag: 'ritning' });
+    await laddaUpp(pdf, 'manual.pdf', `&utrustning_id=1&slag=ritning&namn=${encodeURIComponent(namn)}`);
 
   const lista = await ok('GET', '/api/underhall/dokument');
   assert.ok(lista.dokument.length >= 3);
@@ -182,11 +188,7 @@ test('en ny version av manualen ersätter men raderar inte den gamla', async () 
   await loggaIn('jonas');
   const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));
   const forsta = db.en(`SELECT id FROM dokument ORDER BY id LIMIT 1`).id;
-  const ny = await ok('POST', '/api/underhall/dokument', {
-    namn: 'FK-200 servicemanual (2027)',
-    fil: `data:application/pdf;base64,${pdf.toString('base64')}`,
-    ersatter_id: forsta,
-  });
+  const ny = await laddaUpp(pdf, 'manual.pdf', `&ersatter_id=${forsta}&namn=${encodeURIComponent('FK-200 servicemanual (2027)')}`);
   assert.equal(ny.dokument.version, 2);
   assert.ok(ny.granska_om.length >= 1, 'godkända planer ur den gamla manualen ska granskas om');
   assert.equal(db.en('SELECT aktuell FROM dokument WHERE id=?', forsta).aktuell, 0);
@@ -481,17 +483,22 @@ test('ett uppladdat dokument säger själv vad det är', async () => {
     // Maskinen finns i registret med samma modell.
     await ok('PUT', '/api/utrustning/1', { tillverkare: 'Snökraft', modell: 'FK-200' });
 
-    // Inget namn skickas med – dokumentet får säga vad det heter.
-    const r = await ok('POST', '/api/underhall/dokument', {
-      fil: `data:application/pdf;base64,${pdf.toString('base64')}`,
-    });
-    assert.equal(r.dokument.namn, 'FK-200 servicemanual');
-    assert.equal(r.dokument.slag, 'manual');
-    assert.match(r.dokument.sammanfattning, /fläktkanonen/i);
-    assert.equal(r.foreslagen_utrustning.namn, 'Fläkt 2', 'kopplades till maskinen med samma modell');
-    assert.equal(r.dokument.utrustning_id, r.foreslagen_utrustning.id);
+    // Steg 1: filen in. Ingen AI här – den ska inte hålla filen gisslan.
+    const upp = await laddaUpp(pdf, 'manual.pdf');
+    assert.equal(upp.kan_tolkas, true);
+    assert.equal(upp.dokument.sidor, 2);
+    assert.equal(anrop, 0, 'uppladdningen frågar ingen modell');
 
-    // Servicepunkterna lästes ut i samma steg.
+    // Steg 2: vad är det här för dokument?
+    const a = await ok('POST', `/api/underhall/dokument/${upp.dokument.id}/analysera`, {});
+    assert.equal(a.dokument.namn, 'FK-200 servicemanual');
+    assert.equal(a.dokument.slag, 'manual');
+    assert.match(a.dokument.sammanfattning, /fläktkanonen/i);
+    assert.equal(a.foreslagen_utrustning.namn, 'Fläkt 2', 'kopplades till maskinen med samma modell');
+    assert.equal(a.dokument.utrustning_id, a.foreslagen_utrustning.id);
+
+    // Steg 3: servicepunkterna.
+    const r = await ok('POST', `/api/underhall/dokument/${upp.dokument.id}/tolka`, {});
     assert.equal(r.punkter.length, 2, 'punkten utan källhänvisning sparas inte');
     assert.ok(r.punkter.every((p) => p.status === 'forslag'), 'inget gäller förrän någon godkänt det');
     assert.equal(r.punkter[0].kallsida, 's. 2');
@@ -503,8 +510,7 @@ test('ett uppladdat dokument säger själv vad det är', async () => {
     assert.ok(!hjul.poster.some((p) => nya.includes(p.serviceplan_id)), 'ogodkända punkter ligger utanför');
 
     // Samma dokument igen ska inte ge dubbletter av samma punkter.
-    anrop = 0;
-    const d2 = await ok('POST', `/api/underhall/dokument/${r.dokument.id}/tolka`, {});
+    const d2 = await ok('POST', `/api/underhall/dokument/${upp.dokument.id}/tolka`, {});
     assert.equal(d2.punkter.length, 0, 'punkterna fanns redan');
   } finally {
     globalThis.fetch = riktig;
@@ -517,15 +523,14 @@ test('utan tolkning fungerar uppladdningen ändå', async () => {
   const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));
   // AI:n är avstängd: namnet faller tillbaka på filnamnet, och inget
   // påstås om vad dokumentet är.
-  const r = await ok('POST', '/api/underhall/dokument', {
-    fil: `data:application/pdf;base64,${pdf.toString('base64')}`,
-  });
-  assert.equal(r.tolkning, null);
-  assert.match(r.tolkning_fel, /inte konfigurerad/i);
+  const r = await laddaUpp(pdf, 'manual.pdf');
   assert.ok(r.dokument.namn.length > 0, 'dokumentet får ett namn ändå');
   assert.equal(r.dokument.slag, 'manual');
-  assert.deepEqual(r.punkter, []);
   assert.equal(r.dokument.sidor, 2, 'texten läses oavsett om AI:n svarar');
+
+  const a = await ok('POST', `/api/underhall/dokument/${r.dokument.id}/analysera`, {});
+  assert.equal(a.tolkning, null);
+  assert.match(a.fel, /inte påslagen/i);
 });
 
 test('otydlig koppling blir ingen koppling', async () => {
@@ -544,4 +549,25 @@ test('otydlig koppling blir ingen koppling', async () => {
   assert.equal(matchaDokument({ tillverkare: 'Liftservice Nord' }, lista).id, 4);
   assert.equal(matchaDokument({}, lista), null);
   assert.equal(matchaDokument({ tillverkare: 'Okänd AB' }, lista), null);
+});
+
+test('en stor fil går igenom, en orimlig gör det inte', async () => {
+  await loggaIn('jonas');
+  // 24 MB: långt över gamla JSON-taket på 2 MB, och långt under det nya.
+  // Filen strömmas till disk och passerar aldrig minnet i sin helhet.
+  const stor = Buffer.concat([
+    readFileSync(new URL('./data/manual.pdf', import.meta.url)),
+    Buffer.alloc(24 * 1024 * 1024, 0x20),
+  ]);
+  const r = await laddaUpp(stor, 'stor-manual.pdf', '&namn=Stor%20manual');
+  assert.ok(r.storlek > 24_000_000, 'hela filen togs emot');
+  assert.equal(r.dokument.namn, 'Stor manual');
+
+  // Filtypen prövas, inte bara storleken.
+  const fel = await fetch(`${BAS}/api/underhall/dokument?filnamn=virus.exe`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-msdownload', 'x-hak': '1', cookie: kaka },
+    body: Buffer.alloc(100),
+  });
+  assert.equal(fel.status, 415);
 });

@@ -58,8 +58,11 @@
   --lugnt:  .2s ease-out;
 }
 
+/* Systemets mörka läge gäller – om inte användaren uttryckligen valt ljust.
+   Utan den gardern blandas blocken: ytorna blir mörka medan de tokens som
+   bara står här uppe förblir ljusa, och text försvinner mot sin bakgrund. */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-tema='ljust']) {
     --klubb-ren:   #8cc63f;
     --klubb:       #9ad44f;  /* ljusare, för att bära text mot mörkt */
     --klubb-djup:  #c6ea9a;
@@ -122,6 +125,8 @@
 }
 
 /* Ljust läge går att välja även när systemet står mörkt. */
+/* Valt ljust läge: tokens kommer från :root, och mediefrågan ovan står
+   tillbaka. Här behövs bara att webbläsarens egna kontroller följer med. */
 [data-tema='ljust'] {
   color-scheme: light;
 }

@@ -151,19 +151,37 @@ Tre saker är värda att veta:
   *förslag* vid sidan av datumet. Planer märkta `kritisk` flyttas aldrig, och
   krocken visas i stället för att tystas.
 
-En **manual** laddas upp som dokument och läser sig själv i ett steg:
+Ett **dokument** laddas upp i tre steg, och stegen är riktiga anrop – inte
+en animation. Tolkningen tar tiotalet sekunder och den som laddar upp ska
+kunna se vad som pågår.
 
-1. `pdftotext` drar ut texten sida för sida.
-2. `klassificera()` läser de första sidorna och säger vad dokumentet är –
-   slag, titel, tillverkare, modell, utrustningstyp, en sammanfattning, och
-   om det alls står något om underhåll. Namnet behöver man därför inte
-   skriva; lämnas det tomt får dokumentet säga sitt eget.
-3. `matchaDokument()` kopplar det till rätt maskin, men **bara när det är
-   entydigt**: modell går före tillverkare, och tio kanoner av samma modell
-   ger ingen koppling alls – de räknas upp i stället, så att människan kan
-   välja.
-4. `lasServicepunkter()` plockar de sidor som handlar om service och
-   föreslår punkter, med sidnummer och citat.
+1. **Filen in.** `POST /api/underhall/dokument` tar emot råa byte och
+   strömmar dem till disk; frågesträngen bär uppgifterna. Ingenting stort
+   passerar minnet, så taket sitter i disken och i Caddy (300 MiB på
+   dokumentvägen, 16 MiB på allt annat) och inte i processen. `pdftotext`
+   drar ut texten sida för sida.
+2. **Vad är det här?** `analysera` låter `klassificera()` läsa de första
+   sidorna: slag, titel, tillverkare, modell, serienummer, utgåva,
+   utrustningstyp och en sammanfattning. Namnet behöver man därför inte
+   skriva. Sedan plockar `utvinn()` ut **det som är relevant för just den
+   sortens dokument** – en manual har serviceintervall, ett protokoll har
+   utfört arbete och anmärkningar, ett intyg har ett sista
+   giltighetsdatum. `matchaDokument()` kopplar till rätt maskin, men bara
+   när det är entydigt: tio kanoner av samma modell ger ingen koppling
+   alls, de räknas upp i stället.
+3. **Servicepunkterna.** `lasServicepunkter()` plockar de sidor som handlar
+   om service och föreslår punkter, med sidnummer och citat.
+
+Uppgifter som bara stod i manualen fylls i på maskinen – men bara i **tomma
+fält**. Komponenter, reservdelar, leverantör och protokollets anmärkningar
+föreslås och läggs in med ett tryck: registret ska spegla backen, inte en
+manual.
+
+Kontextfönstren är olika stora och sällan dokumenterade. Går texten inte in
+halverar `tolka()` den och försöker igen, och gatewayens fel översätts av
+`begripligt()` till något en människa kan göra något av – ingen ska behöva
+läsa "cooldown_list" för att förstå att tolkningen är nere och att fälten
+får fyllas i för hand.
 
 Servicepunkterna sparas med status `forslag`. **En punkt utan källa sparas
 inte alls** – går den inte att slå upp i manualen duger den inte som

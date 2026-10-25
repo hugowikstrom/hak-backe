@@ -4,17 +4,18 @@
 // människa godkänt den – en modell får läsa manualen, men inte bestämma
 // anläggningens underhåll. Och varje punkt som kommit ur ett dokument bär
 // med sig var i dokumentet den stod, annars går den inte att lita på.
-import { createReadStream, existsSync, statSync } from 'node:fs';
+import { createReadStream, existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { minstRoll } from '../behorighet.mjs';
 import { tolka } from '../ai.mjs';
-import { DOKUMENTKATALOG, lasPdf, sidorUr, sokIText, sparaDokument, underhallsavsnitt } from '../dokument.mjs';
+import { DOKUMENTKATALOG, lasPdf, sidorUr, sokIText, strommaDokument, underhallsavsnitt } from '../dokument.mjs';
 import {
   arshjul, INTERVALLTYPER, kostnader, lage, nastaForfall, samordna, undvikBelastning,
 } from '../underhall.mjs';
 import { bool, datum, ettAv, fel, heltal, kravTxt, num, rutt, svar, txt } from '../http.mjs';
 import { idag, nu } from '../tid.mjs';
+import { skapaArende } from './arenden.mjs';
 import { skapaPost } from './drift.mjs';
 
 const PLANSTATUS = ['forslag', 'godkand', 'vilande', 'avfard'];
@@ -34,6 +35,10 @@ const SCHEMA_MANUAL = {
           intervalltyp: { type: ['string', 'null'], enum: [...INTERVALLTYPER, null] },
           intervall: { type: ['number', 'null'] },
           kompetens: { type: ['string', 'null'] },
+          kritisk: {
+            type: ['boolean', 'null'],
+            description: 'true om manualen kräver behörig tekniker eller kallar arbetet säkerhetskritiskt',
+          },
           sida: { type: ['number', 'null'] },
           citat: { type: ['string', 'null'], description: 'den mening i texten punkten bygger på' },
           osaker: { type: ['boolean', 'null'], description: 'true om intervallet inte går att läsa ut' },
@@ -52,12 +57,46 @@ const SCHEMA_DOKUMENT = {
     titel: { type: ['string', 'null'], description: 'kort namn att visa i listan' },
     tillverkare: { type: ['string', 'null'] },
     modell: { type: ['string', 'null'] },
+    serienummer: { type: ['string', 'null'], description: 'bara om det står i dokumentet' },
+    utgava: { type: ['string', 'null'], description: 'utgåva, revision eller årtal' },
+    sprak: { type: ['string', 'null'], description: 'sv, en, de …' },
     utrustningstyp: {
       type: ['string', 'null'],
       enum: ['lans', 'flakt', 'pumpstation', 'kompressor', 'lift', 'band', 'pistmaskin', 'ovrigt', null],
     },
     sammanfattning: { type: ['string', 'null'], description: 'en mening om vad dokumentet är' },
     har_underhall: { type: ['boolean', 'null'], description: 'står det något om service eller underhåll?' },
+    leverantor: {
+      type: ['object', 'null'],
+      description: 'service- eller reservdelskontakt om den står i dokumentet',
+      properties: {
+        namn: { type: ['string', 'null'] },
+        telefon: { type: ['string', 'null'] },
+        epost: { type: ['string', 'null'] },
+      },
+    },
+    komponenter: {
+      type: 'array',
+      description: 'delar maskinen består av, som de står i dokumentet',
+      items: {
+        type: 'object',
+        properties: {
+          namn: { type: 'string' },
+          slag: { type: ['string', 'null'], enum: ['ventil', 'filter', 'slang', 'el', 'motor', 'ovrigt', null] },
+        },
+      },
+    },
+    reservdelar: {
+      type: 'array',
+      description: 'delar med artikelnummer, ur reservdelslistan',
+      items: {
+        type: 'object',
+        properties: {
+          namn: { type: 'string' },
+          artikelnummer: { type: ['string', 'null'] },
+        },
+      },
+    },
   },
 };
 
@@ -74,7 +113,12 @@ Du beskriver dokumentet. Du bestämmer ingenting, och du gissar inte.
   att avgöra. Annars null.
 - sammanfattning: en mening på svenska om vad det är.
 - har_underhall: true bara om texten innehåller service- eller
-  underhållsanvisningar.`;
+  underhållsanvisningar.
+- komponenter: delarna maskinen består av, om de räknas upp. Hitta inte på
+  en standarduppsättning.
+- reservdelar: bara de som har ett artikelnummer i texten.
+- leverantor: bara om en kontakt för service eller reservdelar står i
+  dokumentet.`;
 
 const SYSTEM_MANUAL = `Du läser utdrag ur en servicemanual för utrustning i en skidanläggning och
 föreslår servicepunkter som en driftansvarig sedan granskar och godkänner.
@@ -87,7 +131,8 @@ Du tolkar dokumentet. Du bestämmer ingenting.
   det står ska punkten utelämnas.
 - Står intervallet otydligt ("regelbundet", "vid behov") sätter du intervall
   till null och osaker till true. Gissa aldrig en siffra.
-- Står det att arbetet kräver behörig tekniker ska det stå i kompetens.`;
+- Står det att arbetet kräver behörig tekniker ska det stå i kompetens, och
+  kritisk sättas till true.`;
 
 /** Planen med nästa förfallodatum uträknat. */
 const berika = (plan) => {
@@ -173,6 +218,62 @@ export function kommande({ manader = 12 } = {}) {
   };
 }
 
+const SCHEMA_PROTOKOLL = {
+  type: 'object',
+  properties: {
+    datum: { type: ['string', 'null'], description: 'YYYY-MM-DD, när arbetet utfördes' },
+    utford_av: { type: ['string', 'null'], description: 'person eller företag' },
+    arbete: { type: ['string', 'null'], description: 'vad som gjordes, kort' },
+    resultat: { type: ['string', 'null'], enum: ['godkand', 'anmarkningar', 'underkand', null] },
+    giltigt_till: { type: ['string', 'null'], description: 'YYYY-MM-DD om protokollet anger det' },
+    anmarkningar: {
+      type: 'array',
+      description: 'brister som noterats, en post per anmärkning',
+      items: {
+        type: 'object',
+        properties: {
+          text: { type: 'string' },
+          allvarlighet: {
+            type: ['string', 'null'],
+            enum: ['sakerhetsrisk', 'driftstopp', 'begransar', 'kosmetisk', null],
+          },
+          atgardas_senast: { type: ['string', 'null'], description: 'YYYY-MM-DD om det står' },
+        },
+      },
+    },
+  },
+};
+
+const SYSTEM_PROTOKOLL = `Du läser ett protokoll från en besiktning eller ett utfört arbete i en
+skidanläggning och plockar ut det som behöver följas upp.
+
+Du refererar dokumentet. Du bedömer ingenting.
+
+- Datum i formen YYYY-MM-DD. Står det inget datum, lämna null – gissa aldrig.
+- anmarkningar: bara de brister som faktiskt står i protokollet, en post
+  per anmärkning, med protokollets egen formulering.
+- allvarlighet sätts bara när protokollet självt säger något om det, till
+  exempel att något måste åtgärdas före drift. Annars null.
+- Är protokollet utan anmärkningar ska listan vara tom.`;
+
+const SCHEMA_INTYG = {
+  type: 'object',
+  properties: {
+    avser: { type: ['string', 'null'], description: 'vad intyget gäller' },
+    utfardare: { type: ['string', 'null'] },
+    utfardat: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+    giltigt_till: { type: ['string', 'null'], description: 'YYYY-MM-DD' },
+    villkor: { type: ['string', 'null'], description: 'villkor som anges, kort' },
+  },
+};
+
+const SYSTEM_INTYG = `Du läser ett intyg eller certifikat och plockar ut vad det gäller, vem som
+utfärdat det och hur länge det gäller. Datum i formen YYYY-MM-DD. Står ett
+datum inte i texten ska fältet vara null – gissa aldrig ett giltighetsdatum.`;
+
+/** Datum i rätt form, annars null. Modellen får inte hitta på ett. */
+const kanskedatum = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : null);
+
 /**
  * Vad dokumentet är, enligt en läsning av de första sidorna.
  *
@@ -185,7 +286,7 @@ async function klassificera(text) {
   // Början räcker: titelsidan och innehållsförteckningen säger vad det är.
   return tolka({
     system: SYSTEM_DOKUMENT,
-    text: sidorUr(text).slice(0, 3).join('\n\n').slice(0, 6000),
+    text: sidorUr(text).slice(0, 3).join('\n\n').slice(0, 4000),
     schema: SCHEMA_DOKUMENT,
     tecken: 600,
   });
@@ -210,6 +311,74 @@ export function matchaDokument({ tillverkare, modell, utrustningstyp }, lista) {
     if (traffar.length > 1) return { flera: traffar };
   }
   return null;
+}
+
+/**
+ * Plockar ut det som är relevant för just den här sortens dokument.
+ *
+ * En manual innehåller serviceintervall, ett protokoll innehåller utfört
+ * arbete och anmärkningar, ett intyg innehåller ett sista giltighetsdatum.
+ * Att läsa alla tre likadant vore att missa två av dem.
+ */
+export async function utvinn(dokument) {
+  // Budgeten är satt efter det minsta kontextfönstret vi kan räkna med.
+  // Räcker den inte halverar tolka() texten och försöker igen.
+  const text = sidorUr(dokument.text).slice(0, 6).join('\n\n').slice(0, 5000);
+
+  if (dokument.slag === 'protokoll') {
+    const r = await tolka({ system: SYSTEM_PROTOKOLL, text, schema: SCHEMA_PROTOKOLL, tecken: 1500 });
+    if (!r.data) return { slag: 'protokoll', fel: r.fel, data: null };
+    const d = r.data;
+    return {
+      slag: 'protokoll',
+      fel: null,
+      data: {
+        datum: kanskedatum(d.datum),
+        utford_av: txt(d.utford_av, 120),
+        arbete: txt(d.arbete, 200),
+        resultat: ettAv(d.resultat, ['godkand', 'anmarkningar', 'underkand'], 'Resultat'),
+        giltigt_till: kanskedatum(d.giltigt_till),
+        anmarkningar: (d.anmarkningar || [])
+          .filter((a) => a?.text)
+          .slice(0, 20)
+          .map((a) => ({
+            text: txt(a.text, 400),
+            allvarlighet:
+              ettAv(a.allvarlighet, ['sakerhetsrisk', 'driftstopp', 'begransar', 'kosmetisk'], 'Allvarlighet') ||
+              'begransar',
+            atgardas_senast: kanskedatum(a.atgardas_senast),
+          })),
+        // Serviceplaner som protokollet kan tänkas kvittera.
+        planer: dokument.utrustning_id
+          ? alla(
+              `SELECT id, namn, intervalltyp, senast_utford FROM serviceplan
+                WHERE utrustning_id=? AND status='godkand'`,
+              dokument.utrustning_id
+            )
+          : [],
+      },
+    };
+  }
+
+  if (dokument.slag === 'intyg') {
+    const r = await tolka({ system: SYSTEM_INTYG, text, schema: SCHEMA_INTYG, tecken: 800 });
+    if (!r.data) return { slag: 'intyg', fel: r.fel, data: null };
+    return {
+      slag: 'intyg',
+      fel: null,
+      data: {
+        avser: txt(r.data.avser, 200),
+        utfardare: txt(r.data.utfardare, 120),
+        utfardat: kanskedatum(r.data.utfardat),
+        giltigt_till: kanskedatum(r.data.giltigt_till),
+        villkor: txt(r.data.villkor, 400),
+      },
+    };
+  }
+
+  // Ritningar och övrigt har ingen uppföljning att plocka ut – där räcker
+  // klassificeringen och att dokumentet går att söka i.
+  return { slag: dokument.slag, fel: null, data: null };
 }
 
 /**
@@ -245,6 +414,9 @@ export async function lasServicepunkter(dokument, medlem) {
       intervalltyp: ettAv(p.intervalltyp, INTERVALLTYPER, 'Intervalltyp') || 'handelse',
       intervall: typeof p.intervall === 'number' ? p.intervall : null,
       kompetens: txt(p.kompetens, 120),
+      // Kräver manualen behörig tekniker är arbetet inget att skjuta på
+      // för att backen har fullt.
+      kritisk: p.kritisk ? 1 : 0,
       dokument_id: dokument.id,
       kallsida: p.sida ? `s. ${p.sida}` : null,
       kallcitat: txt(p.citat, 2000),
@@ -256,6 +428,16 @@ export async function lasServicepunkter(dokument, medlem) {
   }
   return { punkter: skapade, avsnitt: avsnitt.map((a) => a.sida), fel: null, modell: r.modell };
 }
+
+const dokumentrad = (id) =>
+  en(
+    `SELECT d.id, d.namn, d.slag, d.filnamn, d.sidor, d.version, d.uppladdad,
+            d.sammanfattning, d.utrustning_id, d.avser_datum, d.giltigt_till,
+            u.namn AS utrustning
+       FROM dokument d LEFT JOIN utrustning u ON u.id=d.utrustning_id
+      WHERE d.id=?`,
+    id
+  );
 
 export const rutter = [
   // ---------- Serviceplaner ----------
@@ -486,18 +668,23 @@ export const rutter = [
   }),
 
   /**
-   * Ladda upp ett dokument.
+   * Steg 1: ta emot filen och läs ut texten.
    *
-   * Går det att läsa text ur filen läses den direkt: dokumentet säger
-   * själv vad det är, vilken maskin det gäller, och vilka servicepunkter
-   * som står i det. Namnet behöver man alltså inte skriva.
-   *
-   * Allt som kommer ur läsningen är förslag. Uppgifterna om dokumentet
-   * fylls i och går att rätta; servicepunkterna blir liggande som förslag
-   * tills någon godkänt dem.
+   * Tolkningen ligger i ett eget steg med flit. Den tar tio sekunder och
+   * ska inte hålla filen gisslan – och den som laddar upp ska kunna se
+   * vad som pågår i stället för att stirra på en snurra.
    */
-  rutt('POST', '/api/underhall/dokument', '@anlaggning', async ({ res, kropp, medlem }) => {
-    const { filnamn, mediatyp, storlek } = sparaDokument(kropp.fil);
+  rutt(
+    'POST',
+    '/api/underhall/dokument',
+    '@anlaggning',
+    async ({ req, res, fraga, medlem }) => {
+    // Filen strömmas rakt till disk. Uppgifterna om den kommer i
+    // frågesträngen, så att ingenting stort behöver passera minnet.
+    const { filnamn, mediatyp, storlek } = await strommaDokument(req, {
+      mediatyp: req.headers['content-type'],
+      filnamn: fraga.get('filnamn'),
+    });
     let sidor = null;
     let text = null;
     let lasfel = null;
@@ -507,74 +694,249 @@ export const rutter = [
       text = r.text;
       lasfel = r.fel;
     } else if (mediatyp === 'text/plain') {
-      text = Buffer.from(kropp.fil.split(',')[1], 'base64').toString('utf8');
+      text = readFileSync(join(DOKUMENTKATALOG, filnamn), 'utf8');
       sidor = 1;
     }
 
-    const tolkning = text ? await klassificera(text) : { data: null, modell: null, fel: null };
-    const t = tolkning.data || {};
-
-    // Utrustningen kopplas automatiskt bara när den är entydig.
-    const traff = t.tillverkare || t.modell
-      ? matchaDokument(t, alla('SELECT id, namn, typ, tillverkare, modell FROM utrustning WHERE aktiv=1'))
-      : null;
-    const foreslagen = traff?.flera ? null : traff;
-    const galler_flera = traff?.flera || null;
-
-    // En ny version ersätter den gamla, men raderar den aldrig: en
-    // godkänd checklista ska gå att följa tillbaka till sin manual.
-    const ersatter = heltal(kropp.ersatter_id);
+    // En ny version ersätter den gamla, men raderar den aldrig: en godkänd
+    // checklista ska gå att följa tillbaka till sin manual.
+    const ersatter = heltal(fraga.get('ersatter_id'));
     const gammal = ersatter ? en('SELECT * FROM dokument WHERE id=?', ersatter) : null;
     if (gammal) uppdatera('dokument', gammal.id, { aktuell: 0 });
 
     const id = spara('dokument', {
-      utrustning_id: heltal(kropp.utrustning_id) ?? gammal?.utrustning_id ?? foreslagen?.id ?? null,
-      // Namnet: det användaren skrev, annars tolkningens titel, annars filen.
-      namn: txt(kropp.namn, 160) || txt(t.titel, 160) || filnamn.replace(/\.[a-z0-9]+$/i, ''),
-      slag: ettAv(kropp.slag, DOKUMENTSLAG, 'Slag') || ettAv(t.slag, DOKUMENTSLAG, 'Slag') || 'manual',
+      utrustning_id: heltal(fraga.get('utrustning_id')) ?? gammal?.utrustning_id ?? null,
+      namn:
+        txt(fraga.get('namn'), 160) ||
+        (fraga.get('filnamn') || filnamn).replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').trim(),
+      slag: ettAv(fraga.get('slag'), DOKUMENTSLAG, 'Slag') || 'manual',
       filnamn,
       mediatyp,
       storlek,
       sidor,
       text,
-      sammanfattning: txt(t.sammanfattning, 400),
-      tolkning: tolkning.data ? JSON.stringify(tolkning.data) : null,
-      ai_modell: tolkning.modell,
-      tolkad_tid: tolkning.data ? nu() : null,
       version: (gammal?.version ?? 0) + 1,
       ersatter_id: gammal?.id ?? null,
       av_id: medlem.id,
     });
 
-    // Står det något om underhåll läses servicepunkterna ut direkt. Det är
-    // hela poängen med att ladda upp en manual.
-    let punkter = [];
-    let punktfel = null;
-    if (text && t.har_underhall !== false && kropp.las_servicepunkter !== false) {
-      const r = await lasServicepunkter(en('SELECT * FROM dokument WHERE id=?', id), medlem);
-      punkter = r.punkter;
-      punktfel = r.fel;
-    }
-
     svar(res, 201, {
-      dokument: en(
-        `SELECT id, namn, slag, filnamn, sidor, version, uppladdad, sammanfattning, utrustning_id
-           FROM dokument WHERE id=?`,
-        id
-      ),
-      tolkning: tolkning.data,
-      tolkning_fel: tolkning.fel,
-      // Vad som fylldes i åt användaren, så att det går att rätta.
-      foreslagen_utrustning: foreslagen ? { id: foreslagen.id, namn: foreslagen.namn } : null,
-      // Samma modell på flera maskiner: dokumentet gäller dem alla, men
-      // kan bara hängas på en. Då får människan välja.
-      galler_flera: galler_flera?.map((u) => ({ id: u.id, namn: u.namn })) || null,
-      punkter,
-      punkt_fel: punktfel,
+      dokument: dokumentrad(id),
       las_fel: lasfel,
+      // Går texten att läsa är nästa steg att tolka den.
+      kan_tolkas: !!text,
+      namngivet: !!txt(fraga.get('namn'), 160),
+      storlek,
       granska_om: gammal
         ? alla('SELECT id, namn FROM serviceplan WHERE dokument_id=? AND status=?', gammal.id, 'godkand')
         : [],
+    });
+    },
+    // Strömmas, inte JSON: en manual kan vara hundratals megabyte.
+    { ravkropp: true }
+  ),
+
+  /**
+   * Steg 2: läs vad dokumentet är och fyll i det som går.
+   *
+   * Namnet skrivs bara över om ingen skrivit ett eget, och uppgifter på
+   * maskinen fylls bara i där de saknas. Det som någon skrivit rörs inte.
+   */
+  rutt('POST', '/api/underhall/dokument/:id/analysera', '@anlaggning', async ({ res, param, kropp }) => {
+    const d = en('SELECT * FROM dokument WHERE id=?', param.id);
+    if (!d) throw fel(404, 'Dokumentet finns inte');
+    if (!d.text) throw fel(409, 'Ingen text kunde läsas ur dokumentet');
+
+    const r = await klassificera(d.text);
+    const t = r.data || {};
+    if (!r.data)
+      return svar(res, 200, { dokument: dokumentrad(d.id), tolkning: null, fel: r.fel, forslag: null });
+
+    const traff = t.tillverkare || t.modell
+      ? matchaDokument(t, alla('SELECT id, namn, typ, tillverkare, modell FROM utrustning WHERE aktiv=1'))
+      : null;
+    const foreslagen = traff?.flera ? null : traff;
+
+    uppdatera('dokument', d.id, {
+      namn: kropp.behall_namn || !t.titel ? undefined : txt(t.titel, 160),
+      slag: ettAv(t.slag, DOKUMENTSLAG, 'Slag') ?? undefined,
+      sammanfattning: txt(t.sammanfattning, 400),
+      utrustning_id: d.utrustning_id ?? foreslagen?.id ?? undefined,
+      tolkning: JSON.stringify(t),
+      ai_modell: r.modell,
+      tolkad_tid: nu(),
+    });
+
+    // Uppgifter som bara stod i manualen fylls i – men bara i tomma fält.
+    const maskin_id = d.utrustning_id ?? foreslagen?.id ?? null;
+    const fyllda = [];
+    if (maskin_id) {
+      const u = en('SELECT * FROM utrustning WHERE id=?', maskin_id);
+      const nytt = {};
+      if (!u.tillverkare && t.tillverkare) nytt.tillverkare = txt(t.tillverkare, 80);
+      if (!u.modell && t.modell) nytt.modell = txt(t.modell, 80);
+      if (!u.serienummer && t.serienummer) nytt.serienummer = txt(t.serienummer, 80);
+      if (Object.keys(nytt).length) {
+        uppdatera('utrustning', u.id, nytt);
+        fyllda.push(...Object.keys(nytt));
+      }
+    }
+
+    // Komponenter, reservdelar och leverantör föreslås men läggs inte in
+    // av sig själva: registret ska spegla backen, inte en manual.
+    const befintliga = maskin_id
+      ? alla('SELECT namn FROM komponent WHERE utrustning_id=?', maskin_id).map((k) => k.namn.toLowerCase())
+      : [];
+    const artiklar = alla('SELECT artikelnummer FROM reservdel WHERE artikelnummer IS NOT NULL')
+      .map((x) => x.artikelnummer.toLowerCase());
+
+    // Det som är relevant för just den här sortens dokument.
+    const uppdaterad = en('SELECT * FROM dokument WHERE id=?', d.id);
+    const utvunnet = uppdaterad.text ? await utvinn(uppdaterad) : { slag: uppdaterad.slag, data: null };
+    if (utvunnet.data?.datum || utvunnet.data?.utfardat || utvunnet.data?.giltigt_till)
+      uppdatera('dokument', d.id, {
+        avser_datum: utvunnet.data.datum ?? utvunnet.data.utfardat ?? undefined,
+        giltigt_till: utvunnet.data.giltigt_till ?? undefined,
+      });
+
+    svar(res, 200, {
+      dokument: dokumentrad(d.id),
+      tolkning: t,
+      modell: r.modell,
+      fel: null,
+      // Vad som gick att plocka ut, och vad det innebär att göra.
+      utvinning: utvunnet,
+      foreslagen_utrustning: foreslagen ? { id: foreslagen.id, namn: foreslagen.namn } : null,
+      galler_flera: traff?.flera?.map((u) => ({ id: u.id, namn: u.namn })) || null,
+      ifyllt: fyllda,
+      forslag: {
+        utrustning_id: maskin_id,
+        komponenter: (t.komponenter || [])
+          .filter((k) => k?.namn && !befintliga.includes(String(k.namn).toLowerCase()))
+          .slice(0, 20)
+          .map((k) => ({ namn: txt(k.namn, 120), slag: txt(k.slag, 40) })),
+        reservdelar: (t.reservdelar || [])
+          .filter((x) => x?.namn && x.artikelnummer && !artiklar.includes(String(x.artikelnummer).toLowerCase()))
+          .slice(0, 30)
+          .map((x) => ({ namn: txt(x.namn, 160), artikelnummer: txt(x.artikelnummer, 60) })),
+        leverantor:
+          t.leverantor?.namn && !en('SELECT id FROM leverantor WHERE lower(namn)=lower(?)', t.leverantor.namn)
+            ? {
+                namn: txt(t.leverantor.namn, 120),
+                telefon: txt(t.leverantor.telefon, 40),
+                epost: txt(t.leverantor.epost, 160),
+              }
+            : null,
+      },
+      // Servicepunkter läses bara ur manualer, och bara när det står något.
+      har_underhall: uppdaterad.slag === 'manual' && t.har_underhall !== false,
+    });
+  }),
+
+  /**
+   * Lägg in det som föreslogs ur dokumentet: komponenter, reservdelar och
+   * leverantör. Ett eget steg, för registret ska spegla backen och inte en
+   * manual – någon ska ha tittat på listan först.
+   */
+  rutt('POST', '/api/underhall/dokument/:id/forslag', '@anlaggning', ({ res, param, kropp, medlem }) => {
+    kropp.medlem = medlem;
+    const d = en('SELECT * FROM dokument WHERE id=?', param.id);
+    if (!d) throw fel(404, 'Dokumentet finns inte');
+    return transaktion(() => {
+      let leverantor_id = heltal(kropp.leverantor_id);
+      if (kropp.leverantor?.namn) {
+        const fanns = en('SELECT id FROM leverantor WHERE lower(namn)=lower(?)', kropp.leverantor.namn);
+        leverantor_id =
+          fanns?.id ??
+          spara('leverantor', {
+            namn: kravTxt(kropp.leverantor.namn, 'Namn', 120),
+            telefon: txt(kropp.leverantor.telefon, 40),
+            epost: txt(kropp.leverantor.epost, 160),
+            anteckning: `Ur ${d.namn}`,
+          });
+      }
+
+      const utrustning_id = heltal(kropp.utrustning_id) ?? d.utrustning_id;
+      const komponenter = [];
+      for (const k of kropp.komponenter || []) {
+        if (!k?.namn || !utrustning_id) continue;
+        if (en('SELECT id FROM komponent WHERE utrustning_id=? AND lower(namn)=lower(?)', utrustning_id, k.namn))
+          continue;
+        komponenter.push(
+          spara('komponent', {
+            utrustning_id,
+            namn: kravTxt(k.namn, 'Namn', 120),
+            slag: txt(k.slag, 40),
+            leverantor_id,
+            ordning: komponenter.length,
+          })
+        );
+      }
+
+      const reservdelar = [];
+      for (const r of kropp.reservdelar || []) {
+        if (!r?.namn) continue;
+        if (r.artikelnummer && en('SELECT id FROM reservdel WHERE lower(artikelnummer)=lower(?)', r.artikelnummer))
+          continue;
+        const id = spara('reservdel', {
+          namn: kravTxt(r.namn, 'Namn', 160),
+          artikelnummer: txt(r.artikelnummer, 60),
+          leverantor_id,
+          anteckning: `Ur ${d.namn}`,
+        });
+        if (utrustning_id) spara('reservdelspassning', { reservdel_id: id, utrustning_id });
+        reservdelar.push(id);
+      }
+
+      // Anmärkningar ur ett protokoll blir ärenden – men bara de som
+      // användaren kryssat i. Protokollet självt blir källan.
+      const arenden = [];
+      for (const a of kropp.anmarkningar || []) {
+        if (!a?.text) continue;
+        arenden.push(
+          skapaArende(
+            {
+              titel: txt(a.text, 160),
+              beskrivning: `Anmärkning i ${d.namn}${a.atgardas_senast ? `, ska åtgärdas senast ${a.atgardas_senast}` : ''}.`,
+              typ: 'brist',
+              allvarlighet:
+                ettAv(a.allvarlighet, ['sakerhetsrisk', 'driftstopp', 'begransar', 'kosmetisk'], 'Allvarlighet') ||
+                'begransar',
+              prioritet: a.allvarlighet === 'sakerhetsrisk' ? 1 : 2,
+              utrustning_id,
+              deadline: datum(a.atgardas_senast, 'Åtgärdas senast'),
+            },
+            kropp.medlem
+          ).id
+        );
+      }
+
+      // Ett protokoll visar att arbetet är gjort. Planen flyttas fram till
+      // protokollets datum, inte till i dag.
+      const kvitterade = [];
+      for (const id of kropp.markera_utford || []) {
+        const plan = en('SELECT * FROM serviceplan WHERE id=?', heltal(id));
+        if (!plan || !kanskedatum(kropp.utford_datum)) continue;
+        uppdatera('serviceplan', plan.id, { senast_utford: kropp.utford_datum });
+        spara('serviceatgard', {
+          serviceplan_id: plan.id,
+          utrustning_id: plan.utrustning_id,
+          namn: plan.namn,
+          planerad: kropp.utford_datum,
+          utford: kropp.utford_datum,
+          status: 'utford',
+          anteckning: `Enligt ${d.namn}`,
+        });
+        kvitterade.push(plan.id);
+      }
+
+      svar(res, 201, {
+        komponenter: komponenter.length,
+        reservdelar: reservdelar.length,
+        leverantor_id: leverantor_id ?? null,
+        arenden: arenden.length,
+        kvitterade: kvitterade.length,
+      });
     });
   }),
 
