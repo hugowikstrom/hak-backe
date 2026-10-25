@@ -120,6 +120,13 @@ går att godkänna: systemet räknar i dagar och kan inte arbeta med
 En ny version av en manual ersätter den gamla men raderar den aldrig, och
 pekar ut vilka godkända punkter som bör granskas om.
 
+Flera manualer laddas upp i en omgång, men skickas **en fil i taget** från
+klienten: en bunt på tjugo megabyte i samma anrop är inget att göra en
+mobiluppkoppling till, och en fil som strular ska inte sänka de andra.
+När manualerna blir många är det sökningen som gör dem användbara –
+`sokIText()` svarar med sidnummer och omgivande text, så att träffen går att
+slå upp i pappersexemplaret också.
+
 ## Snöläggningsbemanning
 
 Kedjan är uppdelad i steg med flit:

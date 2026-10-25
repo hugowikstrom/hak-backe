@@ -32,6 +32,7 @@ if (nollstall && sokvag !== ':memory:') {
 }
 
 const dbmodul = await import('./db.mjs');
+const { ROT } = dbmodul;
 const handtag = dbmodul.oppna(sokvag);
 const { alla, en, kor, spara, transaktion } = dbmodul;
 const db = handtag;
@@ -1109,13 +1110,46 @@ await iForeningen(async () => {
   }
 });
 
+// ---------- En manual att söka i ----------
+// Den påhittade FK-200-manualen som testerna använder. Riktiga manualer
+// laddar Jonas upp själv – den här finns bara för att visa att sökningen
+// och tolkningen fungerar.
+{
+  const { existsSync, copyFileSync, statSync, mkdirSync } = await import('node:fs');
+  const { join } = await import('node:path');
+  const kalla = join(ROT, 'tests', 'data', 'manual.pdf');
+  if (existsSync(kalla)) {
+    const { DOKUMENTKATALOG, lasPdf } = await import('./dokument.mjs');
+    mkdirSync(DOKUMENTKATALOG, { recursive: true });
+    const filnamn = 'fk200-manual.pdf';
+    copyFileSync(kalla, join(DOKUMENTKATALOG, filnamn));
+    const r = await lasPdf(filnamn);
+    await iForeningen(async () => {
+      const fro_utr = en(`SELECT id FROM utrustning WHERE namn='Fläkt 1'`);
+      const fro_jonas = en(`SELECT id FROM medlem WHERE anvandarnamn='jonas'`);
+      spara('dokument', {
+        utrustning_id: fro_utr?.id ?? null,
+        namn: 'FK-200 servicemanual (exempel)',
+        slag: 'manual',
+        filnamn,
+        mediatyp: 'application/pdf',
+        storlek: statSync(kalla).size,
+        sidor: r.sidor.length || null,
+        text: r.text,
+        av_id: fro_jonas?.id ?? null,
+      });
+    });
+  }
+}
+
 console.log('Frö klart:');
 iForeningen(() => {
   for (const t of ['medlem', 'omrade', 'utrustning', 'checklistmall', 'checklistpunkt', 'position',
     'pass', 'bokning', 'matning', 'arende', 'insats', 'artikel', 'hyrespris',
     'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift',
     'komponent', 'leverantor', 'driftpost', 'incident',
-    'serviceplan', 'serviceatgard', 'reservdel', 'reservdelsuttag', 'hogbelastning', 'tillganglighet'])
+    'serviceplan', 'serviceatgard', 'reservdel', 'reservdelsuttag', 'hogbelastning', 'tillganglighet',
+    'dokument'])
     console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
 });
 db.close();

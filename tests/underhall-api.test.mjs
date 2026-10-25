@@ -150,6 +150,34 @@ test('manualen tolkas till förslag som ingen får använda förrän de godkänt
   assert.equal(nekad.status, 403);
 });
 
+test('flera manualer kan läggas in, och går att söka i', async () => {
+  await loggaIn('jonas');
+  const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));
+  const bas = `data:application/pdf;base64,${pdf.toString('base64')}`;
+
+  // Klienten skickar en fil i taget; servern ska klara flera i följd.
+  for (const namn of ['FK-200 reservdelslista', 'FK-200 elschema'])
+    await ok('POST', '/api/underhall/dokument', { namn, fil: bas, utrustning_id: 1, slag: 'ritning' });
+
+  const lista = await ok('GET', '/api/underhall/dokument');
+  assert.ok(lista.dokument.length >= 3);
+  assert.ok(lista.dokument.every((d) => d.aktuell), 'nya dokument ersätter inte varandra av misstag');
+
+  // Sökningen pekar ut sidan, inte bara dokumentet.
+  const tr = await ok('GET', '/api/underhall/dokument/sok?q=nukleator');
+  assert.ok(tr.traffar.length >= 1);
+  assert.equal(tr.traffar[0].stallen[0].sida, 2, 'underhållsavsnittet står på sida 2');
+  assert.match(tr.traffar[0].stallen[0].utdrag, /dimstrale/);
+
+  // Träff på dokumentnamnet räknas också.
+  const namntraff = await ok('GET', '/api/underhall/dokument/sok?q=elschema');
+  assert.ok(namntraff.traffar.some((x) => x.i_namnet));
+
+  assert.deepEqual((await ok('GET', '/api/underhall/dokument/sok?q=zebrafisk')).traffar, []);
+  const kort = await anrop('GET', '/api/underhall/dokument/sok?q=a');
+  assert.equal(kort.status, 400, 'en bokstav ger hela manualen som träff – det hjälper ingen');
+});
+
 test('en ny version av manualen ersätter men raderar inte den gamla', async () => {
   await loggaIn('jonas');
   const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));

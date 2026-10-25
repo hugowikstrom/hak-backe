@@ -444,3 +444,15 @@ dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
   background: var(--bak-2); min-width: 64px;
 }
 .dygnsrad .dygn.bra { border-color: var(--klubb); background: var(--klubb-mjuk); }
+
+/* Sökning i manualerna: träffen ska peka ut sidan, inte bara dokumentet. */
+.sokresultat { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.soktraff { padding: 10px 12px; background: var(--bak-2); border-radius: var(--radie); }
+.soktraff .utdrag { margin: 6px 0 0; font-size: 12px; line-height: 1.5; }
+.soktraff .sidnr {
+  display: inline-block; margin-right: 8px; padding: 1px 6px;
+  background: var(--yta); border: 1px solid var(--ram); border-radius: var(--radie-s);
+  font-size: 11px; font-variant-numeric: tabular-nums;
+}
+.filrad { margin: 10px 0; padding: 10px 12px; border: 1px solid var(--ram); border-radius: var(--radie); }
+.filrad p { margin: 4px 0 0; }

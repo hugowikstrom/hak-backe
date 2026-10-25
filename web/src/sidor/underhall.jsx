@@ -493,6 +493,8 @@ function Manualer({ uppdateraPlaner }) {
   const d = useHamta(() => api.hamta('/api/underhall/dokument'));
   const [ny, sattNy] = useState(false);
   const [arbetar, sattArbetar] = useState(null);
+  const [fraga, sattFraga] = useState('');
+  const [traffar, sattTraffar] = useState(null);
 
   if (d.laddar && !d.data) return <Vanta />;
 
@@ -511,8 +513,69 @@ function Manualer({ uppdateraPlaner }) {
     }
   };
 
+  const sok = async (e) => {
+    e?.preventDefault?.();
+    if (fraga.trim().length < 2) return sattTraffar(null);
+    try {
+      sattTraffar(await api.hamta(`/api/underhall/dokument/sok?q=${encodeURIComponent(fraga.trim())}`));
+    } catch (err) {
+      notis(err.message, 'fel');
+    }
+  };
+
   return (
     <>
+      {/* Många manualer är bara till nytta om det går att slå upp saker i
+          dem. Träffen pekar ut sidan, så att pappersexemplaret också duger. */}
+      <Kort titel="Sök i manualerna" tat>
+        <form className="rad" style={{ alignItems: 'flex-end' }} onSubmit={sok}>
+          <Text
+            etikett="Ord eller fras"
+            varde={fraga}
+            satt={(v) => {
+              sattFraga(v);
+              if (!v.trim()) sattTraffar(null);
+            }}
+            placeholder="nukleator, oljebyte, brytpinne …"
+          />
+          <button onClick={sok}>Sök</button>
+          {traffar && (
+            <button className="tom" onClick={() => { sattFraga(''); sattTraffar(null); }}>
+              Rensa
+            </button>
+          )}
+        </form>
+
+        {traffar && (
+          traffar.traffar.length === 0 ? (
+            <p className="liten svag" style={{ marginTop: 10 }}>
+              Ingen träff på ”{traffar.fraga}”. Bara dokument med utläst text går att söka i.
+            </p>
+          ) : (
+            <div className="sokresultat">
+              {traffar.traffar.map((tr) => (
+                <div key={tr.id} className="soktraff">
+                  <div className="rad hopp">
+                    <a href={`/api/underhall/dokument/${tr.id}/fil`} target="_blank" rel="noreferrer">
+                      {tr.namn}
+                    </a>
+                    {tr.utrustning && <span className="liten svag">{tr.utrustning}</span>}
+                    {!tr.aktuell && <Bricka>ersatt</Bricka>}
+                    {tr.i_namnet && !tr.stallen.length && <Bricka>träff i namnet</Bricka>}
+                  </div>
+                  {tr.stallen.map((s, i) => (
+                    <p key={i} className="utdrag">
+                      <span className="sidnr">s. {s.sida}</span>
+                      {s.utdrag}
+                    </p>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </Kort>
+
       <Kort
         titel="Manualer och dokument"
         undertext="Originalet sparas alltid. Texten dras ut så att den går att söka i och tolka."
@@ -556,13 +619,20 @@ function Manualer({ uppdateraPlaner }) {
         <Lada titel="Ladda upp dokument" stang={() => sattNy(false)} bred>
           <LaddaUpp
             dokument={d.data.dokument}
-            klar={(r) => {
+            klar={(resultat) => {
               sattNy(false);
               d.uppdatera();
-              if (r.las_fel) notis(`Filen sparades men texten kunde inte läsas: ${r.las_fel}`, 'fel');
-              else if (r.granska_om?.length)
-                notis(`${r.granska_om.length} godkända servicepunkter bör granskas om`, 'info');
-              else notis('Dokumentet är uppladdat', 'ok');
+              const lasfel = resultat.filter((r) => r.las_fel);
+              const granska = resultat.flatMap((r) => r.granska_om || []);
+              if (lasfel.length)
+                notis(`${lasfel.length} filer sparades men texten kunde inte läsas`, 'fel');
+              else if (granska.length)
+                notis(`${granska.length} godkända servicepunkter bör granskas om`, 'info');
+              else
+                notis(
+                  resultat.length === 1 ? 'Dokumentet är uppladdat' : `${resultat.length} dokument uppladdade`,
+                  'ok'
+                );
             }}
           />
         </Lada>
@@ -571,44 +641,88 @@ function Manualer({ uppdateraPlaner }) {
   );
 }
 
+/**
+ * Flera manualer i taget. Filerna skickas en och en – en bunt på tjugo
+ * megabyte i samma anrop är inget att göra en mobiluppkoppling till, och
+ * en fil som strular ska inte sänka de andra.
+ */
 function LaddaUpp({ dokument, klar }) {
   const notis = useNotis();
   const utrustning = useHamta(() => api.hamta('/api/utrustning'));
-  const [f, sattF] = useState({ namn: '', utrustning_id: '', slag: 'manual', ersatter_id: '' });
-  const [fil, sattFil] = useState(null);
-  const [laddar, sattLaddar] = useState(false);
-  const satt = (n) => (v) => sattF((x) => ({ ...x, [n]: v }));
+  const [filer, sattFiler] = useState([]);
+  const [slag, sattSlag] = useState('manual');
+  const [gemensamUtrustning, sattGemensam] = useState('');
+  const [lage, sattLage] = useState(null);
 
+  // Filnamnet duger som dokumentnamn: "FK-200 servicemanual.pdf" är redan
+  // det någon skulle skrivit in för hand.
   const las = (e) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const lasare = new FileReader();
-    lasare.onload = () => sattFil({ data: lasare.result, namn: f.name, storlek: f.size });
-    lasare.readAsDataURL(f);
+    const valda = [...(e.target.files || [])];
+    Promise.all(
+      valda.map(
+        (f) =>
+          new Promise((klar_) => {
+            const lasare = new FileReader();
+            lasare.onload = () =>
+              klar_({
+                data: lasare.result,
+                filnamn: f.name,
+                namn: f.name.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').trim(),
+                storlek: f.size,
+                utrustning_id: '',
+                ersatter_id: '',
+              });
+            lasare.readAsDataURL(f);
+          })
+      )
+    ).then((nya) => sattFiler((f) => [...f, ...nya]));
+    e.target.value = '';
+  };
+
+  const andra = (i, falt) => (v) => sattFiler((f) => f.map((x, j) => (i === j ? { ...x, [falt]: v } : x)));
+
+  const ladda = async () => {
+    const klara = [];
+    for (const [i, f] of filer.entries()) {
+      sattLage({ i, namn: f.namn, antal: filer.length });
+      try {
+        klara.push(
+          await api.skapa('/api/underhall/dokument', {
+            namn: f.namn,
+            slag,
+            fil: f.data,
+            utrustning_id: Number(f.utrustning_id || gemensamUtrustning) || null,
+            ersatter_id: f.ersatter_id ? Number(f.ersatter_id) : null,
+          })
+        );
+      } catch (e) {
+        // En trasig fil stoppar inte de andra, men den tystas inte heller.
+        notis(`${f.namn}: ${e.message}`, 'fel');
+      }
+    }
+    sattLage(null);
+    if (klara.length) klar(klara);
   };
 
   return (
     <>
-      <Falt etikett="Fil (PDF, bild eller text)" krav>
-        <input type="file" accept=".pdf,.png,.jpg,.jpeg,.txt" onChange={las} />
+      <Falt etikett="Filer (PDF, bild eller text)" krav>
+        {/* Fältet nollställs efter inläsningen så att fler filer kan väljas
+            i en andra omgång. Då ljuger webbläsarens egen text om läget –
+            raden under säger vad som faktiskt ligger i kön. */}
+        <input type="file" multiple accept=".pdf,.png,.jpg,.jpeg,.txt" onChange={las} />
       </Falt>
-      {fil && (
-        <p className="liten svag">
-          {fil.namn} · {Math.round(fil.storlek / 1024)} kB
-        </p>
-      )}
-      <Text etikett="Namn" varde={f.namn} satt={satt('namn')} krav placeholder="FK-200 servicemanual" />
+      <p className="liten svag">
+        {filer.length
+          ? `${filer.length} ${filer.length === 1 ? 'fil' : 'filer'} att ladda upp. Välj fler om du vill – varje fil blir ett eget dokument.`
+          : 'Välj flera på en gång – varje fil blir ett eget dokument.'}
+      </p>
+
       <div className="rad" style={{ alignItems: 'flex-end' }}>
         <Val
-          etikett="Utrustning"
-          varde={f.utrustning_id}
-          satt={satt('utrustning_id')}
-          poster={(utrustning.data || []).map((u) => ({ varde: String(u.id), text: u.namn }))}
-        />
-        <Val
           etikett="Slag"
-          varde={f.slag}
-          satt={satt('slag')}
+          varde={slag}
+          satt={sattSlag}
           tomtext={null}
           poster={[
             { varde: 'manual', text: 'Manual' },
@@ -619,35 +733,54 @@ function LaddaUpp({ dokument, klar }) {
           ]}
         />
         <Val
-          etikett="Ersätter"
-          varde={f.ersatter_id}
-          satt={satt('ersatter_id')}
-          poster={(dokument || []).filter((d) => d.aktuell).map((d) => ({ varde: String(d.id), text: `${d.namn} (v${d.version})` }))}
+          etikett="Utrustning för alla"
+          varde={gemensamUtrustning}
+          satt={sattGemensam}
+          poster={(utrustning.data || []).map((u) => ({ varde: String(u.id), text: u.namn }))}
         />
       </div>
+
+      {filer.map((f, i) => (
+        <div key={i} className="filrad">
+          <div className="rad" style={{ alignItems: 'flex-end' }}>
+            <Text etikett="Namn" varde={f.namn} satt={andra(i, 'namn')} />
+            <Val
+              etikett="Utrustning"
+              varde={f.utrustning_id || gemensamUtrustning}
+              satt={andra(i, 'utrustning_id')}
+              poster={(utrustning.data || []).map((u) => ({ varde: String(u.id), text: u.namn }))}
+            />
+            <Val
+              etikett="Ersätter"
+              varde={f.ersatter_id}
+              satt={andra(i, 'ersatter_id')}
+              poster={(dokument || [])
+                .filter((x) => x.aktuell)
+                .map((x) => ({ varde: String(x.id), text: `${x.namn} (v${x.version})` }))}
+            />
+            <button className="tom" onClick={() => sattFiler(filer.filter((_, j) => j !== i))}>
+              Ta bort
+            </button>
+          </div>
+          <p className="liten svag">
+            {f.filnamn} · {Math.round(f.storlek / 1024)} kB
+          </p>
+        </div>
+      ))}
+
+      {lage && (
+        <div className="meddelande info">
+          Laddar upp {lage.i + 1} av {lage.antal}: {lage.namn} …
+        </div>
+      )}
+
       <div className="knapprad">
-        <button
-          className="primar"
-          disabled={!fil || !f.namn.trim() || laddar}
-          onClick={async () => {
-            sattLaddar(true);
-            try {
-              klar(
-                await api.skapa('/api/underhall/dokument', {
-                  ...f,
-                  fil: fil.data,
-                  utrustning_id: f.utrustning_id ? Number(f.utrustning_id) : null,
-                  ersatter_id: f.ersatter_id ? Number(f.ersatter_id) : null,
-                })
-              );
-            } catch (e) {
-              notis(e.message, 'fel');
-            } finally {
-              sattLaddar(false);
-            }
-          }}
-        >
-          {laddar ? 'Laddar upp …' : 'Ladda upp'}
+        <button className="primar" disabled={!filer.length || !!lage} onClick={ladda}>
+          {lage
+            ? `Laddar upp (${lage.i + 1}/${lage.antal}) …`
+            : filer.length > 1
+              ? `Ladda upp ${filer.length} dokument`
+              : 'Ladda upp'}
         </button>
       </div>
     </>

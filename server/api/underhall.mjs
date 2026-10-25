@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { minstRoll } from '../behorighet.mjs';
 import { tolka } from '../ai.mjs';
-import { DOKUMENTKATALOG, lasPdf, sidorUr, sparaDokument, underhallsavsnitt } from '../dokument.mjs';
+import { DOKUMENTKATALOG, lasPdf, sidorUr, sokIText, sparaDokument, underhallsavsnitt } from '../dokument.mjs';
 import {
   arshjul, INTERVALLTYPER, kostnader, lage, nastaForfall, samordna, undvikBelastning,
 } from '../underhall.mjs';
@@ -345,6 +345,27 @@ export const rutter = [
       ),
     })
   ),
+
+  /** Sök i manualerna. Träffen pekar ut sida, inte bara dokument. */
+  rutt('GET', '/api/underhall/dokument/sok', '@anlaggning', ({ res, fraga }) => {
+    const q = txt(fraga.get('q'), 120);
+    if (!q || q.length < 2) throw fel(400, 'Skriv minst två tecken');
+    const traffar = [];
+    for (const d of alla(
+      `SELECT d.id, d.namn, d.sidor, d.version, d.aktuell, u.namn AS utrustning, d.text
+         FROM dokument d LEFT JOIN utrustning u ON u.id=d.utrustning_id
+        WHERE d.text IS NOT NULL ORDER BY d.aktuell DESC, d.uppladdad DESC`
+    )) {
+      const i_texten = sokIText(d.text, q);
+      const i_namnet = d.namn.toLowerCase().includes(q.toLowerCase());
+      if (!i_texten.length && !i_namnet) continue;
+      traffar.push({
+        id: d.id, namn: d.namn, utrustning: d.utrustning, sidor: d.sidor,
+        version: d.version, aktuell: d.aktuell, i_namnet, stallen: i_texten,
+      });
+    }
+    svar(res, 200, { fraga: q, traffar });
+  }),
 
   rutt('POST', '/api/underhall/dokument', '@anlaggning', async ({ res, kropp, medlem }) => {
     const { filnamn, mediatyp, storlek } = sparaDokument(kropp.fil);

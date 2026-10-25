@@ -87,3 +87,33 @@ export function underhallsavsnitt(sidor, { maxTecken = 24000 } = {}) {
   }
   return valda;
 }
+
+/**
+ * Hittar var i ett dokument en fras står.
+ *
+ * Poängen med många manualer är inte att ha dem, utan att kunna slå upp
+ * saker i dem. Träffen returneras med sidnummer och omgivande text, så att
+ * man vet var man ska titta i pappersexemplaret också.
+ */
+export function sokIText(text, fras, { omgivning = 160, hogst = 5 } = {}) {
+  const sok = String(fras || '').trim().toLowerCase();
+  if (sok.length < 2 || !text) return [];
+  const traffar = [];
+  for (const [i, sida] of sidorUr(text).entries()) {
+    const lag = sida.toLowerCase();
+    let fran = 0;
+    while (traffar.length < hogst) {
+      const vid = lag.indexOf(sok, fran);
+      if (vid < 0) break;
+      const start = Math.max(0, vid - omgivning / 2);
+      const slut = Math.min(sida.length, vid + sok.length + omgivning / 2);
+      traffar.push({
+        sida: i + 1,
+        utdrag: `${start > 0 ? '… ' : ''}${sida.slice(start, slut).replace(/\s+/g, ' ').trim()}${slut < sida.length ? ' …' : ''}`,
+      });
+      fran = vid + sok.length;
+    }
+    if (traffar.length >= hogst) break;
+  }
+  return traffar;
+}
