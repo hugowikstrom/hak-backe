@@ -394,3 +394,53 @@ dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
   dl.uppgifter { grid-template-columns: 1fr; gap: 2px; }
   dl.uppgifter dd { margin-bottom: 8px; }
 }
+
+/* ---------- Årshjul ---------- */
+/* Tolv månader som kort: året ska gå att överblicka utan att rulla långt. */
+.arshjul { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
+.hjulmanad {
+  background: var(--yta); border: 1px solid var(--ram); border-radius: var(--radie);
+  padding: 10px 12px; min-height: 90px;
+}
+.hjulmanad.tom { opacity: .55; }
+.hjulmanad > header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 6px; }
+.hjulmanad h3 { margin: 0; font-size: 13px; text-transform: capitalize; }
+.hjulpost { display: flex; gap: 8px; padding: 5px 0; border-top: 1px solid var(--ram); }
+.hjulpost:first-of-type { border-top: 0; }
+.hjulpost .dag {
+  flex: none; width: 24px; height: 22px; display: grid; place-items: center;
+  border-radius: var(--radie-s); background: var(--bak-2); font-size: 11px; font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.hjulpost.forsenad .dag { background: var(--fara); color: #fff; }
+.hjulpost.snart .dag { background: var(--varning); color: #fff; }
+.hjulpost .txt { display: flex; flex-direction: column; gap: 1px; font-size: 12px; }
+.varningstext { color: var(--varning); }
+
+.samordning { margin: 4px 0; font-size: 13px; }
+.brickrad { display: flex; flex-wrap: wrap; gap: 8px; }
+.periodbricka {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 6px 3px 10px;
+  border: 1px solid var(--ram); border-radius: 999px; font-size: 12px; background: var(--bak-2);
+}
+.periodbricka button { padding: 0 4px; line-height: 1; }
+
+/* ---------- Kandidatlistan ---------- */
+.kandidatrad {
+  display: flex; align-items: center; gap: 10px; padding: 7px 0;
+  border-bottom: 1px solid var(--ram); cursor: pointer;
+}
+.kandidatrad:last-child { border-bottom: 0; }
+.kandidatrad input { width: 18px; height: 18px; }
+.kandidatrad .vaxa { flex: 1; }
+.knapprad.liten button { padding: 2px 8px; font-size: 12px; }
+
+/* Utsikten när prognosen inte ger något fönster: visa varför, inte bara tomt. */
+.utsikt p { margin: 0 0 10px; }
+.dygnsrad { display: flex; gap: 6px; flex-wrap: wrap; }
+.dygnsrad .dygn {
+  display: flex; flex-direction: column; align-items: center; gap: 1px;
+  padding: 6px 10px; border: 1px solid var(--ram); border-radius: var(--radie);
+  background: var(--bak-2); min-width: 64px;
+}
+.dygnsrad .dygn.bra { border-color: var(--klubb); background: var(--klubb-mjuk); }

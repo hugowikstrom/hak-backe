@@ -692,3 +692,190 @@ CREATE TABLE IF NOT EXISTS incidentatkomst (
   slag        TEXT NOT NULL DEFAULT 'las'          -- las | andra | gallra
 );
 CREATE INDEX IF NOT EXISTS idx_incidentatkomst ON incidentatkomst(incident_id, tid DESC);
+
+-- ---------------------------------------------------------------------------
+-- Underhåll: dokument, serviceplaner, åtgärder och reservdelar
+-- ---------------------------------------------------------------------------
+
+-- Manualer och ritningar. Originalet sparas alltid; texten dras ut för att
+-- kunna läsas av både människa och modell.
+CREATE TABLE IF NOT EXISTS dokument (
+  id            INTEGER PRIMARY KEY,
+  utrustning_id INTEGER REFERENCES utrustning(id) ON DELETE SET NULL,
+  namn          TEXT NOT NULL,
+  slag          TEXT NOT NULL DEFAULT 'manual',   -- manual | ritning | protokoll | intyg | ovrigt
+  filnamn       TEXT NOT NULL,                     -- under data/dokument
+  mediatyp      TEXT,
+  storlek       INTEGER,
+  sidor         INTEGER,
+  text          TEXT,                              -- uttagen text, för sökning och tolkning
+  version       INTEGER NOT NULL DEFAULT 1,
+  ersatter_id   INTEGER REFERENCES dokument(id) ON DELETE SET NULL,
+  aktuell       INTEGER NOT NULL DEFAULT 1,
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  uppladdad     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_dokument_utr ON dokument(utrustning_id, aktuell);
+
+-- Återkommande underhåll. En plan är ett förslag tills någon godkänt den:
+-- en modell får läsa manualen, men inte bestämma anläggningens serviceplan.
+CREATE TABLE IF NOT EXISTS serviceplan (
+  id            INTEGER PRIMARY KEY,
+  utrustning_id INTEGER REFERENCES utrustning(id) ON DELETE CASCADE,
+  komponent_id  INTEGER REFERENCES komponent(id) ON DELETE SET NULL,
+  namn          TEXT NOT NULL,
+  instruktion   TEXT,
+  intervalltyp  TEXT NOT NULL DEFAULT 'dagar',     -- dagar | veckor | manader | sasong | drifttimmar | handelse
+  intervall     REAL,                              -- antal dagar/veckor/månader/timmar
+  manad         INTEGER,                           -- för sasong: månadsnummer 1–12
+  kompetens     TEXT,                              -- t.ex. "behörig lifttekniker"
+  kritisk       INTEGER NOT NULL DEFAULT 0,        -- får aldrig skjutas för belastning
+  dokument_id   INTEGER REFERENCES dokument(id) ON DELETE SET NULL,
+  kallsida      TEXT,                              -- var i manualen det står
+  kallcitat     TEXT,                              -- det stycke tolkningen byggde på
+  osaker        INTEGER NOT NULL DEFAULT 0,        -- tolkningen kunde inte läsa ut intervallet
+  status        TEXT NOT NULL DEFAULT 'forslag',   -- forslag | godkand | vilande | avfard
+  godkand_av_id INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  godkand_tid   TEXT,
+  senast_utford TEXT,
+  senast_timmar REAL,                              -- drifttimmar vid senaste service
+  skapad        TEXT NOT NULL DEFAULT (datetime('now')),
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_serviceplan_utr ON serviceplan(utrustning_id, status);
+
+-- Ett konkret arbete: planerat, utfört eller inställt.
+CREATE TABLE IF NOT EXISTS serviceatgard (
+  id            INTEGER PRIMARY KEY,
+  serviceplan_id INTEGER REFERENCES serviceplan(id) ON DELETE SET NULL,
+  utrustning_id INTEGER REFERENCES utrustning(id) ON DELETE SET NULL,
+  komponent_id  INTEGER REFERENCES komponent(id) ON DELETE SET NULL,
+  namn          TEXT NOT NULL,
+  planerad      TEXT,                              -- datum
+  utford        TEXT,
+  status        TEXT NOT NULL DEFAULT 'planerad',  -- planerad | pagar | utford | installd
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  utford_av_id  INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  arbetstimmar  REAL,
+  kostnad_ore   INTEGER NOT NULL DEFAULT 0,        -- arbete och köpt tjänst
+  anteckning    TEXT,
+  arende_id     INTEGER REFERENCES arende(id) ON DELETE SET NULL,
+  skapad        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_serviceatgard_tid ON serviceatgard(planerad, status);
+
+-- Reservdelar: vad som finns, vad det kostade och vad som går åt.
+CREATE TABLE IF NOT EXISTS reservdel (
+  id            INTEGER PRIMARY KEY,
+  namn          TEXT NOT NULL,
+  artikelnummer TEXT,
+  leverantor_id INTEGER REFERENCES leverantor(id) ON DELETE SET NULL,
+  enhet         TEXT NOT NULL DEFAULT 'st',
+  pris_ore      INTEGER,                           -- senast kända pris
+  pris_datum    TEXT,
+  lager         REAL NOT NULL DEFAULT 0,
+  minlager      REAL NOT NULL DEFAULT 0,
+  placering     TEXT,
+  anteckning    TEXT,
+  aktiv         INTEGER NOT NULL DEFAULT 1
+);
+
+-- Vilka delar som passar vad, så att rätt artikelnummer finns till hands.
+CREATE TABLE IF NOT EXISTS reservdelspassning (
+  id           INTEGER PRIMARY KEY,
+  reservdel_id INTEGER NOT NULL REFERENCES reservdel(id) ON DELETE CASCADE,
+  utrustning_id INTEGER REFERENCES utrustning(id) ON DELETE CASCADE,
+  komponent_id INTEGER REFERENCES komponent(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS reservdelsuttag (
+  id             INTEGER PRIMARY KEY,
+  reservdel_id   INTEGER NOT NULL REFERENCES reservdel(id) ON DELETE CASCADE,
+  antal          REAL NOT NULL DEFAULT 1,          -- negativt antal = inleverans
+  pris_ore       INTEGER,                          -- styckpris vid tillfället
+  tid            TEXT NOT NULL DEFAULT (datetime('now')),
+  av_id          INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  serviceatgard_id INTEGER REFERENCES serviceatgard(id) ON DELETE SET NULL,
+  arende_id      INTEGER REFERENCES arende(id) ON DELETE SET NULL,
+  anteckning     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_uttag_del ON reservdelsuttag(reservdel_id, tid DESC);
+
+-- Perioder då planerat underhåll helst undviks. Obligatoriskt underhåll
+-- flyttas aldrig hit – verksamhetens belastning är inte ett skäl.
+CREATE TABLE IF NOT EXISTS hogbelastning (
+  id      INTEGER PRIMARY KEY,
+  namn    TEXT NOT NULL,
+  fran    TEXT NOT NULL,
+  till    TEXT NOT NULL,
+  anteckning TEXT
+);
+
+-- ---------------------------------------------------------------------------
+-- Snöläggningsbemanning: tillgänglighet, fönster och förfrågningar
+-- ---------------------------------------------------------------------------
+
+-- Vad man själv säger om säsongen. Nivån är ett önskemål, inte ett löfte –
+-- och den ersätter varken kompetenskrav eller rättvis fördelning.
+CREATE TABLE IF NOT EXISTS tillganglighet (
+  id         INTEGER PRIMARY KEY,
+  medlem_id  INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  sasong_id  INTEGER REFERENCES sasong(id) ON DELETE CASCADE,
+  niva       TEXT NOT NULL DEFAULT 'kanske',      -- garna | kanske | vid_brist | nej
+  nattpass   INTEGER NOT NULL DEFAULT 1,          -- kan ta nattpass
+  helger     INTEGER NOT NULL DEFAULT 1,
+  max_pass   INTEGER,                             -- tak per vecka, om man satt ett
+  kommentar  TEXT,
+  uppdaterad TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(medlem_id, sasong_id)
+);
+
+-- Ett prognostiserat produktionsfönster som någon tagit ställning till.
+CREATE TABLE IF NOT EXISTS snofonster (
+  id            INTEGER PRIMARY KEY,
+  fran          TEXT NOT NULL,                    -- YYYY-MM-DD HH:MM
+  till          TEXT NOT NULL,
+  lagsta_wetbulb REAL,
+  timmar        REAL,
+  kalla         TEXT NOT NULL DEFAULT 'prognos',  -- prognos | manuell
+  status        TEXT NOT NULL DEFAULT 'forslag',  -- forslag | planerat | avfardat | genomfort
+  anteckning    TEXT,
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  skapad        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- En fråga till en medlem om ett pass. Skild från bokning med flit: en
+-- skickad förfråga är inte en bemannad position.
+CREATE TABLE IF NOT EXISTS forfragan (
+  id         INTEGER PRIMARY KEY,
+  pass_id    INTEGER NOT NULL REFERENCES pass(id) ON DELETE CASCADE,
+  medlem_id  INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  status     TEXT NOT NULL DEFAULT 'skickad',     -- skickad | accepterad | avbojd | aterkallad
+  omgang     INTEGER NOT NULL DEFAULT 1,          -- 1 = tillfrågade först, 2 = reserver
+  skickad    TEXT NOT NULL DEFAULT (datetime('now')),
+  svarad     TEXT,
+  kanal      TEXT NOT NULL DEFAULT 'epost',
+  kommentar  TEXT,
+  UNIQUE(pass_id, medlem_id)
+);
+CREATE INDEX IF NOT EXISTS idx_forfragan_medlem ON forfragan(medlem_id, status);
+
+-- Förhandsanmälda uppgifter inför ett hyresbesök. Uppgifterna är ett
+-- underlag för att plocka fram rätt storlekar i förväg – utprovning och
+-- inställning av bindningar görs av personal på plats, alltid.
+CREATE TABLE IF NOT EXISTS hyresgast (
+  id          INTEGER PRIMARY KEY,
+  avtal_id    INTEGER NOT NULL REFERENCES hyresavtal(id) ON DELETE CASCADE,
+  namn        TEXT,
+  alder       INTEGER,
+  langd_cm    INTEGER,
+  vikt_kg     INTEGER,
+  skostorlek  TEXT,
+  niva        TEXT,                             -- nyborjare | van | erfaren
+  onskemal    TEXT,                             -- slalom | carving | twintip | snowboard | pulka
+  hjalm       INTEGER NOT NULL DEFAULT 0,
+  anteckning  TEXT,
+  framplockat INTEGER NOT NULL DEFAULT 0,
+  framplockat_av_id INTEGER REFERENCES medlem(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_hyresgast ON hyresgast(avtal_id);

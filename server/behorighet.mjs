@@ -125,13 +125,14 @@ export const ARBETSYTOR = {
   anlaggning: {
     namn: 'Anläggningen',
     beskrivning: 'Snöläggning, utrustning och backens skick',
-    sidor: ['snolaggning', 'checklistor', 'journal', 'arenden', 'incidenter', 'bemanning', 'rapporter',
-      'register', 'ideer', 'mina'],
+    sidor: ['snolaggning', 'snoplan', 'checklistor', 'journal', 'underhall', 'arenden', 'incidenter',
+      'bemanning', 'rapporter', 'register', 'ideer', 'mina'],
   },
   back: {
     namn: 'Backen',
     beskrivning: 'Dagens drift: bemanning, ronder och ärenden',
-    sidor: ['bemanning', 'checklistor', 'journal', 'arenden', 'incidenter', 'snolaggning', 'ideer', 'mina'],
+    sidor: ['bemanning', 'snoplan', 'checklistor', 'journal', 'arenden', 'incidenter', 'snolaggning',
+      'underhall', 'ideer', 'mina'],
   },
   kiosk: {
     namn: 'Kiosken',

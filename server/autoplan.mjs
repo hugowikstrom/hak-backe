@@ -1,6 +1,7 @@
 // Automatplanering: fyller obemannade pass och jämnar ut natt- och helgpass.
 // Ren funktion över inlästa data -> förslag. Skrivningen sker i api/bemanning.mjs.
-import { arHelg, minuter, passSlag, passTimmar } from './tid.mjs';
+import { alder, arHelg, minuter, passSlag, passTimmar } from './tid.mjs';
+import { MINALDER, MINALDER_NATT } from './snoplan.mjs';
 
 const VIKT = { tid: 1, natt: 0.8, helg: 0.5 };
 
@@ -66,6 +67,9 @@ export function planera({ pass, medlemmar, befintliga, otillganglig, sasong, pos
   const behorig = (s, p) => {
     const pos = positioner[p.position_id];
     if (!pos) return false;
+    // Minderåriga planeras aldrig in, och allra minst på natten.
+    const ar = alder(s.medlem.fodelsedatum, p.datum);
+    if (ar != null && ar < (passSlag(p.start, p.slut) === 'natt' ? MINALDER_NATT : MINALDER)) return false;
     if (pos.kravs_roll && (rang[s.medlem.roll] ?? 0) < (rang[pos.kravs_roll] ?? 0)) return false;
     const komp = s.medlem.kompetens || [];
     if (komp.length && !komp.includes(pos.nyckel)) return false;

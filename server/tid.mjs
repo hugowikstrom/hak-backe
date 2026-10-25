@@ -54,3 +54,14 @@ export const plusDagar = (datum, n) => {
 };
 
 export const DAGNAMN = ['mån', 'tis', 'ons', 'tors', 'fre', 'lör', 'sön'];
+
+/** Ålder i fyllda år vid ett visst datum. Null när födelsedatum saknas. */
+export function alder(fodelsedatum, vid = idag()) {
+  if (!fodelsedatum) return null;
+  const [fa, fm, fd] = String(fodelsedatum).slice(0, 10).split('-').map(Number);
+  const [va, vm, vd] = String(vid).slice(0, 10).split('-').map(Number);
+  if (!fa || !va) return null;
+  let ar = va - fa;
+  if (vm < fm || (vm === fm && vd < fd)) ar -= 1;
+  return ar;
+}

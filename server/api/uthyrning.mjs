@@ -1,12 +1,12 @@
 // Skiduthyrningen: kundens bokning, utlämning med blippad utrustning och
 // återlämning. Prislistan är klubbens egen och ligger i registret.
 import { randomBytes } from 'node:crypto';
-import { alla, en, spara, transaktion, uppdatera } from '../db.mjs';
+import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { kronor, normaliseraMobil } from '../pengar.mjs';
 import { betalning, qrkod, swishPa, swishnummer } from '../swish.mjs';
 import { skickaSms } from '../sms.mjs';
 import { bokforAffar, INTAKTSKONTON, revidera, verifikationFor } from '../bokforing.mjs';
-import { ettAv, fel, heltal, rutt, svar, text, txt } from '../http.mjs';
+import { datum, ettAv, fel, heltal, rutt, svar, text, txt } from '../http.mjs';
 import { idag, nu } from '../tid.mjs';
 import { tak } from './fik.mjs';
 
@@ -36,10 +36,40 @@ export const prislista = () => {
   return [...grupper.values()];
 };
 
+export const NIVANAMN = { nyborjare: 'Nybörjare', van: 'Van', erfaren: 'Erfaren' };
+export const ONSKEMAL = ['slalom', 'carving', 'twintip', 'snowboard', 'pulka'];
+
+/**
+ * Sparar en gästs uppgifter inför besöket.
+ *
+ * Uppgifterna används för att plocka fram rätt storlekar i förväg. Systemet
+ * räknar aldrig fram någon bindningsinställning ur längd och vikt – det gör
+ * personalen på plats, med sin egen tabell och sitt eget ansvar.
+ */
+export function sparaGast(avtal_id, g) {
+  return spara('hyresgast', {
+    avtal_id,
+    namn: txt(g.namn, 80),
+    alder: heltal(g.alder),
+    langd_cm: heltal(g.langd_cm),
+    vikt_kg: heltal(g.vikt_kg),
+    skostorlek: txt(g.skostorlek, 10),
+    niva: ettAv(g.niva, Object.keys(NIVANAMN), 'Nivå'),
+    onskemal: ettAv(g.onskemal, ONSKEMAL, 'Önskemål'),
+    hjalm: g.hjalm ? 1 : 0,
+    anteckning: txt(g.anteckning, 300),
+  });
+}
+
 export const hamtaAvtal = (id) => {
   const a = en('SELECT * FROM hyresavtal WHERE id=?', id);
   return a
-    ? { ...a, rader: alla('SELECT * FROM hyresrad WHERE avtal_id=? ORDER BY id', id), belopp: kronor(a.belopp_ore) }
+    ? {
+        ...a,
+        rader: alla('SELECT * FROM hyresrad WHERE avtal_id=? ORDER BY id', id),
+        gaster: alla('SELECT * FROM hyresgast WHERE avtal_id=? ORDER BY id', id),
+        belopp: kronor(a.belopp_ore),
+      }
     : null;
 };
 
@@ -56,6 +86,13 @@ const publiktAvtal = (a) => ({
   retur_tid: a.retur_tid,
   skapad: a.skapad,
   rader: a.rader.map((r) => ({ namn: r.namn, antal: r.antal, pris_ore: r.pris_ore, markning: r.markning, aterlamnad: !!r.aterlamnad })),
+  anmald: a.anmald || null,
+  besok_datum: a.besok_datum || null,
+  gaster: (a.gaster || []).map((g) => ({
+    id: g.id, namn: g.namn, alder: g.alder, langd_cm: g.langd_cm, vikt_kg: g.vikt_kg,
+    skostorlek: g.skostorlek, niva: g.niva, onskemal: g.onskemal, hjalm: !!g.hjalm,
+    anteckning: g.anteckning, framplockat: !!g.framplockat,
+  })),
 });
 
 function nyttNummer() {
@@ -134,7 +171,42 @@ export const rutter = [
   rutt('POST', '/api/uthyrning/bokning', 'oppen', ({ res, req, kropp }) => {
     tak(`hyra:${req.socket.remoteAddress}`);
     const avtal = skapaAvtal({ rader: kropp.rader, mobil: kropp.mobil, namn: kropp.namn, anteckning: kropp.anteckning });
-    svar(res, 201, { ...publiktAvtal(avtal), kod: avtal.returkod });
+    // Storlekar som gästen fyllt i hemma. De sparar tid i luckan, men
+    // ersätter aldrig utprovningen: bindningar ställs in av personal.
+    for (const g of (kropp.gaster || []).slice(0, 12)) sparaGast(avtal.id, g);
+    if (kropp.gaster?.length || kropp.besok_datum)
+      uppdatera('hyresavtal', avtal.id, {
+        anmald: kropp.gaster?.length ? nu() : undefined,
+        besok_datum: datum(kropp.besok_datum, 'Besöksdatum') || undefined,
+      });
+    svar(res, 201, { ...publiktAvtal(hamtaAvtal(avtal.id)), kod: avtal.returkod });
+  }),
+
+  /** Gästen fyller i storlekar i efterhand, via sin egen länk. */
+  rutt('POST', '/api/uthyrning/avtal/:nummer/anmalan', 'oppen', ({ res, req, param, fraga, kropp }) => {
+    tak(`hyraanm:${req.socket.remoteAddress}`);
+    const a = en('SELECT * FROM hyresavtal WHERE nummer=?', param.nummer);
+    if (!a || (a.returkod && a.returkod !== fraga.get('kod'))) throw fel(404, 'Avtalet finns inte');
+    if (a.status !== 'bokad') throw fel(409, 'Utrustningen är redan utlämnad');
+    kor('DELETE FROM hyresgast WHERE avtal_id=? AND framplockat=0', a.id);
+    for (const g of (kropp.gaster || []).slice(0, 12)) sparaGast(a.id, g);
+    uppdatera('hyresavtal', a.id, {
+      anmald: nu(),
+      besok_datum: datum(kropp.besok_datum, 'Besöksdatum') || undefined,
+    });
+    svar(res, 200, publiktAvtal(hamtaAvtal(a.id)));
+  }),
+
+  /** Personalen markerar att utrustningen är framplockad. */
+  rutt('POST', '/api/uthyrning/gaster/:id/framplockat', '@uthyrning', ({ res, param, kropp, medlem }) => {
+    const g = en('SELECT * FROM hyresgast WHERE id=?', param.id);
+    if (!g) throw fel(404, 'Uppgiften finns inte');
+    uppdatera('hyresgast', g.id, {
+      framplockat: kropp.framplockat === false ? 0 : 1,
+      framplockat_av_id: kropp.framplockat === false ? null : medlem.id,
+      anteckning: txt(kropp.anteckning) ?? undefined,
+    });
+    svar(res, 200, { gast: en('SELECT * FROM hyresgast WHERE id=?', g.id) });
   }),
 
   rutt('GET', '/api/uthyrning/avtal/:nummer', 'oppen', ({ res, param, fraga }) => {
@@ -176,6 +248,15 @@ export const rutter = [
       summa: kronor(
         en(`SELECT coalesce(sum(belopp_ore),0) AS s FROM hyresavtal WHERE date(skapad)=? AND status<>'avbruten'`, dag).s
       ),
+      // Förhandsanmälda besök, så att utrustningen kan plockas fram i lugn
+      // och ro. Utprovningen sker ändå i luckan.
+      anmalda: alla(
+        `SELECT * FROM hyresavtal
+          WHERE status='bokad' AND anmald IS NOT NULL
+            AND (besok_datum IS NULL OR besok_datum >= date('now','-1 day'))
+          ORDER BY coalesce(besok_datum, date(skapad))`
+      ).map((a) => hamtaAvtal(a.id)),
+      nivanamn: NIVANAMN,
       prislista: prislista(),
     });
   }),

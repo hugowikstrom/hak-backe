@@ -91,6 +91,57 @@ ställning till `driftklar` eller `ej_driftklar`. Appen räknar inte ut om en
 lift får öppna. Den skriver ner vem som bestämde, när, och på vilket
 underlag.
 
+## Förebyggande underhåll
+
+En **serviceplan** säger att något ska göras med jämna mellanrum. När den
+förfaller räknas fram i `server/underhall.mjs` – ren funktion, inga
+databasanrop – ur intervalltyp, senaste utförande och, för timbaserade
+planer, utrustningens drifttimmar.
+
+Tre saker är värda att veta:
+
+- **Månader är kalendermånader.** "Var sjätte månad" från 10 maj är
+  10 november, inte 183 dagar senare.
+- **Timbaserade planer ger ett uppskattat datum**, framskrivet ur hur mycket
+  maskinen brukar gå, och det är märkt `uppskattat`. Saknas avläsning finns
+  inget datum alls – systemet hittar inte på ett.
+- **Högbelastningsperioder flyttar inte något av sig självt.** De ger ett
+  *förslag* vid sidan av datumet. Planer märkta `kritisk` flyttas aldrig, och
+  krocken visas i stället för att tystas.
+
+En **manual** laddas upp som dokument, texten dras ut med `pdftotext` sida
+för sida, och `underhallsavsnitt()` plockar de sidor som handlar om service.
+Modellen föreslår servicepunkter – som sparas med status `forslag`, med
+sidnummer och citat. En punkt utan källa sparas inte alls. Förslag räknas
+inte i årshjulet och ett osäkert intervall måste få ett värde innan planen
+går att godkänna: systemet räknar i dagar och kan inte arbeta med
+"regelbundet".
+
+En ny version av en manual ersätter den gamla men raderar den aldrig, och
+pekar ut vilka godkända punkter som bör granskas om.
+
+## Snöläggningsbemanning
+
+Kedjan är uppdelad i steg med flit:
+
+```
+prognos → fönster någon tagit ställning till → pass → förfrågan → svar → bokning
+```
+
+**En skickad förfrågan är inte bemanning.** `forfragan` är en egen tabell
+skild från `bokning`, och `lage()` räknar `oadresserat` – underskott som
+ingen ens fått frågan om. Det är den siffran som ska larma.
+
+Ordningen bland kandidaterna kommer ur medlemmens eget säsongssvar
+(`tillganglighet`) och hur mycket hen redan gjort. Men **önskemål går aldrig
+före krav**: kompetens, roll, otillgänglighet, krockande pass och ålder
+utesluter, de nedprioriterar inte.
+
+**Åldersgränser** (`server/snoplan.mjs`): 16 år för arbetspass, 18 för
+nattpass. Samma regel gäller i automatplaneringen, som annars bokar in folk
+utan att fråga. En snökanon klockan tre på natten är inget barn ska bli
+tillfrågat om.
+
 ## Personuppgifter i incidenter
 
 Olyckor och tillbud ligger i en egen modul, och personuppgifterna i egna

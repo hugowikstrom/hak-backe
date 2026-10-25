@@ -111,6 +111,15 @@ export const datum = (v, namn = 'datum') => {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) throw fel(400, `${namn} ska vara YYYY-MM-DD`);
   return s;
 };
+/** En tidpunkt: YYYY-MM-DD HH:MM. ISO med T tas emot och skrivs om. */
+export const tidpunkt = (v, namn = 'tidpunkt') => {
+  const s = txt(v);
+  if (!s) return s;
+  const m = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}):(\d{2})(?::\d{2})?$/.exec(s);
+  if (!m || +m[2] > 23 || +m[3] > 59) throw fel(400, `${namn} ska vara YYYY-MM-DD HH:MM`);
+  return `${m[1]} ${m[2]}:${m[3]}`;
+};
+
 export const klocka = (v, namn = 'tid') => {
   const s = txt(v);
   if (!s) return s;

@@ -316,3 +316,17 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .kvittens { margin: 14px 0; padding: 12px; border: 1px solid var(--ram); border-radius: var(--radie); }
 .ejtillamplig { display: block; width: 100%; margin-top: 10px; padding: 10px; text-align: center; }
 .punktrad .bricka.liten { font-size: 0.7rem; margin-left: 6px; }
+
+/* ---------- Mitt pass ---------- */
+.fraga { padding: 12px 0; border-bottom: 1px solid var(--ram); }
+.fraga:last-child { border-bottom: 0; }
+.fraga .svarsknappar { margin-top: 10px; }
+.passrad { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--ram); }
+.passrad:last-child { border-bottom: 0; }
+.passrad .markor { width: 6px; border-radius: 3px; flex: none; align-self: stretch; }
+.passrad .txt { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.passrad .person { display: flex; align-items: center; justify-content: space-between; padding-top: 4px; }
+.passrad .ring {
+  padding: 4px 12px; border: 1px solid var(--klubb); border-radius: 999px;
+  color: var(--klubb); font-size: 0.85rem; text-decoration: none;
+}

@@ -135,6 +135,11 @@ function migrera(db) {
     ['checklistkorning', 'kvittens_av_id', 'INTEGER'],
     ['checklistkorning', 'kvittens_tid', 'TEXT'],
     ['checklistkorning', 'kvittens_anteckning', 'TEXT'],
+    // Snöfönstret som passet kom ur, så att planeringen går att följa bakåt.
+    ['pass', 'snofonster_id', 'INTEGER'],
+    // Förhandsanmälan: när gästen fyllt i sina uppgifter före besöket.
+    ['hyresavtal', 'anmald', 'TEXT'],
+    ['hyresavtal', 'besok_datum', 'TEXT'],
   ]) {
     const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
     if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);

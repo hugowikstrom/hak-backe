@@ -81,12 +81,15 @@ iForeningen(() => transaktion(() => {
     ['fis', 'Tränare FIS', 'tranare', 'fis@example.com', 0, []],
   ];
   const mid = {};
-  for (const [anv, namn, roll, epost, kvot, komp] of medlemmar)
+  for (const [i, [anv, namn, roll, epost, kvot, komp]] of medlemmar.entries())
     mid[anv] = spara('medlem', {
       anvandarnamn: anv, namn, roll, epost,
       losenordshash: hasha('hak'),
       kvot_timmar: kvot,
       kompetens: JSON.stringify(komp),
+      // Påhittade nummer i 070-serien, så att "ring den som har bandet"
+      // går att visa. Byts mot riktiga när matrikeln fylls i.
+      telefon: `070-${String(1000000 + i * 1111).slice(0, 3)} ${String(10 + i).slice(0, 2)} ${String(40 + i).slice(0, 2)}`,
     });
 
   // ---------- Områden ----------
@@ -584,6 +587,145 @@ iForeningen(() => transaktion(() => {
     kalla: 'mobil',
   });
 
+  // ---------- Underhåll: serviceplaner, årshjul och reservdelar ----------
+  const plan = (namn, utrustning, data) =>
+    spara('serviceplan', {
+      utrustning_id: utr[utrustning],
+      komponent_id: data.komponent ? komp[data.komponent] : null,
+      namn,
+      instruktion: data.instruktion || null,
+      intervalltyp: data.typ,
+      intervall: data.intervall ?? null,
+      manad: data.manad ?? null,
+      kompetens: data.kompetens || null,
+      kritisk: data.kritisk ? 1 : 0,
+      status: 'godkand',
+      godkand_av_id: mid.jonas,
+      godkand_tid: `${plusDagar(IDAG, -200)} 10:00`,
+      senast_utford: data.senast ? plusDagar(IDAG, -data.senast) : null,
+      senast_timmar: data.senast_timmar ?? null,
+      av_id: mid.jonas,
+    });
+
+  plan('Byt vattenfilter', 'Fläkt 1', {
+    typ: 'drifttimmar', intervall: 500, senast_timmar: 1200, komponent: 'Fläkt 1/Vattenfilter',
+    instruktion: 'Stäng vattnet, lossa filterhuset, byt insats, lufta.',
+  });
+  plan('Byt vattenfilter', 'Fläkt 2', {
+    typ: 'drifttimmar', intervall: 500, senast_timmar: 900, komponent: 'Fläkt 2/Vattenfilter',
+  });
+  plan('Smörj oscillationslagret', 'Fläkt 1', { typ: 'manader', intervall: 3, senast: 100 });
+  plan('Smörj oscillationslagret', 'Fläkt 2', { typ: 'manader', intervall: 3, senast: 20 });
+  plan('Årlig liftbesiktning', 'Stora liften', {
+    typ: 'sasong', manad: 11, kritisk: 1, kompetens: 'behörig lifttekniker', senast: 350,
+    instruktion: 'Besiktning enligt tillverkarens anvisning. Protokollet laddas upp som dokument.',
+  });
+  plan('Kontroll av lina och block', 'Stora liften', {
+    typ: 'manader', intervall: 1, kritisk: 1, senast: 45, komponent: 'Stora liften/Lina och block',
+  });
+  plan('Service av kompressor', 'Kompressor 1', {
+    typ: 'drifttimmar', intervall: 1000, senast_timmar: 3100, kompetens: 'kyltekniker',
+  });
+  plan('Rengöring av filterhus', 'Pumpstation 1', {
+    typ: 'manader', intervall: 6, senast: 150, komponent: 'Pumpstation 1/Filterhus',
+  });
+  plan('Genomgång efter säsong', 'Pistmaskin', { typ: 'sasong', manad: 4, senast: 190 });
+  plan('Kontroll efter varje driftstopp', 'Transportbandet', {
+    typ: 'handelse', instruktion: 'Gås igenom innan bandet startas om.',
+  });
+
+  // Drifttimmar, så att de timbaserade planerna har något att räkna på.
+  for (const [namn, timmar] of [['Fläkt 1', 1640], ['Fläkt 2', 1180], ['Kompressor 1', 3820], ['Stora liften', 7400]])
+    kor('UPDATE utrustning SET drifttimmar=? WHERE id=?', timmar, utr[namn]);
+
+  // Ett par utförda arbeten, så kostnadsuppföljningen inte är tom.
+  for (const [namn, utrustning, dagarSedan, kostnad, timmar] of [
+    ['Smörj oscillationslagret', 'Fläkt 2', 20, 0, 1],
+    ['Rengöring av filterhus', 'Pumpstation 1', 150, 180000, 4],
+    ['Årlig liftbesiktning', 'Stora liften', 350, 1450000, 8],
+  ]) {
+    const p = en('SELECT id FROM serviceplan WHERE namn=? AND utrustning_id=?', namn, utr[utrustning]);
+    const a = spara('serviceatgard', {
+      serviceplan_id: p?.id ?? null,
+      utrustning_id: utr[utrustning],
+      namn,
+      planerad: plusDagar(IDAG, -dagarSedan),
+      utford: plusDagar(IDAG, -dagarSedan),
+      status: 'utford',
+      av_id: mid.jonas,
+      utford_av_id: mid.per,
+      arbetstimmar: timmar,
+      kostnad_ore: kostnad,
+    });
+    void a;
+  }
+
+  spara('hogbelastning', {
+    namn: 'Jul och nyår', fran: `${IDAG.slice(0, 4)}-12-22`, till: `${Number(IDAG.slice(0, 4)) + 1}-01-07`,
+    anteckning: 'Backen går för fullt. Planerat underhåll läggs före eller efter.',
+  });
+  spara('hogbelastning', {
+    namn: 'Sportlovet', fran: `${Number(IDAG.slice(0, 4)) + 1}-02-22`, till: `${Number(IDAG.slice(0, 4)) + 1}-03-01`,
+  });
+
+  const del = (namn, data) => {
+    const id = spara('reservdel', {
+      namn,
+      artikelnummer: data.artikelnummer || null,
+      leverantor_id: lev[data.leverantor] ?? null,
+      enhet: data.enhet || 'st',
+      pris_ore: data.pris ?? null,
+      pris_datum: data.pris ? plusDagar(IDAG, -60) : null,
+      lager: data.lager ?? 0,
+      minlager: data.minlager ?? 0,
+      placering: data.placering || null,
+    });
+    for (const k of data.passar || [])
+      spara('reservdelspassning', { reservdel_id: id, utrustning_id: utr[k[0]], komponent_id: k[1] ? komp[`${k[0]}/${k[1]}`] : null });
+    return id;
+  };
+
+  const filter = del('Vattenfilter FK-200', {
+    artikelnummer: 'SF-90', leverantor: 'Snökraft AB', pris: 25000, lager: 3, minlager: 2,
+    placering: 'Hyllan i pumphuset',
+    passar: [['Fläkt 1', 'Vattenfilter'], ['Fläkt 2', 'Vattenfilter'], ['Fläkt 3', 'Vattenfilter']],
+  });
+  const backventil = del('Backventil HB-15', {
+    artikelnummer: 'HB-15', leverantor: 'Härnösands Rör', pris: 61500, lager: 1, minlager: 2,
+    placering: 'Pumphuset, lådan',
+    passar: [['Fläkt 2', 'Backventil']],
+  });
+  del('Brytpinne till lift', {
+    artikelnummer: 'LN-BP-6', leverantor: 'Liftservice Nord', pris: 8900, lager: 12, minlager: 6,
+    placering: 'Liftkuren', passar: [['Stora liften', 'Brytpinnar']],
+  });
+  del('Packning kopplingar 2 tum', {
+    artikelnummer: 'HK-40P', leverantor: 'Härnösands Rör', pris: 4500, lager: 20, minlager: 10,
+    enhet: 'st', placering: 'Verkstaden',
+  });
+
+  for (const [delId, antal, dagarSedan] of [[filter, 1, 150], [filter, 1, 20], [backventil, 1, 24], [backventil, 1, 96]])
+    spara('reservdelsuttag', {
+      reservdel_id: delId, antal, pris_ore: delId === filter ? 25000 : 61500,
+      tid: `${plusDagar(IDAG, -dagarSedan)} 10:00`, av_id: mid.per,
+    });
+
+  // ---------- Snöplanering: vad medlemmarna sagt om säsongen ----------
+  const sasongId = en('SELECT id FROM sasong WHERE aktiv=1')?.id;
+  if (sasongId) {
+    const svar = [
+      ['stefan', 'garna', 1, 1, null], ['per', 'garna', 1, 1, 3], ['annika', 'garna', 1, 1, null],
+      ['karin', 'kanske', 0, 1, 2], ['mikael', 'kanske', 1, 0, null], ['lotta', 'vid_brist', 0, 1, 1],
+      ['johan', 'kanske', 1, 1, null], ['elin', 'vid_brist', 0, 0, 1],
+    ];
+    for (const [namn, niva, natt, helg, tak] of svar)
+      if (mid[namn])
+        spara('tillganglighet', {
+          medlem_id: mid[namn], sasong_id: sasongId, niva, nattpass: natt, helger: helg, max_pass: tak,
+          kommentar: niva === 'vid_brist' ? 'Hör av er om det kniper' : null,
+        });
+  }
+
   // ---------- Kioskens sortiment ----------
   // Priser är klubbens egna och ska stämmas av mot kassan före säsongsstart.
   let artikelordning = 0;
@@ -972,7 +1114,8 @@ iForeningen(() => {
   for (const t of ['medlem', 'omrade', 'utrustning', 'checklistmall', 'checklistpunkt', 'position',
     'pass', 'bokning', 'matning', 'arende', 'insats', 'artikel', 'hyrespris',
     'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift',
-    'komponent', 'leverantor', 'driftpost', 'incident'])
+    'komponent', 'leverantor', 'driftpost', 'incident',
+    'serviceplan', 'serviceatgard', 'reservdel', 'reservdelsuttag', 'hogbelastning', 'tillganglighet'])
     console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
 });
 db.close();

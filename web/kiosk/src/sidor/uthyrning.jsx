@@ -10,7 +10,10 @@ export function Uthyrning({ ga }) {
   const [alder, sattAlder] = useState('vuxen');
   const [vagn, sattVagn] = useState({});
   const [steg, sattSteg] = useState('val');
-  const [form, sattForm] = useState({ mobil: '', namn: '' });
+  const [form, sattForm] = useState({ mobil: '', namn: '', besok_datum: '' });
+  // Storlekar som gästen fyller i hemma. De sparar tid i luckan – men
+  // utprovning och bindningsinställning görs alltid av personalen.
+  const [gaster, sattGaster] = useState([]);
   const [skickar, sattSkickar] = useState(false);
   const [klar, sattKlar] = useState(null);
 
@@ -40,6 +43,8 @@ export function Uthyrning({ ga }) {
     sattFel(null);
     try {
       const avtal = await api.skapa('/api/uthyrning/bokning', {
+        gaster: gaster.filter((g) => g.skostorlek || g.langd_cm || g.namn),
+        besok_datum: form.besok_datum || null,
         rader: rader.map((r) => ({ hyrespris_id: r.id, antal: r.antal })),
         mobil: form.mobil || null,
         namn: form.namn || null,
@@ -117,6 +122,106 @@ export function Uthyrning({ ga }) {
           <Falt etikett="Namn">
             <input value={form.namn} onChange={(e) => sattForm({ ...form, namn: e.target.value })} />
           </Falt>
+          <Falt etikett="När kommer ni? (frivilligt)">
+            <input
+              type="date"
+              value={form.besok_datum}
+              onChange={(e) => sattForm({ ...form, besok_datum: e.target.value })}
+            />
+          </Falt>
+
+          <section className="anmalan">
+            <h3>Storlekar i förväg</h3>
+            <p className="liten svag">
+              Fyll i så plockar vi fram utrustningen innan ni kommer. Pjäxor provas ut och
+              bindningarna ställs in av personalen i luckan – det gör vi aldrig i förväg.
+            </p>
+            {gaster.map((g, i) => (
+              <div key={i} className="gastrad">
+                <Falt etikett="Namn">
+                  <input
+                    value={g.namn || ''}
+                    onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, namn: e.target.value } : x)))}
+                  />
+                </Falt>
+                <div className="smalt">
+                  <Falt etikett="Ålder">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={g.alder || ''}
+                      onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, alder: e.target.value } : x)))}
+                    />
+                  </Falt>
+                  <Falt etikett="Längd (cm)">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={g.langd_cm || ''}
+                      onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, langd_cm: e.target.value } : x)))}
+                    />
+                  </Falt>
+                  <Falt etikett="Vikt (kg)">
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={g.vikt_kg || ''}
+                      onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, vikt_kg: e.target.value } : x)))}
+                    />
+                  </Falt>
+                  <Falt etikett="Skostorlek">
+                    <input
+                      value={g.skostorlek || ''}
+                      onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, skostorlek: e.target.value } : x)))}
+                    />
+                  </Falt>
+                </div>
+                <div className="smalt">
+                  <Falt etikett="Vana">
+                    <select
+                      value={g.niva || ''}
+                      onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, niva: e.target.value } : x)))}
+                    >
+                      <option value="">–</option>
+                      <option value="nyborjare">Nybörjare</option>
+                      <option value="van">Van</option>
+                      <option value="erfaren">Erfaren</option>
+                    </select>
+                  </Falt>
+                  <Falt etikett="Utrustning">
+                    <select
+                      value={g.onskemal || ''}
+                      onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, onskemal: e.target.value } : x)))}
+                    >
+                      <option value="">–</option>
+                      <option value="slalom">Slalom</option>
+                      <option value="carving">Carving</option>
+                      <option value="twintip">Twintip</option>
+                      <option value="snowboard">Snowboard</option>
+                      <option value="pulka">Pulka</option>
+                    </select>
+                  </Falt>
+                  <label className="kryss">
+                    <input
+                      type="checkbox"
+                      checked={!!g.hjalm}
+                      onChange={(e) => sattGaster(gaster.map((x, j) => (i === j ? { ...x, hjalm: e.target.checked } : x)))}
+                    />
+                    Hjälm
+                  </label>
+                </div>
+                <button className="lank" onClick={() => sattGaster(gaster.filter((_, j) => j !== i))}>
+                  Ta bort
+                </button>
+              </div>
+            ))}
+            {gaster.length < 12 && (
+              <button className="lank" onClick={() => sattGaster([...gaster, {}])}>
+                + Lägg till {gaster.length ? 'en till' : 'storlekar'}
+              </button>
+            )}
+          </section>
+
           {fel && <div className="meddelande fel">{fel}</div>}
           <button className="stor" disabled={skickar || !rader.length} onClick={boka}>
             {skickar ? 'Bokar …' : `Boka för ${kronor(summa)}`}

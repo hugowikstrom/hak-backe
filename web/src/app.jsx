@@ -20,6 +20,8 @@ import { Traning } from './sidor/traning.jsx';
 import { Ideer } from './sidor/ideer.jsx';
 import { Journal } from './sidor/journal.jsx';
 import { Incidenter } from './sidor/incidenter.jsx';
+import { Underhall } from './sidor/underhall.jsx';
+import { Snoplan } from './sidor/snoplan.jsx';
 
 // Menyn visar bara det inloggningen faktiskt får använda, och bara det som
 // hör till arbetsytan man står i.
@@ -32,6 +34,8 @@ const SIDOR = [
   { nyckel: 'journal', stig: '/journal', text: 'Driftjournal', komp: Journal },
   { nyckel: 'incidenter', stig: '/incidenter', text: 'Incidenter', komp: Incidenter, behorighet: 'incident' },
   { nyckel: 'bemanning', stig: '/bemanning', text: 'Bemanning', komp: Bemanning },
+  { nyckel: 'snoplan', stig: '/snoplan', text: 'Snöplanering', komp: Snoplan, behorighet: 'bemanning' },
+  { nyckel: 'underhall', stig: '/underhall', text: 'Underhåll', komp: Underhall, behorighet: 'anlaggning' },
   { nyckel: 'kassa', stig: '/kassa', text: 'Kassa', komp: Kassa, behorighet: 'kassa' },
   { nyckel: 'traning', stig: '/traning', text: 'Träning', komp: Traning, behorighet: 'traning' },
   { nyckel: 'forening', stig: '/forening', text: 'Föreningen', komp: Forening },

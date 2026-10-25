@@ -10,6 +10,7 @@ import { Historik } from './sidor/historik.jsx';
 import { Mallar } from './sidor/mallar.jsx';
 import { Konto } from './sidor/konto.jsx';
 import { Handelse } from './sidor/handelse.jsx';
+import { Passet } from './sidor/passet.jsx';
 
 const RANG = { medlem: 1, backansvarig: 2, anlaggningsansvarig: 3, admin: 4 };
 export const minstRoll = (m, roll) => (RANG[m?.roll] ?? 0) >= RANG[roll];
@@ -55,12 +56,13 @@ export function App() {
 
   const Sida = {
     hem: Hem, rond: Rond, historik: Historik, mallar: Mallar, konto: Konto,
-    handelse: Handelse,
+    handelse: Handelse, passet: Passet,
   }[vy.namn] || Hem;
 
   const flikar = [
     { namn: 'hem', text: 'Ronder', fig: '✓' },
     { namn: 'handelse', text: 'Rapportera', fig: '◉' },
+    { namn: 'passet', text: 'Passet', fig: '☷' },
     { namn: 'historik', text: 'Historik', fig: '≡' },
     ...(far ? [{ namn: 'mallar', text: 'Checklistor', fig: '✎' }] : []),
     { namn: 'konto', text: 'Konto', fig: '☻' },

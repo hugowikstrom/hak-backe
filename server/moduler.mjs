@@ -26,6 +26,8 @@ import { rutter as traning } from './api/traning.mjs';
 import { rutter as ide } from './api/ide.mjs';
 import { rutter as drift } from './api/drift.mjs';
 import { rutter as incident } from './api/incident.mjs';
+import { rutter as underhall } from './api/underhall.mjs';
+import { rutter as snoplan } from './api/snoplan.mjs';
 
 export const MODULER = [
   {
@@ -76,6 +78,16 @@ export const MODULER = [
     sidor: [{ nyckel: 'journal', text: 'Driftjournal', stig: '/journal' }],
   },
   {
+    // Förebyggande underhåll: årshjul, serviceplaner ur manualerna och
+    // reservdelar. Hänger på driften, för en utförd service journalförs.
+    nyckel: 'underhall',
+    namn: 'Underhåll',
+    beskrivning: 'Serviceplaner, årshjul, manualer, reservdelar och kostnader',
+    beroenden: ['anlaggning', 'drift'],
+    rutter: underhall,
+    sidor: [{ nyckel: 'underhall', text: 'Underhåll', stig: '/underhall', behorighet: 'anlaggning' }],
+  },
+  {
     // Olyckor och tillbud ligger i egen modul: en klubb kan behöva journalen
     // utan att hantera personuppgifter om skadade gäster.
     nyckel: 'incidenter',
@@ -107,6 +119,16 @@ export const MODULER = [
     beroenden: ['anlaggning'],
     rutter: bemanning,
     sidor: [{ nyckel: 'bemanning', text: 'Bemanning', stig: '/bemanning' }],
+  },
+  {
+    // Prognosfönster blir bemanningsbehov. Egen modul, för en klubb kan ha
+    // bemanning utan att tillverka snö.
+    nyckel: 'snoplan',
+    namn: 'Snöplanering',
+    beskrivning: 'Produktionsfönster, säsongstillgänglighet och förfrågningar',
+    beroenden: ['bemanning', 'snolaggning'],
+    rutter: snoplan,
+    sidor: [{ nyckel: 'snoplan', text: 'Snöplanering', stig: '/snoplan', behorighet: 'bemanning' }],
   },
   {
     nyckel: 'ekonomi',

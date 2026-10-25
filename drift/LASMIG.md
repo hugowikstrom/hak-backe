@@ -31,6 +31,18 @@ curl -s localhost:8120/api/drift/journal -b kaka | jq .ai   # {"pa":true,"modell
 Byts modellen till en hos en leverantör (`HAK_AI_MODELL`) gäller det inte
 incidentrapporter – de tvingas tillbaka till den lokala modellen i koden.
 
+## Manualtolkning
+
+PDF-texten dras ut med `pdftotext` (poppler-utils), som måste finnas på
+maskinen:
+
+```bash
+pdftotext -v   # 26.01.0
+```
+
+Saknas den sparas dokumentet ändå – bara textutdraget och tolkningen uteblir,
+och servicepunkterna får läggas in för hand.
+
 ## Flera föreningar
 
 I dag kör maskinen en förening: registret `data/foreningar.json` saknas, och

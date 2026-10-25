@@ -1,8 +1,8 @@
 # HAK Backe
 
-Ett system för hela backen: snöläggning, checklistor, driftjournal, ärenden,
-incidenter, bemanning, kiosk, uthyrning, ekonomi, träning och
-medlemsmatrikel. Kör som en enda
+Ett system för hela backen: snöläggning och snöplanering, checklistor,
+driftjournal, förebyggande underhåll, ärenden, incidenter, bemanning, kiosk,
+uthyrning, ekonomi, träning och medlemsmatrikel. Kör som en enda
 Node-process med SQLite, byggda klienter i `web/dist`.
 
 Plattformen bär **flera föreningar**. Varje förening har en egen databasfil,

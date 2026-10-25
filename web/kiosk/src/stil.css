@@ -116,3 +116,10 @@ button.lank { background: none; border: 0; color: var(--klubb); font: inherit; f
 .meddelande.info { background: var(--bak-2); color: var(--text-svag); }
 .tomt { text-align: center; color: var(--text-svagare); padding: 40px 16px; }
 .fot { text-align: center; color: var(--text-svagare); font-size: 12px; padding: 20px; }
+
+/* Storlekar i förväg: frivilligt, och tydligt skilt från bokningen. */
+.anmalan { margin: 18px 0; padding-top: 14px; border-top: 1px solid var(--ram); }
+.anmalan h3 { margin: 0 0 4px; font-size: 1rem; }
+.gastrad { margin: 12px 0; padding: 12px; border: 1px solid var(--ram); border-radius: var(--radie); }
+.gastrad .smalt { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.gastrad .kryss { display: flex; align-items: center; gap: 8px; align-self: end; padding-bottom: 8px; }
