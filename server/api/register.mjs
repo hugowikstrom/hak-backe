@@ -120,6 +120,11 @@ export const rutter = [
       placering: txt(kropp.placering, 120),
       status: ettAv(kropp.status, ['drift', 'service', 'ur_drift'], 'Status') || 'drift',
       munstycken: heltal(kropp.munstycken),
+      tillverkare: txt(kropp.tillverkare, 80),
+      modell: txt(kropp.modell, 80),
+      serienummer: txt(kropp.serienummer, 80),
+      i_bruk_sedan: datum(kropp.i_bruk_sedan, 'I bruk sedan'),
+      drifttimmar: num(kropp.drifttimmar),
       anteckning: txt(kropp.anteckning),
       ordning: heltal(kropp.ordning, 0),
     });
@@ -139,6 +144,16 @@ export const rutter = [
       omrade_id: fullRatt && kropp.omrade_id !== undefined ? heltal(kropp.omrade_id) : undefined,
       placering: fullRatt && kropp.placering !== undefined ? txt(kropp.placering, 120) : undefined,
       munstycken: fullRatt && kropp.munstycken !== undefined ? heltal(kropp.munstycken) : undefined,
+      // Tekniska uppgifter: de styr vilka reservdelar och manualer som
+      // hör till objektet, och vilken serviceplan som gäller.
+      tillverkare: fullRatt && kropp.tillverkare !== undefined ? txt(kropp.tillverkare, 80) : undefined,
+      modell: fullRatt && kropp.modell !== undefined ? txt(kropp.modell, 80) : undefined,
+      serienummer: fullRatt && kropp.serienummer !== undefined ? txt(kropp.serienummer, 80) : undefined,
+      i_bruk_sedan: fullRatt && kropp.i_bruk_sedan !== undefined ? datum(kropp.i_bruk_sedan, 'I bruk sedan') : undefined,
+      // Drifttimmar får alla rapportera – det är en avläsning, inte stamdata.
+      drifttimmar: kropp.drifttimmar === undefined ? undefined : num(kropp.drifttimmar),
+      ansvarig_id: fullRatt && kropp.ansvarig_id !== undefined ? heltal(kropp.ansvarig_id) : undefined,
+      leverantor_id: fullRatt && kropp.leverantor_id !== undefined ? heltal(kropp.leverantor_id) : undefined,
       ordning: fullRatt && kropp.ordning !== undefined ? heltal(kropp.ordning, 0) : undefined,
       aktiv: fullRatt ? bool(kropp.aktiv) : undefined,
     });

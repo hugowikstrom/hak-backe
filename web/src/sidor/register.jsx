@@ -244,6 +244,19 @@ function Utrustning() {
             },
             { falt: 'placering', rubrik: 'Placering', redigera: { spara: (u, v) => spara(u, { placering: v }) } },
             {
+              falt: 'tillverkare', rubrik: 'Tillverkare',
+              redigera: { spara: (u, v) => spara(u, { tillverkare: v }) },
+            },
+            { falt: 'modell', rubrik: 'Modell', redigera: { spara: (u, v) => spara(u, { modell: v }) } },
+            {
+              falt: 'serienummer', rubrik: 'Serienr',
+              redigera: { spara: (u, v) => spara(u, { serienummer: v }) },
+            },
+            {
+              falt: 'drifttimmar', rubrik: 'Drifttim', sifra: true,
+              redigera: { typ: 'number', spara: (u, v) => spara(u, { drifttimmar: v }) },
+            },
+            {
               falt: 'munstycken', rubrik: 'Munstycken', sifra: true,
               redigera: { typ: 'number', spara: (u, v) => spara(u, { munstycken: v === '' ? null : v }) },
             },

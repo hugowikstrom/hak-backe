@@ -403,3 +403,23 @@ test('gästen kan lämna storlekar i förväg – men utprovningen står kvar', 
   const klar = await ok('POST', `/api/uthyrning/gaster/${gastId}/framplockat`, {});
   assert.equal(klar.gast.framplockat, 1);
 });
+
+test('tekniska uppgifter går att redigera i registret', async () => {
+  await loggaIn('jonas');
+  const ny = await ok('POST', '/api/utrustning', {
+    namn: 'Lenko 11', typ: 'flakt', omrade_id: 1, tillverkare: 'Lenko', modell: 'LT10',
+    serienummer: 'LK-2026-11', drifttimmar: 0,
+  });
+  assert.equal(ny.tillverkare, 'Lenko');
+  assert.equal(ny.modell, 'LT10');
+
+  const andrad = await ok('PUT', `/api/utrustning/${ny.id}`, { serienummer: 'LK-2026-11B', drifttimmar: 42 });
+  assert.equal(andrad.serienummer, 'LK-2026-11B');
+  assert.equal(andrad.drifttimmar, 42);
+
+  // En medlem får rapportera drifttimmar men inte ändra stamdata.
+  await loggaIn('ida');
+  const somMedlem = await ok('PUT', `/api/utrustning/${ny.id}`, { drifttimmar: 50, tillverkare: 'Fel' });
+  assert.equal(somMedlem.drifttimmar, 50, 'avläsning är ingen stamdataändring');
+  assert.equal(somMedlem.tillverkare, 'Lenko', 'tillverkaren ska vara orörd');
+});

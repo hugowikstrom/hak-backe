@@ -97,7 +97,8 @@ iForeningen(() => transaktion(() => {
   const omr = {};
   for (const [i, [namn, slag]] of [
     ['Stora backen', 'backe'], ['Lilla backen', 'backe'], ['Bandet', 'lift'],
-    ['Stora liften', 'lift'], ['Fiket', 'byggnad'], ['Skiduthyrningen', 'byggnad'],
+    ['Stora liften', 'lift'], ['Teknikliften', 'lift'], ['Lilla liften', 'lift'],
+    ['Fiket', 'byggnad'], ['Skiduthyrningen', 'byggnad'],
     ['Pumphuset', 'byggnad'],
   ].entries())
     omr[namn] = spara('omrade', { namn, slag, ordning: i });
@@ -116,9 +117,34 @@ iForeningen(() => transaktion(() => {
   for (let i = 9; i <= 12; i++)
     laggTill(`Lans ${i}`, 'lans', 'Lilla backen', `Lilla backen, position ${i - 8}`, { munstycken: 8 });
   laggTill('Fläkt 3', 'flakt', 'Lilla backen', 'Lilla backen, vid barnområdet', { munstycken: 18 });
+  // Klubbens Lenkokanoner. Nummer 1–6 står i stora backen, 7–10 i lilla.
+  for (let i = 1; i <= 10; i++)
+    laggTill(
+      `Lenko ${i}`,
+      'flakt',
+      i <= 6 ? 'Stora backen' : 'Lilla backen',
+      i <= 6
+        ? `Stora backen, position ${i} (${i * 110} m från toppen)`
+        : `Lilla backen, position ${i - 6}`,
+      { munstycken: 21, tillverkare: 'Lenko' }
+    );
+
+  // Lansarna av olika fabrikat. Tillverkare och modell står på objektet, så
+  // att reservdelar och manualer kan knytas till rätt sort.
+  laggTill('V3-lansen', 'lans', 'Stora backen', 'Stora backen, övre delen', {
+    munstycken: 12, modell: 'V3',
+  });
+  laggTill('Nessy Land', 'lans', 'Stora backen', 'Stora backen, mitten', {
+    munstycken: 12, modell: 'Nessy Land',
+  });
+  laggTill('Innosnow Cobra', 'lans', 'Lilla backen', 'Lilla backen, vid barnområdet', {
+    munstycken: 10, tillverkare: 'Innosnow', modell: 'Cobra',
+  });
   laggTill('Pumpstation 1', 'pumpstation', 'Pumphuset', 'Pumphuset, huvudpump');
   laggTill('Kompressor 1', 'kompressor', 'Pumphuset', 'Pumphuset, tryckluft');
   laggTill('Stora liften', 'lift', 'Stora liften', 'Släplift, 420 m');
+  laggTill('Teknikliften', 'lift', 'Teknikliften', 'Släplift, teknikbacken');
+  laggTill('Lilla liften', 'lift', 'Lilla liften', 'Släplift, lilla backen');
   laggTill('Transportbandet', 'band', 'Bandet', 'Nedre delen av lilla backen');
   laggTill('Pistmaskin', 'pistmaskin', 'Stora backen', 'Garaget');
 
@@ -440,15 +466,24 @@ iForeningen(() => transaktion(() => {
     komponent(kanon, 'Nukleatorer', 'ovrigt', 'Snökraft AB');
     komponent(kanon, 'Elskåp och kabel', 'el', null);
   }
-  for (const lans of ['Lans 4', 'Lans 7']) {
+  for (const lans of ['Lans 4', 'Lans 7', 'V3-lansen', 'Nessy Land', 'Innosnow Cobra']) {
     komponent(lans, 'Munstycksring', 'ovrigt', 'Snökraft AB');
     komponent(lans, 'Koppling mot stamledning', 'ovrigt', 'Härnösands Rör', 'HK-40');
     komponent(lans, 'Dräneringsventil', 'ventil', 'Härnösands Rör');
   }
-  komponent('Stora liften', 'Drivstation', 'motor', 'Liftservice Nord');
-  komponent('Stora liften', 'Nödstoppskrets', 'el', 'Liftservice Nord', 'LN-STOP-2');
-  komponent('Stora liften', 'Lina och block', 'ovrigt', 'Liftservice Nord');
-  komponent('Stora liften', 'Brytpinnar', 'ovrigt', 'Liftservice Nord', 'LN-BP-6');
+  for (const lift of ['Stora liften', 'Teknikliften', 'Lilla liften']) {
+    komponent(lift, 'Drivstation', 'motor', 'Liftservice Nord');
+    komponent(lift, 'Nödstoppskrets', 'el', 'Liftservice Nord', 'LN-STOP-2');
+    komponent(lift, 'Lina och block', 'ovrigt', 'Liftservice Nord');
+    komponent(lift, 'Brytpinnar', 'ovrigt', 'Liftservice Nord', 'LN-BP-6');
+  }
+  for (let i = 1; i <= 10; i++) {
+    komponent(`Lenko ${i}`, 'Huvudaggregat', 'motor', 'Snökraft AB');
+    komponent(`Lenko ${i}`, 'Vattenventil', 'ventil', 'Härnösands Rör', 'HV-22');
+    komponent(`Lenko ${i}`, 'Vattenfilter', 'filter', 'Snökraft AB', 'SF-90');
+    komponent(`Lenko ${i}`, 'Nukleatorer', 'ovrigt', 'Snökraft AB');
+    komponent(`Lenko ${i}`, 'Elskåp och kabel', 'el', null);
+  }
   komponent('Transportbandet', 'Nödstopp nedre', 'el', 'Liftservice Nord');
   komponent('Transportbandet', 'Bandmatta', 'ovrigt', 'Liftservice Nord');
   komponent('Pumpstation 1', 'Huvudpump', 'motor', 'Härnösands Rör');
@@ -617,13 +652,15 @@ iForeningen(() => transaktion(() => {
   });
   plan('Smörj oscillationslagret', 'Fläkt 1', { typ: 'manader', intervall: 3, senast: 100 });
   plan('Smörj oscillationslagret', 'Fläkt 2', { typ: 'manader', intervall: 3, senast: 20 });
-  plan('Årlig liftbesiktning', 'Stora liften', {
-    typ: 'sasong', manad: 11, kritisk: 1, kompetens: 'behörig lifttekniker', senast: 350,
-    instruktion: 'Besiktning enligt tillverkarens anvisning. Protokollet laddas upp som dokument.',
-  });
-  plan('Kontroll av lina och block', 'Stora liften', {
-    typ: 'manader', intervall: 1, kritisk: 1, senast: 45, komponent: 'Stora liften/Lina och block',
-  });
+  for (const [lift, senast] of [['Stora liften', 350], ['Teknikliften', 320], ['Lilla liften', 300]]) {
+    plan('Årlig liftbesiktning', lift, {
+      typ: 'sasong', manad: 11, kritisk: 1, kompetens: 'behörig lifttekniker', senast,
+      instruktion: 'Besiktning enligt tillverkarens anvisning. Protokollet laddas upp som dokument.',
+    });
+    plan('Kontroll av lina och block', lift, {
+      typ: 'manader', intervall: 1, kritisk: 1, senast: 45, komponent: `${lift}/Lina och block`,
+    });
+  }
   plan('Service av kompressor', 'Kompressor 1', {
     typ: 'drifttimmar', intervall: 1000, senast_timmar: 3100, kompetens: 'kyltekniker',
   });
@@ -636,7 +673,10 @@ iForeningen(() => transaktion(() => {
   });
 
   // Drifttimmar, så att de timbaserade planerna har något att räkna på.
-  for (const [namn, timmar] of [['Fläkt 1', 1640], ['Fläkt 2', 1180], ['Kompressor 1', 3820], ['Stora liften', 7400]])
+  for (const [namn, timmar] of [
+    ['Fläkt 1', 1640], ['Fläkt 2', 1180], ['Kompressor 1', 3820],
+    ['Stora liften', 7400], ['Teknikliften', 4120], ['Lilla liften', 2980],
+  ])
     kor('UPDATE utrustning SET drifttimmar=? WHERE id=?', timmar, utr[namn]);
 
   // Ett par utförda arbeten, så kostnadsuppföljningen inte är tom.
@@ -689,7 +729,10 @@ iForeningen(() => transaktion(() => {
   const filter = del('Vattenfilter FK-200', {
     artikelnummer: 'SF-90', leverantor: 'Snökraft AB', pris: 25000, lager: 3, minlager: 2,
     placering: 'Hyllan i pumphuset',
-    passar: [['Fläkt 1', 'Vattenfilter'], ['Fläkt 2', 'Vattenfilter'], ['Fläkt 3', 'Vattenfilter']],
+    passar: [
+      ['Fläkt 1', 'Vattenfilter'], ['Fläkt 2', 'Vattenfilter'], ['Fläkt 3', 'Vattenfilter'],
+      ...Array.from({ length: 10 }, (_, i) => [`Lenko ${i + 1}`, 'Vattenfilter']),
+    ],
   });
   const backventil = del('Backventil HB-15', {
     artikelnummer: 'HB-15', leverantor: 'Härnösands Rör', pris: 61500, lager: 1, minlager: 2,
@@ -698,7 +741,8 @@ iForeningen(() => transaktion(() => {
   });
   del('Brytpinne till lift', {
     artikelnummer: 'LN-BP-6', leverantor: 'Liftservice Nord', pris: 8900, lager: 12, minlager: 6,
-    placering: 'Liftkuren', passar: [['Stora liften', 'Brytpinnar']],
+    placering: 'Liftkuren',
+    passar: [['Stora liften', 'Brytpinnar'], ['Teknikliften', 'Brytpinnar'], ['Lilla liften', 'Brytpinnar']],
   });
   del('Packning kopplingar 2 tum', {
     artikelnummer: 'HK-40P', leverantor: 'Härnösands Rör', pris: 4500, lager: 20, minlager: 10,
