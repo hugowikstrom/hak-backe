@@ -423,3 +423,125 @@ test('tekniska uppgifter går att redigera i registret', async () => {
   assert.equal(somMedlem.drifttimmar, 50, 'avläsning är ingen stamdataändring');
   assert.equal(somMedlem.tillverkare, 'Lenko', 'tillverkaren ska vara orörd');
 });
+
+/**
+ * Uppladdningen med tolkning påslagen. Modellen stubbas: testet ska pröva
+ * vad systemet gör med svaret, inte hur bra modellen råkar vara i dag.
+ */
+test('ett uppladdat dokument säger själv vad det är', async () => {
+  await loggaIn('jonas');
+  const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));
+  const riktig = globalThis.fetch;
+  process.env.HAK_LLM_NYCKEL = 'test';
+
+  // Första anropet klassificerar dokumentet, andra läser servicepunkterna.
+  let anrop = 0;
+  const svarMed = (data) =>
+    new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify(data) } }] }), {
+      headers: { 'content-type': 'application/json' },
+    });
+  globalThis.fetch = async (url, val) => {
+    if (!String(url).includes('/chat/completions')) return riktig(url, val);
+    anrop += 1;
+    return anrop === 1
+      ? svarMed({
+          slag: 'manual',
+          titel: 'FK-200 servicemanual',
+          tillverkare: 'Snökraft',
+          modell: 'FK-200',
+          utrustningstyp: 'flakt',
+          sammanfattning: 'Servicemanual för fläktkanonen FK-200.',
+          har_underhall: true,
+        })
+      : svarMed({
+          punkter: [
+            {
+              namn: 'Byt vattenfilter',
+              instruktion: 'var 500 driftstimmar',
+              intervalltyp: 'drifttimmar',
+              intervall: 500,
+              sida: 2,
+              citat: '4.1 Byt vattenfilter var 500 driftstimmar.',
+            },
+            {
+              namn: 'Kontrollera nukleatorernas dimstråle',
+              intervalltyp: null,
+              intervall: null,
+              osaker: true,
+              sida: 2,
+              citat: '4.3 Kontrollera nukleatorernas dimstrale regelbundet.',
+            },
+            // Utan källa: ska inte sparas, hur rimlig den än låter.
+            { namn: 'Smörj allt då och då', intervalltyp: 'manader', intervall: 3 },
+          ],
+        });
+  };
+
+  try {
+    // Maskinen finns i registret med samma modell.
+    await ok('PUT', '/api/utrustning/1', { tillverkare: 'Snökraft', modell: 'FK-200' });
+
+    // Inget namn skickas med – dokumentet får säga vad det heter.
+    const r = await ok('POST', '/api/underhall/dokument', {
+      fil: `data:application/pdf;base64,${pdf.toString('base64')}`,
+    });
+    assert.equal(r.dokument.namn, 'FK-200 servicemanual');
+    assert.equal(r.dokument.slag, 'manual');
+    assert.match(r.dokument.sammanfattning, /fläktkanonen/i);
+    assert.equal(r.foreslagen_utrustning.namn, 'Fläkt 2', 'kopplades till maskinen med samma modell');
+    assert.equal(r.dokument.utrustning_id, r.foreslagen_utrustning.id);
+
+    // Servicepunkterna lästes ut i samma steg.
+    assert.equal(r.punkter.length, 2, 'punkten utan källhänvisning sparas inte');
+    assert.ok(r.punkter.every((p) => p.status === 'forslag'), 'inget gäller förrän någon godkänt det');
+    assert.equal(r.punkter[0].kallsida, 's. 2');
+    assert.equal(r.punkter.find((p) => /nukleator/i.test(p.namn)).osaker, 1);
+
+    // Förslagen räknas inte i årshjulet.
+    const hjul = await ok('GET', '/api/underhall/arshjul');
+    const nya = r.punkter.map((p) => p.id);
+    assert.ok(!hjul.poster.some((p) => nya.includes(p.serviceplan_id)), 'ogodkända punkter ligger utanför');
+
+    // Samma dokument igen ska inte ge dubbletter av samma punkter.
+    anrop = 0;
+    const d2 = await ok('POST', `/api/underhall/dokument/${r.dokument.id}/tolka`, {});
+    assert.equal(d2.punkter.length, 0, 'punkterna fanns redan');
+  } finally {
+    globalThis.fetch = riktig;
+    delete process.env.HAK_LLM_NYCKEL;
+  }
+});
+
+test('utan tolkning fungerar uppladdningen ändå', async () => {
+  await loggaIn('jonas');
+  const pdf = readFileSync(new URL('./data/manual.pdf', import.meta.url));
+  // AI:n är avstängd: namnet faller tillbaka på filnamnet, och inget
+  // påstås om vad dokumentet är.
+  const r = await ok('POST', '/api/underhall/dokument', {
+    fil: `data:application/pdf;base64,${pdf.toString('base64')}`,
+  });
+  assert.equal(r.tolkning, null);
+  assert.match(r.tolkning_fel, /inte konfigurerad/i);
+  assert.ok(r.dokument.namn.length > 0, 'dokumentet får ett namn ändå');
+  assert.equal(r.dokument.slag, 'manual');
+  assert.deepEqual(r.punkter, []);
+  assert.equal(r.dokument.sidor, 2, 'texten läses oavsett om AI:n svarar');
+});
+
+test('otydlig koppling blir ingen koppling', async () => {
+  const { matchaDokument } = await import('../server/api/underhall.mjs');
+  const lista = [
+    { id: 1, namn: 'Lenko 1', typ: 'flakt', tillverkare: 'Lenko', modell: 'LT10' },
+    { id: 2, namn: 'Lenko 2', typ: 'flakt', tillverkare: 'Lenko', modell: 'LT10' },
+    { id: 3, namn: 'Fläkt 1', typ: 'flakt', tillverkare: 'Snökraft', modell: 'FK-200' },
+    { id: 4, namn: 'Stora liften', typ: 'lift', tillverkare: 'Liftservice Nord', modell: null },
+  ];
+  assert.equal(matchaDokument({ tillverkare: 'Snökraft', modell: 'FK-200' }, lista).id, 3);
+  // Tio Lenkor av samma modell: dokumentet gäller dem alla, inte en av dem.
+  const flera = matchaDokument({ tillverkare: 'Lenko', modell: 'LT10' }, lista);
+  assert.equal(flera.id, undefined, 'ingen enskild maskin pekas ut');
+  assert.deepEqual(flera.flera.map((u) => u.namn), ['Lenko 1', 'Lenko 2']);
+  assert.equal(matchaDokument({ tillverkare: 'Liftservice Nord' }, lista).id, 4);
+  assert.equal(matchaDokument({}, lista), null);
+  assert.equal(matchaDokument({ tillverkare: 'Okänd AB' }, lista), null);
+});

@@ -495,6 +495,8 @@ function Manualer({ uppdateraPlaner }) {
   const [arbetar, sattArbetar] = useState(null);
   const [fraga, sattFraga] = useState('');
   const [traffar, sattTraffar] = useState(null);
+  // Vad läsningen kom fram till, kvar på skärmen tills man läst klart.
+  const [resultat, sattResultat] = useState(null);
 
   if (d.laddar && !d.data) return <Vanta />;
 
@@ -589,11 +591,15 @@ function Manualer({ uppdateraPlaner }) {
               falt: 'namn',
               rubrik: 'Dokument',
               visa: (x) => (
-                <a href={`/api/underhall/dokument/${x.id}/fil`} target="_blank" rel="noreferrer">
-                  {x.namn}
-                </a>
+                <>
+                  <a href={`/api/underhall/dokument/${x.id}/fil`} target="_blank" rel="noreferrer">
+                    {x.namn}
+                  </a>
+                  {x.sammanfattning && <div className="liten svag">{x.sammanfattning}</div>}
+                </>
               ),
             },
+            { falt: 'slag', rubrik: 'Slag' },
             { falt: 'utrustning', rubrik: 'Utrustning', visa: (x) => x.utrustning || '–' },
             { falt: 'sidor', rubrik: 'Sidor', sifra: true, visa: (x) => x.sidor ?? '–' },
             { falt: 'version', rubrik: 'Version', sifra: true },
@@ -615,27 +621,121 @@ function Manualer({ uppdateraPlaner }) {
           ]}
         />
       </Kort>
-      {ny && (
+      {resultat && (
+        <Lada titel="Det här läste jag ut" stang={() => { sattResultat(null); sattNy(false); }} bred>
+          <Uppladdningsresultat resultat={resultat} />
+        </Lada>
+      )}
+
+      {ny && !resultat && (
         <Lada titel="Ladda upp dokument" stang={() => sattNy(false)} bred>
           <LaddaUpp
             dokument={d.data.dokument}
             klar={(resultat) => {
-              sattNy(false);
               d.uppdatera();
+              uppdateraPlaner();
+              sattResultat(resultat);
               const lasfel = resultat.filter((r) => r.las_fel);
-              const granska = resultat.flatMap((r) => r.granska_om || []);
-              if (lasfel.length)
-                notis(`${lasfel.length} filer sparades men texten kunde inte läsas`, 'fel');
-              else if (granska.length)
-                notis(`${granska.length} godkända servicepunkter bör granskas om`, 'info');
-              else
-                notis(
-                  resultat.length === 1 ? 'Dokumentet är uppladdat' : `${resultat.length} dokument uppladdade`,
-                  'ok'
-                );
+              if (lasfel.length) notis(`${lasfel.length} filer sparades men texten kunde inte läsas`, 'fel');
             }}
           />
         </Lada>
+      )}
+    </>
+  );
+}
+
+/**
+ * Vad läsningen kom fram till, dokument för dokument.
+ *
+ * Allt här är förslag som redan fyllts i – det går att rätta i listan
+ * efteråt, och servicepunkterna gäller ingenting förrän de godkänts.
+ */
+function Uppladdningsresultat({ resultat }) {
+  const punkter = resultat.flatMap((r) => r.punkter || []);
+  const granska = resultat.flatMap((r) => r.granska_om || []);
+  return (
+    <>
+      {resultat.map((r) => (
+        <Kort key={r.dokument.id} titel={r.dokument.namn} tat>
+          <dl className="uppgifter">
+            <dt>Tolkat som</dt>
+            <dd>
+              {r.tolkning ? (
+                <>
+                  {r.dokument.slag}
+                  {r.tolkning.tillverkare || r.tolkning.modell
+                    ? ` · ${[r.tolkning.tillverkare, r.tolkning.modell].filter(Boolean).join(' ')}`
+                    : ''}
+                  {r.dokument.sammanfattning && (
+                    <div className="liten svag">{r.dokument.sammanfattning}</div>
+                  )}
+                </>
+              ) : (
+                <span className="svag">
+                  ingen tolkning{r.tolkning_fel ? ` – ${r.tolkning_fel}` : ''}
+                </span>
+              )}
+            </dd>
+            <dt>Kopplat till</dt>
+            <dd>
+              {r.foreslagen_utrustning ? (
+                <>
+                  {r.foreslagen_utrustning.namn}{' '}
+                  <span className="liten svag">matchade på tillverkare och modell</span>
+                </>
+              ) : r.galler_flera ? (
+                <>
+                  <span className="svag">ingen särskild</span>
+                  <div className="liten svag">
+                    Gäller {r.galler_flera.length} maskiner av samma modell:{' '}
+                    {r.galler_flera.map((u) => u.namn).join(', ')}. Välj en i listan om dokumentet
+                    hör till just den.
+                  </div>
+                </>
+              ) : r.dokument.utrustning_id ? (
+                'vald utrustning'
+              ) : (
+                <span className="svag">ingen – välj i listan om det hör till en maskin</span>
+              )}
+            </dd>
+            <dt>Sidor</dt>
+            <dd>{r.dokument.sidor ?? '–'}</dd>
+            <dt>Servicepunkter</dt>
+            <dd>
+              {r.punkter?.length
+                ? `${r.punkter.length} föreslagna`
+                : r.punkt_fel
+                  ? `kunde inte läsas – ${r.punkt_fel}`
+                  : 'inga hittades'}
+            </dd>
+          </dl>
+        </Kort>
+      ))}
+
+      {!!punkter.length && (
+        <Kort
+          titel={`${punkter.length} servicepunkter att granska`}
+          undertext="De gäller ingenting förrän du godkänt dem. Finns under fliken Förslag."
+          tat
+        >
+          {punkter.map((p) => (
+            <div key={p.id} className="liten" style={{ padding: '3px 0' }}>
+              <strong>{p.namn}</strong>{' '}
+              <span className="svag">
+                {p.kallsida ? `${p.kallsida} · ` : ''}
+                {p.osaker ? 'intervallet otydligt i manualen' : intervalltext(p)}
+              </span>
+            </div>
+          ))}
+        </Kort>
+      )}
+
+      {!!granska.length && (
+        <div className="meddelande varning">
+          {granska.length} godkända servicepunkter kom ur den gamla versionen av manualen och bör
+          granskas om: {granska.map((g) => g.namn).join(', ')}.
+        </div>
       )}
     </>
   );
@@ -654,8 +754,9 @@ function LaddaUpp({ dokument, klar }) {
   const [gemensamUtrustning, sattGemensam] = useState('');
   const [lage, sattLage] = useState(null);
 
-  // Filnamnet duger som dokumentnamn: "FK-200 servicemanual.pdf" är redan
-  // det någon skulle skrivit in för hand.
+  // Namnet lämnas tomt: läsningen föreslår en titel ur dokumentets egen
+  // framsida, vilket brukar vara bättre än filnamnet. Server faller
+  // tillbaka på filnamnet om ingen titel går att få fram.
   const las = (e) => {
     const valda = [...(e.target.files || [])];
     Promise.all(
@@ -667,7 +768,7 @@ function LaddaUpp({ dokument, klar }) {
               klar_({
                 data: lasare.result,
                 filnamn: f.name,
-                namn: f.name.replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').trim(),
+                namn: '',
                 storlek: f.size,
                 utrustning_id: '',
                 ersatter_id: '',
@@ -715,7 +816,9 @@ function LaddaUpp({ dokument, klar }) {
       <p className="liten svag">
         {filer.length
           ? `${filer.length} ${filer.length === 1 ? 'fil' : 'filer'} att ladda upp. Välj fler om du vill – varje fil blir ett eget dokument.`
-          : 'Välj flera på en gång – varje fil blir ett eget dokument.'}
+          : 'Välj flera på en gång – varje fil blir ett eget dokument.'}{' '}
+        Går texten att läsa tar systemet reda på vad dokumentet är, vilken maskin det gäller och
+        vilka servicepunkter som står i det.
       </p>
 
       <div className="rad" style={{ alignItems: 'flex-end' }}>
@@ -743,7 +846,12 @@ function LaddaUpp({ dokument, klar }) {
       {filer.map((f, i) => (
         <div key={i} className="filrad">
           <div className="rad" style={{ alignItems: 'flex-end' }}>
-            <Text etikett="Namn" varde={f.namn} satt={andra(i, 'namn')} />
+            <Text
+              etikett="Namn"
+              varde={f.namn}
+              satt={andra(i, 'namn')}
+              placeholder="lämnas tomt – dokumentet får säga själv"
+            />
             <Val
               etikett="Utrustning"
               varde={f.utrustning_id || gemensamUtrustning}

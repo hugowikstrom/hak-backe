@@ -151,13 +151,30 @@ Tre saker är värda att veta:
   *förslag* vid sidan av datumet. Planer märkta `kritisk` flyttas aldrig, och
   krocken visas i stället för att tystas.
 
-En **manual** laddas upp som dokument, texten dras ut med `pdftotext` sida
-för sida, och `underhallsavsnitt()` plockar de sidor som handlar om service.
-Modellen föreslår servicepunkter – som sparas med status `forslag`, med
-sidnummer och citat. En punkt utan källa sparas inte alls. Förslag räknas
-inte i årshjulet och ett osäkert intervall måste få ett värde innan planen
-går att godkänna: systemet räknar i dagar och kan inte arbeta med
-"regelbundet".
+En **manual** laddas upp som dokument och läser sig själv i ett steg:
+
+1. `pdftotext` drar ut texten sida för sida.
+2. `klassificera()` läser de första sidorna och säger vad dokumentet är –
+   slag, titel, tillverkare, modell, utrustningstyp, en sammanfattning, och
+   om det alls står något om underhåll. Namnet behöver man därför inte
+   skriva; lämnas det tomt får dokumentet säga sitt eget.
+3. `matchaDokument()` kopplar det till rätt maskin, men **bara när det är
+   entydigt**: modell går före tillverkare, och tio kanoner av samma modell
+   ger ingen koppling alls – de räknas upp i stället, så att människan kan
+   välja.
+4. `lasServicepunkter()` plockar de sidor som handlar om service och
+   föreslår punkter, med sidnummer och citat.
+
+Servicepunkterna sparas med status `forslag`. **En punkt utan källa sparas
+inte alls** – går den inte att slå upp i manualen duger den inte som
+underlag. Förslag räknas inte i årshjulet, och ett osäkert intervall måste få
+ett värde innan planen godkänns: systemet räknar i dagar och kan inte arbeta
+med "regelbundet".
+
+Allt som kommer ur läsningen är ifyllt, inte bestämt. Tolkningen sparas rå i
+`dokument.tolkning` så att det går att se vad modellen sa även efter att
+någon rättat uppgifterna. Är AI:n avstängd fungerar uppladdningen ändå –
+texten läses, dokumentet får filnamnet, och punkterna läggs in för hand.
 
 En ny version av en manual ersätter den gamla men raderar den aldrig, och
 pekar ut vilka godkända punkter som bör granskas om.

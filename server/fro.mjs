@@ -112,9 +112,15 @@ iForeningen(() => transaktion(() => {
     }));
   // Maskinerna. Namnen säger vad de är – inte var de står; det är
   // positionernas sak.
-  laggTill('Fläkt 1', 'flakt', 'Stora backen', null, { munstycken: 24 });
-  laggTill('Fläkt 2', 'flakt', 'Stora backen', null, { munstycken: 24 });
-  laggTill('Fläkt 3', 'flakt', 'Lilla backen', null, { munstycken: 18 });
+  laggTill('Fläkt 1', 'flakt', 'Stora backen', null, {
+    munstycken: 24, tillverkare: 'Snökraft', modell: 'FK-200', serienummer: 'SK-4411',
+  });
+  laggTill('Fläkt 2', 'flakt', 'Stora backen', null, {
+    munstycken: 24, tillverkare: 'Snökraft', modell: 'FK-200', serienummer: 'SK-4412',
+  });
+  laggTill('Fläkt 3', 'flakt', 'Lilla backen', null, {
+    munstycken: 18, tillverkare: 'Snökraft', modell: 'FK-180', serienummer: 'SK-3307',
+  });
   // Klubbens tio Lenkokanoner, numrerade som maskiner.
   for (let i = 1; i <= 10; i++)
     laggTill(`Lenko ${i}`, 'flakt', null, null, {

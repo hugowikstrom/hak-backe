@@ -43,6 +43,39 @@ const SCHEMA_MANUAL = {
   },
 };
 
+const DOKUMENTSLAG = ['manual', 'ritning', 'protokoll', 'intyg', 'ovrigt'];
+
+const SCHEMA_DOKUMENT = {
+  type: 'object',
+  properties: {
+    slag: { type: ['string', 'null'], enum: [...DOKUMENTSLAG, null] },
+    titel: { type: ['string', 'null'], description: 'kort namn att visa i listan' },
+    tillverkare: { type: ['string', 'null'] },
+    modell: { type: ['string', 'null'] },
+    utrustningstyp: {
+      type: ['string', 'null'],
+      enum: ['lans', 'flakt', 'pumpstation', 'kompressor', 'lift', 'band', 'pistmaskin', 'ovrigt', null],
+    },
+    sammanfattning: { type: ['string', 'null'], description: 'en mening om vad dokumentet är' },
+    har_underhall: { type: ['boolean', 'null'], description: 'står det något om service eller underhåll?' },
+  },
+};
+
+const SYSTEM_DOKUMENT = `Du läser början av ett dokument som laddats upp i en skidanläggnings
+register och säger vad det är för något.
+
+Du beskriver dokumentet. Du bestämmer ingenting, och du gissar inte.
+
+- slag: manual om det beskriver handhavande eller service, ritning om det är
+  en teknisk ritning, protokoll om det är en besiktning eller ett utfört
+  arbete, intyg om det intygar något, annars ovrigt.
+- Tillverkare och modell fylls bara i när de faktiskt står i texten.
+- utrustningstyp: vilken sorts utrustning dokumentet handlar om, om det går
+  att avgöra. Annars null.
+- sammanfattning: en mening på svenska om vad det är.
+- har_underhall: true bara om texten innehåller service- eller
+  underhållsanvisningar.`;
+
 const SYSTEM_MANUAL = `Du läser utdrag ur en servicemanual för utrustning i en skidanläggning och
 föreslår servicepunkter som en driftansvarig sedan granskar och godkänner.
 
@@ -138,6 +171,90 @@ export function kommande({ manader = 12 } = {}) {
     samordna: samordna(med_krock),
     perioder,
   };
+}
+
+/**
+ * Vad dokumentet är, enligt en läsning av de första sidorna.
+ *
+ * Svaret är ett förslag som fyller i formuläret åt den som laddar upp – inte
+ * en sanning. Allt går att rätta i efterhand, och tolkningen sparas rå så
+ * att det syns vad modellen faktiskt sa.
+ */
+async function klassificera(text) {
+  if (!text) return { data: null, modell: null, fel: 'Ingen text att läsa' };
+  // Början räcker: titelsidan och innehållsförteckningen säger vad det är.
+  return tolka({
+    system: SYSTEM_DOKUMENT,
+    text: sidorUr(text).slice(0, 3).join('\n\n').slice(0, 6000),
+    schema: SCHEMA_DOKUMENT,
+    tecken: 600,
+  });
+}
+
+/**
+ * Hittar utrustningen dokumentet handlar om, men bara när det är entydigt.
+ * Modell går före tillverkare: "LT10" pekar ut en maskin, "Lenko" tio.
+ */
+export function matchaDokument({ tillverkare, modell, utrustningstyp }, lista) {
+  const lik = (a, b) => a && b && String(a).toLowerCase().trim() === String(b).toLowerCase().trim();
+  const steg = [
+    (u) => lik(u.modell, modell) && lik(u.tillverkare, tillverkare),
+    (u) => lik(u.modell, modell),
+    (u) => lik(u.tillverkare, tillverkare) && (!utrustningstyp || u.typ === utrustningstyp),
+  ];
+  for (const prov of steg) {
+    const traffar = lista.filter(prov);
+    if (traffar.length === 1) return traffar[0];
+    // Tio kanoner av samma modell är inte otydligt – manualen gäller dem
+    // alla. Men den kan bara hängas på en, så den hängs inte på någon.
+    if (traffar.length > 1) return { flera: traffar };
+  }
+  return null;
+}
+
+/**
+ * Läser ut servicepunkter ur ett dokument och sparar dem som förslag.
+ *
+ * Punkterna gäller ingenting förrän en människa godkänt dem, och en punkt
+ * som inte går att slå upp i dokumentet sparas inte alls.
+ */
+export async function lasServicepunkter(dokument, medlem) {
+  const avsnitt = underhallsavsnitt(sidorUr(dokument.text));
+  if (!avsnitt.length) return { punkter: [], avsnitt: [], fel: null, modell: null };
+
+  const r = await tolka({
+    system: SYSTEM_MANUAL,
+    text: avsnitt.map((a) => `--- Sida ${a.sida} ---\n${a.text}`).join('\n\n'),
+    schema: SCHEMA_MANUAL,
+    tecken: 3000,
+  });
+  if (!r.data) return { punkter: [], avsnitt: avsnitt.map((a) => a.sida), fel: r.fel, modell: r.modell };
+
+  const skapade = [];
+  for (const p of r.data.punkter || []) {
+    if (!p?.namn) continue;
+    // Utan källa är punkten inte spårbar, och då ska den inte sparas.
+    if (!p.sida && !p.citat) continue;
+    // Samma punkt två gånger ur samma dokument hjälper ingen.
+    if (en('SELECT id FROM serviceplan WHERE dokument_id=? AND namn=?', dokument.id, txt(p.namn, 160)))
+      continue;
+    const id = spara('serviceplan', {
+      utrustning_id: dokument.utrustning_id,
+      namn: txt(p.namn, 160),
+      instruktion: txt(p.instruktion),
+      intervalltyp: ettAv(p.intervalltyp, INTERVALLTYPER, 'Intervalltyp') || 'handelse',
+      intervall: typeof p.intervall === 'number' ? p.intervall : null,
+      kompetens: txt(p.kompetens, 120),
+      dokument_id: dokument.id,
+      kallsida: p.sida ? `s. ${p.sida}` : null,
+      kallcitat: txt(p.citat, 2000),
+      osaker: p.osaker || typeof p.intervall !== 'number' ? 1 : 0,
+      status: 'forslag',
+      av_id: medlem?.id ?? null,
+    });
+    skapade.push(hamtaPlan(id));
+  }
+  return { punkter: skapade, avsnitt: avsnitt.map((a) => a.sida), fel: null, modell: r.modell };
 }
 
 export const rutter = [
@@ -334,7 +451,8 @@ export const rutter = [
     svar(res, 200, {
       dokument: alla(
         `SELECT d.id, d.utrustning_id, d.namn, d.slag, d.filnamn, d.mediatyp, d.storlek, d.sidor,
-                d.version, d.aktuell, d.uppladdad, u.namn AS utrustning, m.namn AS av,
+                d.version, d.aktuell, d.uppladdad, d.sammanfattning, d.ai_modell,
+                u.namn AS utrustning, m.namn AS av,
                 (SELECT count(*) FROM serviceplan p WHERE p.dokument_id=d.id) AS punkter
            FROM dokument d
            LEFT JOIN utrustning u ON u.id=d.utrustning_id
@@ -367,6 +485,17 @@ export const rutter = [
     svar(res, 200, { fraga: q, traffar });
   }),
 
+  /**
+   * Ladda upp ett dokument.
+   *
+   * Går det att läsa text ur filen läses den direkt: dokumentet säger
+   * själv vad det är, vilken maskin det gäller, och vilka servicepunkter
+   * som står i det. Namnet behöver man alltså inte skriva.
+   *
+   * Allt som kommer ur läsningen är förslag. Uppgifterna om dokumentet
+   * fylls i och går att rätta; servicepunkterna blir liggande som förslag
+   * tills någon godkänt dem.
+   */
   rutt('POST', '/api/underhall/dokument', '@anlaggning', async ({ res, kropp, medlem }) => {
     const { filnamn, mediatyp, storlek } = sparaDokument(kropp.fil);
     let sidor = null;
@@ -377,29 +506,72 @@ export const rutter = [
       sidor = r.sidor.length || null;
       text = r.text;
       lasfel = r.fel;
+    } else if (mediatyp === 'text/plain') {
+      text = Buffer.from(kropp.fil.split(',')[1], 'base64').toString('utf8');
+      sidor = 1;
     }
+
+    const tolkning = text ? await klassificera(text) : { data: null, modell: null, fel: null };
+    const t = tolkning.data || {};
+
+    // Utrustningen kopplas automatiskt bara när den är entydig.
+    const traff = t.tillverkare || t.modell
+      ? matchaDokument(t, alla('SELECT id, namn, typ, tillverkare, modell FROM utrustning WHERE aktiv=1'))
+      : null;
+    const foreslagen = traff?.flera ? null : traff;
+    const galler_flera = traff?.flera || null;
+
     // En ny version ersätter den gamla, men raderar den aldrig: en
     // godkänd checklista ska gå att följa tillbaka till sin manual.
     const ersatter = heltal(kropp.ersatter_id);
     const gammal = ersatter ? en('SELECT * FROM dokument WHERE id=?', ersatter) : null;
     if (gammal) uppdatera('dokument', gammal.id, { aktuell: 0 });
+
     const id = spara('dokument', {
-      utrustning_id: heltal(kropp.utrustning_id) ?? gammal?.utrustning_id ?? null,
-      namn: kravTxt(kropp.namn, 'Namn', 160),
-      slag: ettAv(kropp.slag, ['manual', 'ritning', 'protokoll', 'intyg', 'ovrigt'], 'Slag') || 'manual',
+      utrustning_id: heltal(kropp.utrustning_id) ?? gammal?.utrustning_id ?? foreslagen?.id ?? null,
+      // Namnet: det användaren skrev, annars tolkningens titel, annars filen.
+      namn: txt(kropp.namn, 160) || txt(t.titel, 160) || filnamn.replace(/\.[a-z0-9]+$/i, ''),
+      slag: ettAv(kropp.slag, DOKUMENTSLAG, 'Slag') || ettAv(t.slag, DOKUMENTSLAG, 'Slag') || 'manual',
       filnamn,
       mediatyp,
       storlek,
       sidor,
       text,
+      sammanfattning: txt(t.sammanfattning, 400),
+      tolkning: tolkning.data ? JSON.stringify(tolkning.data) : null,
+      ai_modell: tolkning.modell,
+      tolkad_tid: tolkning.data ? nu() : null,
       version: (gammal?.version ?? 0) + 1,
       ersatter_id: gammal?.id ?? null,
       av_id: medlem.id,
     });
+
+    // Står det något om underhåll läses servicepunkterna ut direkt. Det är
+    // hela poängen med att ladda upp en manual.
+    let punkter = [];
+    let punktfel = null;
+    if (text && t.har_underhall !== false && kropp.las_servicepunkter !== false) {
+      const r = await lasServicepunkter(en('SELECT * FROM dokument WHERE id=?', id), medlem);
+      punkter = r.punkter;
+      punktfel = r.fel;
+    }
+
     svar(res, 201, {
-      dokument: en('SELECT id, namn, slag, filnamn, sidor, version, uppladdad FROM dokument WHERE id=?', id),
+      dokument: en(
+        `SELECT id, namn, slag, filnamn, sidor, version, uppladdad, sammanfattning, utrustning_id
+           FROM dokument WHERE id=?`,
+        id
+      ),
+      tolkning: tolkning.data,
+      tolkning_fel: tolkning.fel,
+      // Vad som fylldes i åt användaren, så att det går att rätta.
+      foreslagen_utrustning: foreslagen ? { id: foreslagen.id, namn: foreslagen.namn } : null,
+      // Samma modell på flera maskiner: dokumentet gäller dem alla, men
+      // kan bara hängas på en. Då får människan välja.
+      galler_flera: galler_flera?.map((u) => ({ id: u.id, namn: u.namn })) || null,
+      punkter,
+      punkt_fel: punktfel,
       las_fel: lasfel,
-      // En ny version av manualen ska leda till att planerna ses över igen.
       granska_om: gammal
         ? alla('SELECT id, namn FROM serviceplan WHERE dokument_id=? AND status=?', gammal.id, 'godkand')
         : [],
@@ -424,44 +596,18 @@ export const rutter = [
    * serviceplaner med status 'forslag' – de gör ingenting förrän en
    * människa godkänt dem, och varje punkt bär sidnummer och citat.
    */
+  /**
+   * Läs ut servicepunkter ur ett dokument som redan ligger uppe. Görs
+   * automatiskt vid uppladdning, men behövs när en manual kommit in utan
+   * tolkning eller när man vill läsa om den.
+   */
   rutt('POST', '/api/underhall/dokument/:id/tolka', '@anlaggning', async ({ res, param, medlem }) => {
     const d = en('SELECT * FROM dokument WHERE id=?', param.id);
     if (!d) throw fel(404, 'Dokumentet finns inte');
     if (!d.text) throw fel(409, 'Ingen text kunde läsas ur dokumentet – lägg in punkterna för hand');
-
-    const avsnitt = underhallsavsnitt(sidorUr(d.text));
-    if (!avsnitt.length) throw fel(409, 'Hittade inga underhållsavsnitt i dokumentet');
-
-    const r = await tolka({
-      system: SYSTEM_MANUAL,
-      text: avsnitt.map((a) => `--- Sida ${a.sida} ---\n${a.text}`).join('\n\n'),
-      schema: SCHEMA_MANUAL,
-      tecken: 3000,
-    });
-    if (!r.data) return svar(res, 200, { punkter: [], fel: r.fel, modell: r.modell });
-
-    const skapade = [];
-    for (const p of r.data.punkter || []) {
-      if (!p?.namn) continue;
-      // Utan källa är punkten inte spårbar, och då ska den inte sparas.
-      if (!p.sida && !p.citat) continue;
-      const id = spara('serviceplan', {
-        utrustning_id: d.utrustning_id,
-        namn: txt(p.namn, 160),
-        instruktion: txt(p.instruktion),
-        intervalltyp: ettAv(p.intervalltyp, INTERVALLTYPER, 'Intervalltyp') || 'handelse',
-        intervall: typeof p.intervall === 'number' ? p.intervall : null,
-        kompetens: txt(p.kompetens, 120),
-        dokument_id: d.id,
-        kallsida: p.sida ? `s. ${p.sida}` : null,
-        kallcitat: txt(p.citat, 2000),
-        osaker: p.osaker || typeof p.intervall !== 'number' ? 1 : 0,
-        status: 'forslag',
-        av_id: medlem.id,
-      });
-      skapade.push(hamtaPlan(id));
-    }
-    svar(res, 201, { punkter: skapade, modell: r.modell, avsnitt: avsnitt.map((a) => a.sida) });
+    const r = await lasServicepunkter(d, medlem);
+    if (r.avsnitt?.length === 0) throw fel(409, 'Hittade inga underhållsavsnitt i dokumentet');
+    svar(res, r.punkter.length ? 201 : 200, r);
   }),
 
   // ---------- Reservdelar ----------

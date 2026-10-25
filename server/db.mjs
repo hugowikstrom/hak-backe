@@ -148,6 +148,12 @@ function migrera(db) {
     ['checklistkorning', 'snoplats_id', 'INTEGER'],
     ['driftpost', 'snoplats_id', 'INTEGER'],
     ['checklistmall', 'platsslag', 'TEXT'],
+    // Vad tolkningen kom fram till om dokumentet. Sparas rått, så att det
+    // går att se vad modellen sa även efter att någon rättat uppgifterna.
+    ['dokument', 'tolkning', 'TEXT'],
+    ['dokument', 'sammanfattning', 'TEXT'],
+    ['dokument', 'ai_modell', 'TEXT'],
+    ['dokument', 'tolkad_tid', 'TEXT'],
   ]) {
     const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
     if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);
