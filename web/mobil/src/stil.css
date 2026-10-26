@@ -275,7 +275,7 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   display: flex; align-items: center; justify-content: center; gap: 10px;
   width: 100%; min-height: 76px; padding: 0 18px;
   border: 2px solid var(--klubb); border-radius: var(--radie);
-  background: var(--klubb); color: var(--pa-klubb);
+  background: var(--klubb); color: var(--pa-klubb-fyll);
   font: 600 1.1rem/1.2 inherit; cursor: pointer;
 }
 .mikrofon .stor .fig { font-size: 1.5rem; }
@@ -306,7 +306,7 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 }
 .genvag .fig {
   display: grid; place-items: center; width: 40px; height: 40px; flex: none;
-  border-radius: 50%; background: var(--klubb); color: var(--pa-klubb); font-size: 1.2rem;
+  border-radius: 50%; background: var(--klubb); color: var(--pa-klubb-fyll); font-size: 1.2rem;
 }
 .genvag .txt { display: flex; flex-direction: column; gap: 2px; }
 .rad { display: flex; align-items: center; gap: 12px; }
@@ -330,3 +330,31 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   padding: 4px 12px; border: 1px solid var(--klubb); border-radius: 999px;
   color: var(--klubb); font-size: 0.85rem; text-decoration: none;
 }
+
+/* ---------- Medlemmens startsida ---------- */
+/* En sak överst, stor nog att läsas med handskar och i mörker. Resten
+   ligger under, tyst. */
+.huvudsak {
+  padding: 22px 18px;
+  margin-bottom: 14px;
+  border-radius: var(--radie-xl);
+  background: var(--klubb);
+  color: var(--pa-klubb-fyll);
+}
+.huvudsak.lugn { background: var(--yta); color: var(--text); border: 1px solid var(--ram); }
+.huvudsak .etikett {
+  display: block; font-size: 0.8rem; text-transform: uppercase;
+  letter-spacing: .06em; opacity: .85; margin-bottom: 4px;
+}
+.huvudsak h1 { margin: 0; font-size: 1.6rem; line-height: 1.15; }
+.huvudsak .under { margin: 6px 0 0; opacity: .9; }
+
+/* Det tysta: finns, men tar ingen uppmärksamhet. */
+.kort.tyst { background: transparent; box-shadow: none; border: 1px solid var(--ram); }
+.kort.tyst h2 { font-size: 0.95rem; color: var(--text-svag); }
+
+.boka {
+  padding: 8px 16px; border: 1px solid var(--klubb); border-radius: 999px;
+  background: var(--klubb); color: var(--pa-klubb-fyll); font-weight: 600;
+}
+.boka:disabled { opacity: .5; }

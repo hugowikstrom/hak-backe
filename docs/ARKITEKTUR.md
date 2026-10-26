@@ -217,6 +217,33 @@ När manualerna blir många är det sökningen som gör dem användbara –
 `sokIText()` svarar med sidnummer och omgivande text, så att träffen går att
 slå upp i pappersexemplaret också.
 
+## Medlemmens vy
+
+Appens startsida visar **en sak**, och vilken avgörs av var man är i dygnet
+och i säsongen. Ordningen ligger i `server/mitt.mjs` – ren funktion, egna
+tester – och inte i klienten:
+
+```
+på pass → strax före pass → obesvarad fråga → saknade timmar → nästa pass → lugnt
+```
+
+Står man på pass är det ronderna som gäller, inte en uppmaning att boka
+fler. Ronderna som visas är de vars checklista pekar ut passets position
+(`checklistmall.position_nyckel`), så en snöläggare slipper fikets
+öppningslista.
+
+Hela sidan hämtas i **ett anrop** (`GET /api/mitt`). En telefon i en
+skidbacke ska inte behöva fem rundturer för att veta vad användaren ska
+göra, och de dyra delarna – rondlistan och lediga pass – räknas bara fram
+i de lägen där de faktiskt visas.
+
+Pass som föreslås är bara de medlemmen **får** boka: ett pass som kräver
+backansvarig föreslås inte åt den som inte är det. Att visa ett förslag som
+ger ett nej är sämre än att inte visa det.
+
+Flikraden följer samma tanke: fyra flikar för en medlem, sju för den som
+har ansvar för backen.
+
 ## Snöläggningsbemanning
 
 Kedjan är uppdelad i steg med flit:

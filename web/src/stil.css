@@ -551,7 +551,7 @@ dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
   border-radius: 50%; background: var(--bak-2); color: var(--text-svag);
   font-size: 12px; font-weight: 700;
 }
-.uppladdning.klar .markor { background: var(--klubb); color: var(--pa-klubb); }
+.uppladdning.klar .markor { background: var(--klubb); color: var(--pa-klubb-fyll); }
 .uppladdning.fel .markor { background: var(--fara); color: #fff; }
 .uppladdning .txt { display: flex; flex-direction: column; gap: 1px; flex: 1; min-width: 0; }
 .uppladdning .txt strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

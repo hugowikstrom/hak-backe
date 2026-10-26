@@ -80,6 +80,15 @@ export const MODULDATA = [
     sidor: [{ nyckel: 'snolaggning', text: 'Snöläggning', stig: '/snolaggning' }],
   },
   {
+    // Medlemmens egen vy: en sak i taget. Hör till bemanningen, för det är
+    // pass och ronder den handlar om.
+    nyckel: 'mitt',
+    namn: 'Min sida',
+    beskrivning: 'Nästa pass, ronderna som hör dit, och pass att boka',
+    beroenden: ['bemanning', 'checklistor'],
+    sidor: [],
+  },
+  {
     nyckel: 'bemanning',
     namn: 'Bemanning',
     beskrivning: 'Pass, bokningar, kvoter och automatplanering',

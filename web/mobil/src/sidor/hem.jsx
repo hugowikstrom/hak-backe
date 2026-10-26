@@ -1,11 +1,11 @@
 // Starta en rond, eller fortsätt en som redan är påbörjad.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { hamtaMedCache } from '../api.js';
 import { useRuta } from '../app.jsx';
 import { antalBesvarade, nyRond, synka, taBortRond } from '../ko.js';
 import { Ark, Bricka, flertal, INTERVALL, Post, sedan, Tomt, useHamta, useNotis, Vanta } from '../delar.jsx';
 
-export function Hem({ ronder }) {
+export function Hem({ vy, ronder }) {
   const { ga } = useRuta();
   const notis = useNotis();
   const [vald, sattVald] = useState(null);
@@ -18,6 +18,14 @@ export function Hem({ ronder }) {
   // kanonen som råkar stå där.
   const platser = useHamta(() => hamtaMedCache('/api/platser'));
   const omraden = useHamta(() => hamtaMedCache('/api/omraden'));
+
+  // Kommer man hit från min sida är mallen redan vald: öppna valet direkt.
+  useEffect(() => {
+    if (!vy?.valj || vald) return;
+    const m = (mallar.data?.data || []).find((x) => x.id === vy.valj);
+    const laget = (lage.data?.data?.mallar || []).find((x) => x.mall_id === vy.valj);
+    if (m) sattVald({ ...m, bara: laget?.objekt.filter((o) => o.behovs).map((o) => o.id) });
+  }, [vy?.valj, mallar.data, lage.data]);
 
   const lista = useMemo(() => {
     const alla = (mallar.data?.data || []).filter((m) => m.aktiv);

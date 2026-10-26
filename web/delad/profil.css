@@ -22,7 +22,11 @@
   --klubb-djup:  #35611a;  /* tryckta ytor och text på klubb-ren */
   --klubb-mjuk:  #f1f8e7;  /* ljus bottenton */
   --klubb-ram:   #d6e9bd;
-  --pa-klubb:    #15210a;  /* text ovanpå --klubb-ren */
+  --pa-klubb:    #15210a;  /* text ovanpå --klubb-ren, den ljusa logotypgrönan */
+  /* Text ovanpå --klubb, som är mörk i ljust läge och ljus i mörkt. Paren
+     går åt olika håll: --pa-klubb hör till den ljusa grönan, den här till
+     den mörka. Byter man dem blir det grönt på grönt. */
+  --pa-klubb-fyll: #ffffff;
 
   /* ---- Neutraler, varma med en aning grönt ---- */
   --yta:         #ffffff;  /* kort och paneler */
@@ -69,6 +73,7 @@
     --klubb-mjuk:  #1d2a14;
     --klubb-ram:   #33471f;
     --pa-klubb:    #15210a;
+    --pa-klubb-fyll: #15210a;
 
     --yta:         #171c13;
     --bak:         #0f130c;
@@ -101,6 +106,7 @@
   --klubb-mjuk:  #1d2a14;
   --klubb-ram:   #33471f;
   --pa-klubb:    #15210a;
+  --pa-klubb-fyll: #15210a;
 
   --yta:         #171c13;
   --bak:         #0f130c;

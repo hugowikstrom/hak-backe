@@ -97,6 +97,8 @@ export function rondlage({
       omfattning: mall.omfattning,
       utrustningstyp: mall.utrustningstyp,
       platsslag: mall.platsslag,
+      // Vems rond det är. Medlemmens vy plockar ut just sitt pass ronder.
+      position_nyckel: mall.position_nyckel ?? null,
       omrade_id: mall.omrade_id,
       antal_punkter: mall.punkter?.length ?? 0,
       schemalagd: !!start,

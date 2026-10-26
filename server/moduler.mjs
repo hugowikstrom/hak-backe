@@ -18,6 +18,7 @@ import { rutter as vader } from './api/vader.mjs';
 import { rutter as checklistor } from './api/checklistor.mjs';
 import { rutter as arenden } from './api/arenden.mjs';
 import { rutter as bemanning } from './api/bemanning.mjs';
+import { rutter as mitt } from './api/mitt.mjs';
 import { rutter as rapport } from './api/rapport.mjs';
 import { rutter as fik } from './api/fik.mjs';
 import { rutter as uthyrning } from './api/uthyrning.mjs';
@@ -44,6 +45,7 @@ const RUTTER = {
   incidenter: incident,
   checklistor: checklistor,
   snolaggning: [...sno, ...vader, ...platser],
+  mitt: mitt,
   bemanning: bemanning,
   snoplan: snoplan,
   ekonomi: [...bokforing, ...planbok],

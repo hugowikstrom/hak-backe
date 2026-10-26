@@ -3,6 +3,10 @@
 export const idag = () => new Date().toLocaleDateString('sv-SE');
 export const nu = () => new Date().toISOString().slice(0, 19).replace('T', ' ');
 
+/** Klockslaget just nu, HH:MM i lokal tid. */
+export const klockan = () =>
+  new Date().toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' });
+
 export const minuter = (hhmm) => {
   const [h, m] = String(hhmm || '0:0').split(':').map(Number);
   return (h || 0) * 60 + (m || 0);

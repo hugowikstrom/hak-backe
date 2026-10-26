@@ -11,6 +11,7 @@ import { Mallar } from './sidor/mallar.jsx';
 import { Konto } from './sidor/konto.jsx';
 import { Handelse } from './sidor/handelse.jsx';
 import { Passet } from './sidor/passet.jsx';
+import { Mitt } from './sidor/mitt.jsx';
 
 const RANG = { medlem: 1, backansvarig: 2, anlaggningsansvarig: 3, admin: 4 };
 export const minstRoll = (m, roll) => (RANG[m?.roll] ?? 0) >= RANG[roll];
@@ -22,7 +23,7 @@ export const useRuta = () => useContext(RutaKontext);
 
 export function App() {
   const [medlem, sattMedlem] = useState(undefined);
-  const [vy, sattVy] = useState({ namn: 'hem' });
+  const [vy, sattVy] = useState({ namn: 'mitt' });
   const [ronder, sattRonder] = useState(laddaRonder);
   const online = useNat();
 
@@ -35,7 +36,7 @@ export function App() {
 
   // Telefonens bakåtknapp ska stänga vyn, inte appen.
   useEffect(() => {
-    const vid = (e) => sattVy(e.state?.vy || { namn: 'hem' });
+    const vid = (e) => sattVy(e.state?.vy || { namn: 'mitt' });
     window.addEventListener('popstate', vid);
     return () => window.removeEventListener('popstate', vid);
   }, []);
@@ -55,16 +56,23 @@ export function App() {
   const pagaende = ronder.filter((r) => !r.klar).length;
 
   const Sida = {
-    hem: Hem, rond: Rond, historik: Historik, mallar: Mallar, konto: Konto,
+    mitt: Mitt, hem: Hem, rond: Rond, historik: Historik, mallar: Mallar, konto: Konto,
     handelse: Handelse, passet: Passet,
-  }[vy.namn] || Hem;
+  }[vy.namn] || Mitt;
 
+  // Fyra flikar för en medlem. Den som har ansvar för backen får de två
+  // till som hör till det – men bara den.
   const flikar = [
-    { namn: 'hem', text: 'Ronder', fig: '✓' },
+    { namn: 'mitt', text: 'Mitt', fig: '●' },
     { namn: 'handelse', text: 'Rapportera', fig: '◉' },
-    { namn: 'passet', text: 'Passet', fig: '☷' },
+    ...(far
+      ? [
+          { namn: 'hem', text: 'Ronder', fig: '✓' },
+          { namn: 'passet', text: 'Bemanning', fig: '☷' },
+          { namn: 'mallar', text: 'Checklistor', fig: '✎' },
+        ]
+      : []),
     { namn: 'historik', text: 'Historik', fig: '≡' },
-    ...(far ? [{ namn: 'mallar', text: 'Checklistor', fig: '✎' }] : []),
     { namn: 'konto', text: 'Konto', fig: '☻' },
   ];
 
@@ -74,7 +82,7 @@ export function App() {
         <Notiser>
           <div className="skal">
             <header className="topp">
-              {vy.namn === 'rond' || vy.namn === 'mall' || vy.namn === 'handelse' ? (
+              {['rond', 'mall', 'handelse'].includes(vy.namn) ? (
                 <button className="tillbaka" onClick={tillbaka} aria-label="Tillbaka">‹</button>
               ) : null}
               <div className="marke">

@@ -13,7 +13,7 @@ const aktivaFragetecken = AKTIVA.map(() => '?').join(',');
 
 export const passlista = (fran, till) =>
   alla(
-    `SELECT p.*, pos.namn AS position, pos.nyckel AS positionsnyckel, pos.farg,
+    `SELECT p.*, pos.namn AS position, pos.nyckel AS positionsnyckel, pos.farg, pos.kravs_roll,
             (SELECT count(*) FROM bokning b WHERE b.pass_id=p.id AND b.status IN (${aktivaFragetecken})) AS bokade
      FROM pass p JOIN position pos ON pos.id=p.position_id
      WHERE p.datum BETWEEN ? AND ?

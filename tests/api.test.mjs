@@ -294,3 +294,27 @@ test('medlem får inte ändra checklistmallar', async () => {
   const d = await anrop('DELETE', '/api/checklistor/mallar/1');
   assert.equal(d.status, 403);
 });
+
+test('min sida visar en sak i taget, och rätt sak', async () => {
+  await ok('POST', '/api/logga-in', { anvandarnamn: 'ida', losenord: 'hemligt' });
+
+  // Ida har bokat ett pass tidigare i testet och har kvot kvar.
+  const m = await ok('GET', '/api/mitt');
+  assert.ok(['boka', 'nasta_pass', 'snart_pass', 'pa_pass'].includes(m.lage), `oväntat läge: ${m.lage}`);
+  assert.ok(m.kvot.text, 'kvoten ska sägas i timmar');
+
+  if (m.lage === 'boka') {
+    assert.ok(m.att_boka.length <= 5, 'förslagen ska vara få nog att läsa');
+    assert.ok(
+      m.att_boka.every((p) => p.saknas > 0),
+      'bara pass som faktiskt saknar folk föreslås'
+    );
+  }
+
+  // Ronder visas bara när man står på eller strax före sitt pass.
+  if (!['pa_pass', 'snart_pass'].includes(m.lage)) assert.deepEqual(m.ronder, []);
+
+  // Alltid: mina kommande pass och mina öppna ärenden finns med.
+  assert.ok(Array.isArray(m.kommande));
+  assert.ok(Array.isArray(m.mina_arenden));
+});
