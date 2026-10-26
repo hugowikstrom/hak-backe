@@ -564,3 +564,12 @@ dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
 }
 .forslagsblock .kryssrad { margin: 3px 0; align-items: flex-start; }
 .forslagsblock .kryssrad input { margin-top: 2px; }
+
+/* Innehållskartan: klickbara sidhänvisningar in i dokumentet. */
+.innehallskarta { display: flex; flex-wrap: wrap; gap: 6px; }
+.innehallskarta .avsnitt {
+  display: inline-flex; align-items: baseline; gap: 6px;
+  padding: 3px 10px; border: 1px solid var(--ram); border-radius: 999px;
+  background: var(--bak-2); text-decoration: none; color: var(--text); font-size: 12px;
+}
+.innehallskarta .avsnitt:hover { border-color: var(--klubb); background: var(--hover); }

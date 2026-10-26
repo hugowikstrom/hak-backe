@@ -525,12 +525,22 @@ test('utan tolkning fungerar uppladdningen ändå', async () => {
   // påstås om vad dokumentet är.
   const r = await laddaUpp(pdf, 'manual.pdf');
   assert.ok(r.dokument.namn.length > 0, 'dokumentet får ett namn ändå');
-  assert.equal(r.dokument.slag, 'manual');
   assert.equal(r.dokument.sidor, 2, 'texten läses oavsett om AI:n svarar');
+  // Innehållskartan är regler och kräver ingen modell: den ser
+  // underhållsavsnittet och kallar dokumentet servicemanual.
+  assert.equal(r.dokument.slag, 'servicemanual');
+  assert.deepEqual(
+    r.innehall.map((a) => `${a.slag} s.${a.fran}`),
+    ['tekniska_data s.1', 'underhall s.2']
+  );
 
   const a = await ok('POST', `/api/underhall/dokument/${r.dokument.id}/analysera`, {});
   assert.equal(a.tolkning, null);
   assert.match(a.fel, /inte påslagen/i);
+  // Det som läses med regler står kvar även när modellen är borta:
+  // innehållskartan och artikelnumren behöver ingen AI.
+  assert.ok(a.innehall.length >= 1, 'innehållskartan finns ändå');
+  assert.ok(Array.isArray(a.forslag.reservdelar));
 });
 
 test('otydlig koppling blir ingen koppling', async () => {

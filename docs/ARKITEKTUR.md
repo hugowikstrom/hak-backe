@@ -160,6 +160,13 @@ kunna se vad som pågår.
    passerar minnet, så taket sitter i disken och i Caddy (300 MiB på
    dokumentvägen, 16 MiB på allt annat) och inte i processen. `pdftotext`
    drar ut texten sida för sida.
+   `innehallskarta()` klassar samtidigt varje sida: tekniska data,
+   säkerhet, installation, underhåll, serviceintervall, felsökning,
+   reservdelslista, sprängskiss, elschema. Det är **regler och inte
+   modell** – rubriker är förutsägbara, och en karta som stämmer varje
+   gång är mer värd än en som är kvick ibland. Dominerar en sorts avsnitt
+   sidorna avgör kartan också vad hela dokumentet är, utan att någon
+   modell behöver svara.
 2. **Vad är det här?** `analysera` låter `klassificera()` läsa de första
    sidorna: slag, titel, tillverkare, modell, serienummer, utgåva,
    utrustningstyp och en sammanfattning. Namnet behöver man därför inte
@@ -169,6 +176,12 @@ kunna se vad som pågår.
    giltighetsdatum. `matchaDokument()` kopplar till rätt maskin, men bara
    när det är entydigt: tio kanoner av samma modell ger ingen koppling
    alls, de räknas upp i stället.
+
+   **Artikelnummer går aldrig genom en modell.** `reservdelarUrText()`
+   läser dem ordagrant ur reservdelslistans och sprängskissens sidor. Ett
+   artikelnummer som blivit en siffra fel ger fel del i lådan, och det
+   märks först när paketet kommer. Allt som läses med regler – kartan och
+   numren – finns kvar även när modellen är nere.
 3. **Servicepunkterna.** `lasServicepunkter()` plockar de sidor som handlar
    om service och föreslår punkter, med sidnummer och citat.
 

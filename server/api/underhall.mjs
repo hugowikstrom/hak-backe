@@ -9,7 +9,10 @@ import { join } from 'node:path';
 import { alla, en, kor, spara, transaktion, uppdatera } from '../db.mjs';
 import { minstRoll } from '../behorighet.mjs';
 import { tolka } from '../ai.mjs';
-import { DOKUMENTKATALOG, lasPdf, sidorUr, sokIText, strommaDokument, underhallsavsnitt } from '../dokument.mjs';
+import {
+  DOKUMENTKATALOG, innehallskarta, lasPdf, reservdelarUrText, sidorUr, sokIText,
+  strommaDokument, underhallsavsnitt,
+} from '../dokument.mjs';
 import {
   arshjul, INTERVALLTYPER, kostnader, lage, nastaForfall, samordna, undvikBelastning,
 } from '../underhall.mjs';
@@ -48,7 +51,57 @@ const SCHEMA_MANUAL = {
   },
 };
 
-const DOKUMENTSLAG = ['manual', 'ritning', 'protokoll', 'intyg', 'ovrigt'];
+// Vad ett helt dokument är. Avsnitten inuti kartläggs för sig – en
+// servicemanual har nästan alltid en reservdelslista och en sprängskiss.
+const DOKUMENTSLAG = [
+  'manual', 'servicemanual', 'reservdelslista', 'sprangskiss', 'elschema', 'ritning',
+  'datablad', 'sakerhetsdatablad', 'protokoll', 'intyg', 'garanti', 'ovrigt',
+];
+
+export const SLAGNAMN = {
+  manual: 'Bruksanvisning',
+  servicemanual: 'Servicemanual',
+  reservdelslista: 'Reservdelslista',
+  sprangskiss: 'Sprängskiss',
+  elschema: 'Elschema',
+  ritning: 'Ritning',
+  datablad: 'Tekniskt datablad',
+  sakerhetsdatablad: 'Säkerhetsdatablad',
+  protokoll: 'Protokoll',
+  intyg: 'Intyg',
+  garanti: 'Garanti',
+  ovrigt: 'Övrigt',
+};
+
+/**
+ * Vad dokumentet är enligt innehållskartan, när modellen inte svarar eller
+ * är osäker. Dominerar en sorts avsnitt sidorna är det den sortens dokument.
+ */
+export function slagUrKarta(karta, sidor) {
+  if (!karta?.length) return null;
+
+  // Vid lika vikt vinner det mer bestämda avsnittet. Ett dokument med ett
+  // underhållsavsnitt är hellre en servicemanual än ett datablad – det
+  // säger mer om vad man har i handen.
+  const ordning = ['reservdelslista', 'sprangskiss', 'elschema', 'serviceintervall', 'underhall', 'tekniska_data'];
+  const till = {
+    reservdelslista: 'reservdelslista',
+    sprangskiss: 'sprangskiss',
+    elschema: 'elschema',
+    serviceintervall: 'servicemanual',
+    underhall: 'servicemanual',
+    tekniska_data: 'datablad',
+  };
+
+  const vikt = {};
+  for (const a of karta) vikt[a.slag] = (vikt[a.slag] || 0) + (a.till - a.fran + 1);
+  const [storst] = Object.entries(vikt)
+    .filter(([slag]) => till[slag])
+    .sort((a, b) => b[1] - a[1] || ordning.indexOf(a[0]) - ordning.indexOf(b[0]));
+  if (!storst) return null;
+  // Ett enstaka avsnitt bland många säger inte vad dokumentet är.
+  return storst[1] / Math.max(1, sidor) < 0.4 ? null : till[storst[0]];
+}
 
 const SCHEMA_DOKUMENT = {
   type: 'object',
@@ -86,17 +139,6 @@ const SCHEMA_DOKUMENT = {
         },
       },
     },
-    reservdelar: {
-      type: 'array',
-      description: 'delar med artikelnummer, ur reservdelslistan',
-      items: {
-        type: 'object',
-        properties: {
-          namn: { type: 'string' },
-          artikelnummer: { type: ['string', 'null'] },
-        },
-      },
-    },
   },
 };
 
@@ -105,18 +147,25 @@ register och säger vad det är för något.
 
 Du beskriver dokumentet. Du bestämmer ingenting, och du gissar inte.
 
-- slag: manual om det beskriver handhavande eller service, ritning om det är
-  en teknisk ritning, protokoll om det är en besiktning eller ett utfört
-  arbete, intyg om det intygar något, annars ovrigt.
-- Tillverkare och modell fylls bara i när de faktiskt står i texten.
+- slag: vad dokumentet i huvudsak är. servicemanual om det handlar om
+  underhåll och service, manual om det är en bruksanvisning,
+  reservdelslista om det mest är artikelnummer och benämningar,
+  sprangskiss om det är en sprängskiss eller detaljritning, elschema för
+  kopplingsscheman, ritning för övriga ritningar, datablad för tekniska
+  data, sakerhetsdatablad för kemikalier, protokoll för besiktningar och
+  utfört arbete, intyg för certifikat, garanti för garantier, annars
+  ovrigt.
+- tillverkare är bara företagsnamnet, utan modellbeteckning. modell är
+  bara beteckningen, utan företagsnamn. Står de ihop i texten ska de delas.
+  Båda fylls bara i när de faktiskt står där.
 - utrustningstyp: vilken sorts utrustning dokumentet handlar om, om det går
   att avgöra. Annars null.
 - sammanfattning: en mening på svenska om vad det är.
 - har_underhall: true bara om texten innehåller service- eller
   underhållsanvisningar.
 - komponenter: delarna maskinen består av, om de räknas upp. Hitta inte på
-  en standarduppsättning.
-- reservdelar: bara de som har ett artikelnummer i texten.
+  en standarduppsättning. Artikelnummer behöver du inte återge – de läses
+  ordagrant ur texten.
 - leverantor: bara om en kontakt för service eller reservdelar står i
   dokumentet.`;
 
@@ -288,7 +337,7 @@ async function klassificera(text) {
     system: SYSTEM_DOKUMENT,
     text: sidorUr(text).slice(0, 3).join('\n\n').slice(0, 4000),
     schema: SCHEMA_DOKUMENT,
-    tecken: 600,
+    tecken: 900,
   });
 }
 
@@ -429,10 +478,24 @@ export async function lasServicepunkter(dokument, medlem) {
   return { punkter: skapade, avsnitt: avsnitt.map((a) => a.sida), fel: null, modell: r.modell };
 }
 
+/**
+ * Reservdelar ur dokumentets egna reservdelsavsnitt, lästa ordagrant.
+ * Hittas inget avsnitt gås hela texten igenom – en lista kan sakna rubrik.
+ */
+export function delarUrDokument(dokument) {
+  const sidor = sidorUr(dokument.text);
+  const karta = dokument.innehall ? JSON.parse(dokument.innehall) : innehallskarta(sidor);
+  const avsnitt = karta.filter((a) => a.slag === 'reservdelslista' || a.slag === 'sprangskiss');
+  const text = avsnitt.length
+    ? avsnitt.map((a) => sidor.slice(a.fran - 1, a.till).join('\n')).join('\n')
+    : sidor.join('\n');
+  return reservdelarUrText(text);
+}
+
 const dokumentrad = (id) =>
   en(
     `SELECT d.id, d.namn, d.slag, d.filnamn, d.sidor, d.version, d.uppladdad,
-            d.sammanfattning, d.utrustning_id, d.avser_datum, d.giltigt_till,
+            d.sammanfattning, d.utrustning_id, d.avser_datum, d.giltigt_till, d.innehall,
             u.namn AS utrustning
        FROM dokument d LEFT JOIN utrustning u ON u.id=d.utrustning_id
       WHERE d.id=?`,
@@ -633,7 +696,7 @@ export const rutter = [
     svar(res, 200, {
       dokument: alla(
         `SELECT d.id, d.utrustning_id, d.namn, d.slag, d.filnamn, d.mediatyp, d.storlek, d.sidor,
-                d.version, d.aktuell, d.uppladdad, d.sammanfattning, d.ai_modell,
+                d.version, d.aktuell, d.uppladdad, d.sammanfattning, d.ai_modell, d.innehall,
                 u.namn AS utrustning, m.namn AS av,
                 (SELECT count(*) FROM serviceplan p WHERE p.dokument_id=d.id) AS punkter
            FROM dokument d
@@ -704,12 +767,19 @@ export const rutter = [
     const gammal = ersatter ? en('SELECT * FROM dokument WHERE id=?', ersatter) : null;
     if (gammal) uppdatera('dokument', gammal.id, { aktuell: 0 });
 
+    // Innehållskartan är regler, inte modell, och kan göras direkt.
+    const karta = text ? innehallskarta(sidorUr(text)) : [];
+
     const id = spara('dokument', {
       utrustning_id: heltal(fraga.get('utrustning_id')) ?? gammal?.utrustning_id ?? null,
+      innehall: karta.length ? JSON.stringify(karta) : null,
       namn:
         txt(fraga.get('namn'), 160) ||
         (fraga.get('filnamn') || filnamn).replace(/\.[a-z0-9]+$/i, '').replace(/[_-]+/g, ' ').trim(),
-      slag: ettAv(fraga.get('slag'), DOKUMENTSLAG, 'Slag') || 'manual',
+      slag:
+        ettAv(fraga.get('slag'), DOKUMENTSLAG, 'Slag') ||
+        slagUrKarta(karta, sidor || 1) ||
+        'manual',
       filnamn,
       mediatyp,
       storlek,
@@ -723,6 +793,7 @@ export const rutter = [
     svar(res, 201, {
       dokument: dokumentrad(id),
       las_fel: lasfel,
+      innehall: karta,
       // Går texten att läsa är nästa steg att tolka den.
       kan_tolkas: !!text,
       namngivet: !!txt(fraga.get('namn'), 160),
@@ -749,8 +820,33 @@ export const rutter = [
 
     const r = await klassificera(d.text);
     const t = r.data || {};
+
+    // Det som läses med regler – innehållskartan och artikelnumren –
+    // behöver ingen modell och ska finnas även när den är nere.
+    const utanModell = {
+      innehall: d.innehall ? JSON.parse(d.innehall) : innehallskarta(sidorUr(d.text)),
+      reservdelar: delarUrDokument(d).filter(
+        (x) =>
+          !alla('SELECT artikelnummer FROM reservdel WHERE artikelnummer IS NOT NULL')
+            .map((y) => y.artikelnummer.toLowerCase())
+            .includes(x.artikelnummer.toLowerCase())
+      ),
+    };
+
     if (!r.data)
-      return svar(res, 200, { dokument: dokumentrad(d.id), tolkning: null, fel: r.fel, forslag: null });
+      return svar(res, 200, {
+        dokument: dokumentrad(d.id),
+        tolkning: null,
+        fel: r.fel,
+        innehall: utanModell.innehall,
+        // Reservdelarna står kvar: de lästes ordagrant ur texten.
+        forslag: {
+          utrustning_id: d.utrustning_id,
+          komponenter: [],
+          reservdelar: utanModell.reservdelar.slice(0, 60),
+          leverantor: null,
+        },
+      });
 
     const traff = t.tillverkare || t.modell
       ? matchaDokument(t, alla('SELECT id, namn, typ, tillverkare, modell FROM utrustning WHERE aktiv=1'))
@@ -815,10 +911,10 @@ export const rutter = [
           .filter((k) => k?.namn && !befintliga.includes(String(k.namn).toLowerCase()))
           .slice(0, 20)
           .map((k) => ({ namn: txt(k.namn, 120), slag: txt(k.slag, 40) })),
-        reservdelar: (t.reservdelar || [])
-          .filter((x) => x?.namn && x.artikelnummer && !artiklar.includes(String(x.artikelnummer).toLowerCase()))
-          .slice(0, 30)
-          .map((x) => ({ namn: txt(x.namn, 160), artikelnummer: txt(x.artikelnummer, 60) })),
+        // Artikelnumren läses ordagrant ur reservdelsavsnitten. Ett nummer
+        // som blivit en siffra fel ger fel del i lådan, och det märks
+        // först när paketet kommer.
+        reservdelar: utanModell.reservdelar.slice(0, 60),
         leverantor:
           t.leverantor?.namn && !en('SELECT id FROM leverantor WHERE lower(namn)=lower(?)', t.leverantor.namn)
             ? {
@@ -828,8 +924,11 @@ export const rutter = [
               }
             : null,
       },
-      // Servicepunkter läses bara ur manualer, och bara när det står något.
-      har_underhall: uppdaterad.slag === 'manual' && t.har_underhall !== false,
+      innehall: utanModell.innehall,
+      // Servicepunkter läses ur manualer och servicemanualer, och bara när
+      // det faktiskt står något om underhåll.
+      har_underhall:
+        ['manual', 'servicemanual'].includes(uppdaterad.slag) && t.har_underhall !== false,
     });
   }),
 

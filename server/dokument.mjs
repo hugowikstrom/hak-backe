@@ -155,3 +155,140 @@ export async function strommaDokument(req, { mediatyp, filnamn: originalnamn }) 
   }
   return { filnamn: namn, mediatyp: typ || `application/${andelse}`, storlek };
 }
+
+/**
+ * Vad olika avsnitt i ett dokument är.
+ *
+ * En servicemanual är sällan bara en servicemanual: sidorna 34–38 är
+ * reservdelslista, 39 är sprängskiss, 41 är elschema. Att veta det gör
+ * dokumentet användbart – man kan slå upp rätt sida i stället för att
+ * bläddra.
+ */
+// Ordningen spelar roll: vid lika många träffar på en sida vinner det
+// avsnitt som står först, och det ska vara det mer bestämda. En sida med
+// rubriken "Serviceintervall" är ett intervallschema, inte allmänt
+// underhåll – även om båda orden står där.
+export const AVSNITTSSLAG = {
+  serviceintervall: {
+    namn: 'Serviceintervall',
+    monster: [
+      /\bserviceintervall\b/i, /\bunderh[åa]llsschema\b/i, /\bserviceschema\b/i,
+      /\bservice schedule\b/i,
+      /\bvar\s+\d+\s*(?:drifts?)?\s*(?:tim|h\b|dag|vecka|m[åa]nad)/i,
+      /\bevery\s+\d+\s*(?:hours|days|weeks|months)\b/i,
+    ],
+  },
+  underhall: {
+    namn: 'Underhåll och service',
+    monster: [
+      /\bunderh[åa]ll\b/i, /\bservice(?:plan|punkt)?\b/i, /\bsm[öo]rj/i,
+      /\bmaintenance\b/i, /\blubricat/i,
+    ],
+  },
+  reservdelslista: {
+    namn: 'Reservdelslista',
+    monster: [
+      /\breservdel/i, /\bspare parts?\b/i, /\bparts list\b/i, /\bartikelnummer\b/i,
+      /\bart\.?\s*nr\b/i, /\bpart\s*(?:no|number)\b/i, /\bben[äa]mning\b/i,
+    ],
+  },
+  sprangskiss: {
+    namn: 'Sprängskiss',
+    monster: [
+      /\bspr[äa]ngskiss/i, /\bexploded view\b/i, /\bexplosionsritning\b/i,
+      /\bdetaljritning\b/i, /\bpos\.?\s*nr\b/i,
+    ],
+  },
+  elschema: {
+    namn: 'Elschema',
+    monster: [
+      /\belschema\b/i, /\bkopplingsschema\b/i, /\bwiring diagram\b/i, /\bcircuit diagram\b/i,
+      /\bel\b.{0,12}\bschema\b/i,
+    ],
+  },
+  tekniska_data: {
+    namn: 'Tekniska data',
+    monster: [
+      /\btekniska? data\b/i, /\bspecifikationer?\b/i, /\btechnical data\b/i,
+      /\bspecifications?\b/i, /\bm[äa]rkdata\b/i,
+    ],
+  },
+  sakerhet: {
+    namn: 'Säkerhet',
+    monster: [
+      /\bs[äa]kerhetsf[öo]reskrift/i, /\bvarning(?:ar)?\b/i, /\bsafety (?:instructions?|precautions?)\b/i,
+      /\bskyddsutrustning\b/i,
+    ],
+  },
+  felsokning: {
+    namn: 'Felsökning',
+    monster: [/\bfels[öo]kning\b/i, /\btroubleshooting\b/i, /\bfelorsak\b/i, /\batg[äa]rdstabell\b/i],
+  },
+  installation: {
+    namn: 'Installation',
+    monster: [/\binstallation\b/i, /\bmontering\b/i, /\bidrifttagning\b/i, /\bcommissioning\b/i],
+  },
+};
+
+/**
+ * Klassar varje sida och slår ihop angränsande sidor av samma sort.
+ *
+ * Regler och inte modell: rubriker är förutsägbara, och en karta som
+ * stämmer varje gång är mer värd än en som är kvick ibland.
+ */
+export function innehallskarta(sidor) {
+  const per = sidor.map((text) => {
+    const poang = [];
+    for (const [slag, def] of Object.entries(AVSNITTSSLAG)) {
+      const traffar = def.monster.filter((m) => m.test(text)).length;
+      if (traffar) poang.push({ slag, traffar });
+    }
+    poang.sort((a, b) => b.traffar - a.traffar);
+    return poang[0]?.slag ?? null;
+  });
+
+  const avsnitt = [];
+  for (const [i, slag] of per.entries()) {
+    if (!slag) continue;
+    const sista = avsnitt.at(-1);
+    if (sista && sista.slag === slag && sista.till === i) sista.till = i + 1;
+    else avsnitt.push({ slag, namn: AVSNITTSSLAG[slag].namn, fran: i + 1, till: i + 1 });
+  }
+  // `till` har räknats som index; gör om till sidnummer.
+  return avsnitt.map((a) => ({ ...a, till: Math.max(a.fran, a.till) }));
+}
+
+/**
+ * Plockar reservdelar ur en reservdelslista.
+ *
+ * Artikelnumren läses ordagrant ur texten och går aldrig genom en modell.
+ * Ett artikelnummer som blivit en siffra fel är värre än inget alls – man
+ * beställer fel del och upptäcker det först när paketet kommer.
+ */
+export function reservdelarUrText(text) {
+  const ut = [];
+  const sedda = new Set();
+  for (const rad of String(text || '').split('\n')) {
+    const r = rad.replace(/\s+/g, ' ').trim();
+    if (r.length < 6 || r.length > 160) continue;
+
+    // Två vanliga former: numret först eller benämningen först.
+    const m =
+      /^(?:\d{1,3}[.)]?\s+)?([A-Z0-9][A-Z0-9-]{3,19})\s+([A-Za-zÅÄÖåäö][^|]{2,80}?)(?:\s+\d+\s*(?:st|pcs)?)?$/.exec(r) ||
+      /^(?:\d{1,3}[.)]?\s+)?([A-Za-zÅÄÖåäö][^|]{2,80}?)\s+([A-Z0-9][A-Z0-9-]{3,19})(?:\s+\d+\s*(?:st|pcs)?)?$/.exec(r);
+    if (!m) continue;
+
+    // Avgör vilket fält som är numret: det med siffror och bindestreck.
+    const [a, b] = [m[1].trim(), m[2].trim()];
+    const arNummer = (s) => /\d/.test(s) && /^[A-Z0-9-]+$/.test(s) && s.length >= 4;
+    const nummer = arNummer(a) ? a : arNummer(b) ? b : null;
+    const namn = nummer === a ? b : a;
+    if (!nummer || !namn || namn.length < 3) continue;
+    // Rena årtal och mått är inte artikelnummer.
+    if (/^(19|20)\d{2}$/.test(nummer) || /^\d+(mm|cm|kg|bar|v|w)$/i.test(nummer)) continue;
+    if (sedda.has(nummer)) continue;
+    sedda.add(nummer);
+    ut.push({ artikelnummer: nummer, namn: namn.replace(/[.\s]+$/, '') });
+  }
+  return ut;
+}

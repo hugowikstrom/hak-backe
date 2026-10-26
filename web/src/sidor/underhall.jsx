@@ -15,6 +15,21 @@ import { idag, kortDatum } from '../nytta.js';
 
 const kronor = (ore) => `${Math.round((ore || 0) / 100).toLocaleString('sv-SE')} kr`;
 
+const SLAGNAMN = {
+  manual: 'Bruksanvisning',
+  servicemanual: 'Servicemanual',
+  reservdelslista: 'Reservdelslista',
+  sprangskiss: 'Sprängskiss',
+  elschema: 'Elschema',
+  ritning: 'Ritning',
+  datablad: 'Datablad',
+  sakerhetsdatablad: 'Säkerhetsdatablad',
+  protokoll: 'Protokoll',
+  intyg: 'Intyg',
+  garanti: 'Garanti',
+  ovrigt: 'Övrigt',
+};
+
 const INTERVALLNAMN = {
   dagar: 'dagar', veckor: 'veckor', manader: 'månader',
   sasong: 'säsong', drifttimmar: 'drifttimmar', handelse: 'vid händelse',
@@ -617,10 +632,17 @@ function Manualer({ uppdateraPlaner }) {
                     {x.namn}
                   </a>
                   {x.sammanfattning && <div className="liten svag">{x.sammanfattning}</div>}
+                  {x.innehall && (
+                    <div className="liten svag">
+                      {JSON.parse(x.innehall)
+                        .map((a) => `${a.namn} s. ${a.fran}${a.till > a.fran ? `–${a.till}` : ''}`)
+                        .join(' · ')}
+                    </div>
+                  )}
                 </>
               ),
             },
-            { falt: 'slag', rubrik: 'Slag' },
+            { falt: 'slag', rubrik: 'Slag', visa: (x) => SLAGNAMN[x.slag] || x.slag },
             { falt: 'utrustning', rubrik: 'Utrustning', visa: (x) => x.utrustning || '–' },
             { falt: 'sidor', rubrik: 'Sidor', sifra: true, visa: (x) => x.sidor ?? '–' },
             { falt: 'version', rubrik: 'Version', sifra: true },
@@ -689,6 +711,35 @@ function Uppladdningsresultat({ resultat, klar }) {
 }
 
 /**
+ * Innehållskartan: vilka sidor som är vad.
+ *
+ * Länkarna öppnar dokumentet på rätt sida. Ett tjockt dokument blir
+ * användbart först när man slipper bläddra.
+ */
+function Innehall({ dokument, avsnitt }) {
+  if (!avsnitt?.length) return null;
+  return (
+    <div className="innehallskarta">
+      {avsnitt.map((a, i) => (
+        <a
+          key={i}
+          href={`/api/underhall/dokument/${dokument.id}/fil#page=${a.fran}`}
+          target="_blank"
+          rel="noreferrer"
+          className="avsnitt"
+        >
+          <strong>{a.namn}</strong>
+          <span className="liten svag">
+            s. {a.fran}
+            {a.till > a.fran ? `–${a.till}` : ''}
+          </span>
+        </a>
+      ))}
+    </div>
+  );
+}
+
+/**
  * Vad läsningen kom fram till om ett dokument.
  *
  * Olika sorters dokument bär olika saker: en manual har serviceintervall
@@ -700,6 +751,7 @@ function Dokumentresultat({ r, klar }) {
   const notis = useNotis();
   const f = r.forslag || {};
   const ut = r.utvinning?.data || null;
+  const avsnitt = r.innehall || (r.dokument.innehall ? JSON.parse(r.dokument.innehall) : []);
   const [valda, sattValda] = useState({
     komponenter: (f.komponenter || []).map((_, i) => i),
     reservdelar: (f.reservdelar || []).map((_, i) => i),
@@ -759,7 +811,7 @@ function Dokumentresultat({ r, klar }) {
         <dd>
           {r.tolkning ? (
             <>
-              {r.dokument.slag}
+              {SLAGNAMN[r.dokument.slag] || r.dokument.slag}
               {r.tolkning.tillverkare || r.tolkning.modell
                 ? ` · ${[r.tolkning.tillverkare, r.tolkning.modell].filter(Boolean).join(' ')}`
                 : ''}
@@ -799,6 +851,14 @@ function Dokumentresultat({ r, klar }) {
         )}
         <dt>Sidor</dt>
         <dd>{r.dokument.sidor ?? '–'}</dd>
+        {!!avsnitt.length && (
+          <>
+            <dt>Innehåll</dt>
+            <dd>
+              <Innehall dokument={r.dokument} avsnitt={avsnitt} />
+            </dd>
+          </>
+        )}
         {ut?.datum && (
           <>
             <dt>Avser</dt>

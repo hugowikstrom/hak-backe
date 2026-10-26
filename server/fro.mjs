@@ -1249,9 +1249,9 @@ await iForeningen(async () => {
 {
   const { existsSync, copyFileSync, statSync, mkdirSync } = await import('node:fs');
   const { join } = await import('node:path');
-  const kalla = join(ROT, 'tests', 'data', 'manual.pdf');
+  const kalla = join(ROT, 'tests', 'data', 'fk200-komplett.pdf');
   if (existsSync(kalla)) {
-    const { DOKUMENTKATALOG, lasPdf } = await import('./dokument.mjs');
+    const { DOKUMENTKATALOG, innehallskarta, lasPdf, sidorUr } = await import('./dokument.mjs');
     mkdirSync(DOKUMENTKATALOG, { recursive: true });
     const filnamn = 'fk200-manual.pdf';
     copyFileSync(kalla, join(DOKUMENTKATALOG, filnamn));
@@ -1262,12 +1262,14 @@ await iForeningen(async () => {
       spara('dokument', {
         utrustning_id: fro_utr?.id ?? null,
         namn: 'FK-200 servicemanual (exempel)',
-        slag: 'manual',
         filnamn,
         mediatyp: 'application/pdf',
         storlek: statSync(kalla).size,
         sidor: r.sidor.length || null,
         text: r.text,
+        // Innehållskartan är regler och kräver ingen modell.
+        innehall: JSON.stringify(innehallskarta(sidorUr(r.text))),
+        slag: 'servicemanual',
         av_id: fro_jonas?.id ?? null,
       });
     });

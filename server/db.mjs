@@ -157,6 +157,9 @@ function migrera(db) {
     // Ur protokoll och intyg: när arbetet gjordes och hur länge det gäller.
     ['dokument', 'avser_datum', 'TEXT'],
     ['dokument', 'giltigt_till', 'TEXT'],
+    // Innehållskartan: vilka sidor som är vad. Gör ett tjockt dokument
+    // användbart – man slår upp rätt sida i stället för att bläddra.
+    ['dokument', 'innehall', 'TEXT'],
   ]) {
     const finns = db.prepare(`PRAGMA table_info(${tabell})`).all().some((k) => k.name === kolumn);
     if (!finns) db.exec(`ALTER TABLE ${tabell} ADD COLUMN ${kolumn} ${typ}`);
