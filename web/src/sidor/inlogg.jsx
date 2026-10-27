@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api.js';
-import { Marke } from '../delar/bitar.jsx';
+import { Logotyp } from '../../delad/marke.jsx';
 
 export function Inlogg({ klar, forening }) {
   const [anvandarnamn, sattAnv] = useState('');
@@ -25,9 +25,11 @@ export function Inlogg({ klar, forening }) {
   return (
     <div className="inlogg">
       <form onSubmit={skicka}>
-        <div className="marke">
-          <Marke storlek={30} /> {forening?.kortnamn || 'HAK'} Backe
+        {/* Här finns plats för hela logotypen, inte bara märket. */}
+        <div className="logotyp">
+          <Logotyp bredd={230} />
         </div>
+        <div className="marke">{forening?.kortnamn || 'HAK'} Backe</div>
         {forening?.namn && <p className="hjalp" style={{ marginTop: -4 }}>{forening.namn}</p>}
         <p className="hjalp">Snöläggning, checklistor, ärenden och bemanning.</p>
         <label className="falt">

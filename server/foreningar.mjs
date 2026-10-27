@@ -15,8 +15,8 @@ const REGISTER = process.env.HAK_FORENINGSREGISTER || join(ROT, 'data', 'forenin
 
 /** Grundprofil. En förening kan skriva över enskilda värden. */
 export const STANDARDPROFIL = {
-  klubb_ren: '#8cc63f',
-  klubb: '#477c20',
+  klubb_ren: '#86bf58',
+  klubb: '#517a2f',
   klubb_djup: '#35611a',
   klubb_mjuk: '#f1f8e7',
   klubb_ram: '#d6e9bd',

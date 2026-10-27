@@ -56,9 +56,9 @@ p { margin: 0 0 8px; }
   position: sticky; top: 0; z-index: 40;
 }
 .marke { display: flex; align-items: center; gap: 8px; font-weight: 700; letter-spacing: -.02em; }
-/* Märket i listen: grön sköld med vit figur. Vitt ger skarpast läsning
-   på det gröna, mörkt läge eller inte. */
-.marke .marke-svg { display: block; --marke-fond: var(--klubb-ren); --marke-motiv: #fff; }
+/* Listen är ljus, så märket står i klubbgrönt – som logotypen är tänkt.
+   I mörkt läge byter --klubb-ren inte färg: grönan bär sig själv mot båda. */
+.marke .marke-svg { display: block; --marke-motiv: var(--klubb-ren); }
 .marke small { font-weight: 500; color: var(--text-svag); letter-spacing: 0; }
 .meny { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
 .meny::-webkit-scrollbar { display: none; }
@@ -573,3 +573,7 @@ dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
   background: var(--bak-2); text-decoration: none; color: var(--text); font-size: 12px;
 }
 .innehallskarta .avsnitt:hover { border-color: var(--klubb); background: var(--hover); }
+
+/* Inloggningens logotyp: hela lockupen i klubbgrönt, centrerad. */
+.inlogg .logotyp { display: flex; justify-content: center; margin-bottom: 10px; --marke-motiv: var(--klubb-ren); }
+.inlogg .marke { justify-content: center; font-size: 15px; color: var(--text-svag); font-weight: 600; }

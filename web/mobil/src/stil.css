@@ -54,8 +54,10 @@ a { color: var(--klubb); }
   position: sticky; top: 0; z-index: 20;
 }
 .topp .marke { display: flex; align-items: center; gap: 9px; font-weight: 800; letter-spacing: -.02em; }
-.topp .marke svg { width: 30px; height: 30px; display: block; }
-.topp .marke { --marke-fond: #fff; --marke-motiv: var(--klubb-ren); }
+.topp .marke svg { height: 32px; width: auto; display: block; }
+/* Listen är klubbgrön, så märket är vitt. Den riktiga logotypen är
+   enfärgad – det finns ingen sköld att fylla separat längre. */
+.topp .marke { --marke-motiv: #fff; }
 .topp .marke small { display: block; font-size: 11px; font-weight: 600; opacity: .75; letter-spacing: .04em; text-transform: uppercase; }
 .topp .slut { margin-left: auto; display: flex; gap: 8px; align-items: center; }
 .topp button {
@@ -232,8 +234,8 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .ark > footer { padding: 10px 16px 16px; display: flex; gap: 10px; border-top: 1px solid var(--ram); }
 .ark > footer > * { flex: 1 1 0; }
 
-/* Märket på vit yta: grön sköld med vitt motiv. */
-.marke-pa-vitt { --marke-fond: var(--klubb-ren); --marke-motiv: #fff; display: inline-flex; }
+/* Märket på vit yta: klubbgrönt, som i logotypen. */
+.marke-pa-vitt { --marke-motiv: var(--klubb-ren); display: inline-flex; }
 
 /* ---------- 9 Smått ---------- */
 .meddelande { padding: 11px 13px; border-radius: var(--radie-s); font-size: 14px; }
@@ -264,8 +266,8 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   background: linear-gradient(170deg, var(--klubb-ren) 0%, var(--klubb-ren) 42%, var(--bak) 42%, var(--bak) 100%);
 }
 .inlogg .huvud { text-align: center; color: var(--pa-klubb); display: flex; flex-direction: column; align-items: center; gap: 8px; }
-.inlogg .huvud svg { width: 84px; height: 84px; }
-.inlogg .huvud { --marke-fond: #fff; --marke-motiv: var(--klubb-ren); }
+.inlogg .huvud svg { height: 90px; width: auto; }
+.inlogg .huvud { --marke-motiv: #fff; }
 .inlogg form { background: var(--yta); border-radius: var(--radie-xl); padding: 18px; box-shadow: var(--skugga); display: flex; flex-direction: column; gap: 14px; }
 
 /* ---------- Rapportera händelse ---------- */

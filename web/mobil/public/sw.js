@@ -1,6 +1,6 @@
 // Servicearbetare: appskalet ligger kvar i telefonen så ronden går att
 // göra utan täckning. API-svar cachas aldrig som sanning – de hämtas om.
-const CACHE = 'hak-rond-v1';
+const CACHE = 'hak-rond-v2';
 const SKAL = ['/mobil/', '/mobil/index.html', '/mobil/manifest.webmanifest', '/mobil/ikon.svg'];
 
 self.addEventListener('install', (e) => {

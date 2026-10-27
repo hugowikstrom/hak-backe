@@ -31,7 +31,9 @@ p { margin: 0 0 10px; }
   background: var(--klubb-ren); color: var(--pa-klubb); padding: 14px 16px;
   display: flex; align-items: center; gap: 12px; position: sticky; top: 0; z-index: 10;
 }
-.topp svg { width: 34px; height: 34px; }
+.topp svg { height: 36px; width: auto; }
+/* Listen är klubbgrön; märket vitt mot den. */
+.topp { --marke-motiv: #fff; }
 .topp .namn { font-weight: 800; font-size: 19px; letter-spacing: -.02em; }
 .topp .under { font-size: 12px; font-weight: 600; opacity: .8; text-transform: uppercase; letter-spacing: .05em; }
 .topp a, .topp button {

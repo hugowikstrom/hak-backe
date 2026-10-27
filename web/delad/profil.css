@@ -17,11 +17,11 @@
 
 :root {
   /* ---- Varumärket ---- */
-  --klubb-ren:   #8cc63f;  /* grönt ur logotypen – fyllning, mörk text ovanpå */
-  --klubb:       #477c20;  /* bär text och ramar på ljus botten (AA mot vitt och mjukt) */
-  --klubb-djup:  #35611a;  /* tryckta ytor och text på klubb-ren */
-  --klubb-mjuk:  #f1f8e7;  /* ljus bottenton */
-  --klubb-ram:   #d6e9bd;
+  --klubb-ren:   #86bf58;  /* klubbens logotypgrön, ur HAK-alpina.png */
+  --klubb:       #517a2f;  /* bär text och ramar på ljus botten (AA mot vitt) */
+  --klubb-djup:  #416226;  /* rubriker och ikoner som ska bära tyngd */
+  --klubb-mjuk:  #eff5eb;  /* ljus bottenton */
+  --klubb-ram:   #cbdabe;
   --pa-klubb:    #15210a;  /* text ovanpå --klubb-ren, den ljusa logotypgrönan */
   /* Text ovanpå --klubb, som är mörk i ljust läge och ljus i mörkt. Paren
      går åt olika håll: --pa-klubb hör till den ljusa grönan, den här till
@@ -67,11 +67,11 @@
    bara står här uppe förblir ljusa, och text försvinner mot sin bakgrund. */
 @media (prefers-color-scheme: dark) {
   :root:not([data-tema='ljust']) {
-    --klubb-ren:   #8cc63f;
-    --klubb:       #9ad44f;  /* ljusare, för att bära text mot mörkt */
-    --klubb-djup:  #c6ea9a;
-    --klubb-mjuk:  #1d2a14;
-    --klubb-ram:   #33471f;
+    --klubb-ren:   #86bf58;
+    --klubb:       #86bf58;  /* logotypgrönan bär sig själv mot mörkt (7,9:1) */
+    --klubb-djup:  #d6e9c7;
+    --klubb-mjuk:  #181e13;
+    --klubb-ram:   #34412a;
     --pa-klubb:    #15210a;
     --pa-klubb-fyll: #15210a;
 
@@ -100,11 +100,11 @@
 
 /* Mörkt läge kan också väljas i webbklienten, inte bara följa systemet. */
 [data-tema='morkt'] {
-  --klubb-ren:   #8cc63f;
-  --klubb:       #9ad44f;
-  --klubb-djup:  #c6ea9a;
-  --klubb-mjuk:  #1d2a14;
-  --klubb-ram:   #33471f;
+  --klubb-ren:   #86bf58;
+  --klubb:       #86bf58;
+  --klubb-djup:  #d6e9c7;
+  --klubb-mjuk:  #181e13;
+  --klubb-ram:   #34412a;
   --pa-klubb:    #15210a;
   --pa-klubb-fyll: #15210a;
 
