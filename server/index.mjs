@@ -3,11 +3,11 @@ import { createServer } from 'node:http';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { medlemAvKaka, publikMedlem, RANG, stadaSessioner } from './auth.mjs';
-import { far, uppdragFor } from './behorighet.mjs';
+import { far, grupperFor, minstRoll, uppdragFor } from './behorighet.mjs';
 import { fel, HttpFel, lasKropp, matcha, svar } from './http.mjs';
 import { ROT } from './db.mjs';
 
-import { aktivaModuler, allaRutter, modulPa, publikaModuler } from './moduler.mjs';
+import { aktivaModuler, allaRutter, MENYGRUPPER, modulPa, publikaModuler } from './moduler.mjs';
 import { foreningar, foreningAvVard, korSom, publikForening } from './foreningar.mjs';
 import { ARBETSYTOR } from './behorighet.mjs';
 
@@ -74,10 +74,13 @@ async function hanteraApi({ req, res, url, stig, forening }) {
   // Vad plattformen består av för den här föreningen.
   if (stig === '/api/plattform' && req.method === 'GET') {
     const grundmedlem = medlemAvKaka(req.headers.cookie);
-    const medlem = grundmedlem ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id) } : null;
+    const medlem = grundmedlem
+      ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id), grupper: grupperFor(grundmedlem.id) }
+      : null;
     return svar(res, 200, {
       forening: publikForening(forening),
       moduler: publikaModuler(forening),
+      menygrupper: MENYGRUPPER,
       arbetsytor: ARBETSYTOR,
       medlem: publikMedlem(grundmedlem),
     });
@@ -91,13 +94,16 @@ async function hanteraApi({ req, res, url, stig, forening }) {
     throw fel(404, `Modulen ${r.modul} är inte påslagen för ${forening.namn}`);
 
   const grundmedlem = medlemAvKaka(req.headers.cookie);
-  // Uppdragen följer med, så att behörighetsprövningen slipper läsa om dem.
-  const medlem = grundmedlem ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id) } : null;
+  // Uppdragen och grupperna följer med, så att behörighetsprövningen slipper
+  // läsa om dem – far() och minstRoll() hittar dem på medlemmen.
+  const medlem = grundmedlem
+    ? { ...grundmedlem, uppdrag: uppdragFor(grundmedlem.id), grupper: grupperFor(grundmedlem.id) }
+    : null;
   if (r.roll !== 'oppen') {
     if (!medlem) throw fel(401, 'Inte inloggad');
     if (r.roll.startsWith('@')) {
       if (!far(medlem, r.roll.slice(1))) throw fel(403, `Kräver behörigheten ${r.roll.slice(1)}`);
-    } else if (!(RANG[medlem.roll] >= RANG[r.roll])) {
+    } else if (!minstRoll(medlem, r.roll)) {
       throw fel(403, `Kräver rollen ${r.roll}`);
     }
   }

@@ -22,6 +22,8 @@ export const api = {
   hamta: (stig) => anrop('GET', stig),
   skapa: (stig, kropp) => anrop('POST', stig, kropp ?? {}),
   spara: (stig, kropp) => anrop('PUT', stig, kropp ?? {}),
+  // PATCH för det som ändrar några fält i taget, PUT för hela posten.
+  andra: (stig, kropp) => anrop('PATCH', stig, kropp ?? {}),
   tabort: (stig) => anrop('DELETE', stig),
 };
 

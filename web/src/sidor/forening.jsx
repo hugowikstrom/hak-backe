@@ -4,6 +4,7 @@ import { api } from '../api.js';
 import { useJag } from '../app.jsx';
 import { Bricka, Flikar, Kort, Lada, Nyckeltal, Ruta, Text, Tomt, useHamta, useNotis, Val, Vanta } from '../delar/bitar.jsx';
 import { Tabell } from '../delar/tabell.jsx';
+import { Tilltraden } from './tilltrade.jsx';
 import { idag, ROLLNAMN } from '../nytta.js';
 
 const far = (jag, b) => (jag.behorigheter || []).includes(b);
@@ -21,7 +22,7 @@ export function Forening() {
       <div className="sidhuvud">
         <div>
           <h1>Föreningen</h1>
-          <div className="undertext">Matrikel, sektioner, träningsgrupper och uppdrag</div>
+          <div className="undertext">Matrikel, sektioner, träningsgrupper, uppdrag och tillträden</div>
         </div>
       </div>
       <Flikar
@@ -29,6 +30,9 @@ export function Forening() {
           { nyckel: 'matrikel', text: 'Matrikel' },
           { nyckel: 'grupper', text: 'Sektioner och grupper' },
           { nyckel: 'styrelse', text: 'Styrelse och uppdrag' },
+          // Tillträdena visas bara för den som får styra dem. Annars står
+          // det en flik där som svarar 403 när man trycker på den.
+          ...(far(jag, 'behorighetsstyrning') ? [{ nyckel: 'tilltrade', text: 'Tillträden' }] : []),
         ]}
         aktiv={flik}
         satt={sattFlik}
@@ -36,6 +40,7 @@ export function Forening() {
       {flik === 'matrikel' && <Matrikel jag={jag} />}
       {flik === 'grupper' && <Grupper jag={jag} />}
       {flik === 'styrelse' && <Styrelse jag={jag} />}
+      {flik === 'tilltrade' && <Tilltraden jag={jag} />}
     </>
   );
 }

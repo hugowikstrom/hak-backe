@@ -4,7 +4,54 @@ import { api } from '../api.js';
 import { Lank, useJag } from '../app.jsx';
 import { Bricka, Kort, Matare, Nyckeltal, Text, Tomt, useHamta, useNotis, Vanta } from '../delar/bitar.jsx';
 import { Tabell } from '../delar/tabell.jsx';
-import { idag, INSATSSLAG, kortDatum, langDatum, PASSLAG, procent, tal } from '../nytta.js';
+import { idag, INSATSSLAG, kortDatum, langDatum, PASSLAG, procent, ROLLNAMN, tal, UPPDRAGSNAMN } from '../nytta.js';
+
+/**
+ * Varför jag ser det jag ser.
+ *
+ * Finns för att svaret annars är omöjligt att få: en medlem som undrar
+ * varför kassan dykt upp i menyn ska kunna läsa att hon lagts in i
+ * Kioskvärdarna, inte behöva fråga någon.
+ */
+function Mittilltrade({ jag }) {
+  const grupper = jag.grupper || [];
+  const uppdrag = jag.uppdrag || [];
+  if (!grupper.length && !uppdrag.length) return null;
+  return (
+    <Kort titel="Mitt tillträde" undertext="Vad som öppnar systemets delar för dig">
+      <dl className="uppgifter" style={{ margin: 0 }}>
+        <dt>Roll</dt>
+        <dd>{ROLLNAMN[jag.roll] || jag.roll}</dd>
+        {!!grupper.length && (
+          <>
+            <dt>Grupper</dt>
+            <dd>
+              <div className="brickrad">
+                {grupper.map((g) => (
+                  <Bricka key={g.nyckel} farg="info" title={g.roll_golv ? `Ger nivån ${ROLLNAMN[g.roll_golv]}` : undefined}>
+                    {g.namn}
+                  </Bricka>
+                ))}
+              </div>
+            </dd>
+          </>
+        )}
+        {!!uppdrag.length && (
+          <>
+            <dt>Uppdrag</dt>
+            <dd>
+              <div className="brickrad">
+                {uppdrag.map((u) => (
+                  <Bricka key={u.id} farg="lila">{UPPDRAGSNAMN[u.slag] || u.slag}</Bricka>
+                ))}
+              </div>
+            </dd>
+          </>
+        )}
+      </dl>
+    </Kort>
+  );
+}
 
 export function Mina() {
   const jag = useJag();
@@ -42,6 +89,7 @@ export function Mina() {
       </div>
 
       <div className="rutor bred">
+        <Mittilltrade jag={jag} />
         <Kort titel="Säsongens kvot">
           {lage.undantagen ? (
             <p className="svag">Du är undantagen från bemanningskvoten.</p>

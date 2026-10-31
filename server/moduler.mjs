@@ -7,10 +7,11 @@
 //
 // Kärnmoduler går inte att stänga av: utan konto, medlemmar och föreningen
 // finns ingen plattform.
-import { aktivaModuler, modul, MODULDATA, modulPa, publikaModuler } from './moduldata.mjs';
+import { aktivaModuler, MENYGRUPPER, modul, MODULDATA, modulPa, publikaModuler } from './moduldata.mjs';
 import { rutter as konto } from './api/konto.mjs';
 import { rutter as register } from './api/register.mjs';
 import { rutter as forening } from './api/forening.mjs';
+import { rutter as tilltrade } from './api/tilltrade.mjs';
 import { rutter as bilder } from './api/bilder.mjs';
 import { rutter as oversikt } from './api/oversikt.mjs';
 import { rutter as sno } from './api/sno.mjs';
@@ -36,7 +37,7 @@ import { rutter as platser } from './api/platser.mjs';
 // och dess rutter här.
 const RUTTER = {
   konto: [...konto, ...bilder],
-  forening: forening,
+  forening: [...forening, ...tilltrade],
   anlaggning: register,
   oversikt: oversikt,
   arenden: arenden,
@@ -62,4 +63,4 @@ export const MODULER = MODULDATA.map((m) => ({ ...m, rutter: RUTTER[m.nyckel] ||
 export const allaRutter = () =>
   MODULER.flatMap((m) => m.rutter.map((r) => ({ ...r, modul: m.nyckel })));
 
-export { aktivaModuler, modul, MODULDATA, modulPa, publikaModuler };
+export { aktivaModuler, MENYGRUPPER, modul, MODULDATA, modulPa, publikaModuler };

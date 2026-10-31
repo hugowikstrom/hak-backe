@@ -919,3 +919,69 @@ CREATE TABLE IF NOT EXISTS uppstallning (
 );
 CREATE INDEX IF NOT EXISTS idx_uppstallning_plats ON uppstallning(snoplats_id, till);
 CREATE INDEX IF NOT EXISTS idx_uppstallning_utr ON uppstallning(utrustning_id, till);
+
+-- ---------------------------------------------------------------------------
+-- Behörighetsgrupper
+-- ---------------------------------------------------------------------------
+
+-- En medlem kan tillhöra flera grupper, och gruppen ger tillträde till delar
+-- av systemet. Rollen räcker inte: den är en enda nivå, och verkligheten är
+-- att samma person är kassör, står i kiosken och kör pistmaskin.
+--
+-- Namnet är inte godtyckligt. `traningsgrupp` och dess `gruppmedlem` är
+-- redan upptagna av träningsverksamheten – Freeski, U12, och så vidare. De
+-- grupperna handlar om vem som tränar med vem, inte om vem som får se vad.
+-- Blandar man ihop dem får en tolvåring kassabehörighet för att hen råkar
+-- träna i en grupp som har en tränare.
+--
+-- Gruppen *lägger till*. Den tar aldrig bort något en medlem redan har via
+-- sin roll eller sitt uppdrag, och den kan inte sänka någon.
+CREATE TABLE IF NOT EXISTS behorighetsgrupp (
+  id          INTEGER PRIMARY KEY,
+  nyckel      TEXT NOT NULL UNIQUE,              -- 'snoganget', 'kioskvardar'
+  namn        TEXT NOT NULL,
+  beskrivning TEXT,
+  -- Lägsta roll gruppen ger. Null betyder att gruppen bara ger behörigheter.
+  -- Höjer aldrig någon som redan står högre.
+  roll_golv   TEXT,
+  inbyggd     INTEGER NOT NULL DEFAULT 0,        -- grundgrupper: går inte att ta bort
+  ordning     INTEGER NOT NULL DEFAULT 0,
+  aktiv       INTEGER NOT NULL DEFAULT 1
+);
+
+-- Behörigheterna gruppen ger, med namnen ur BEHORIGHETER i behorighet.mjs.
+CREATE TABLE IF NOT EXISTS gruppbehorighet (
+  grupp_id   INTEGER NOT NULL REFERENCES behorighetsgrupp(id) ON DELETE CASCADE,
+  behorighet TEXT NOT NULL,
+  PRIMARY KEY (grupp_id, behorighet)
+);
+
+-- Arbetsytorna gruppen öppnar. Den som går med i kioskvärdarna ska få
+-- kioskens vy i ytväljaren, inte bara rätten att slå på kassan.
+CREATE TABLE IF NOT EXISTS gruppyta (
+  grupp_id INTEGER NOT NULL REFERENCES behorighetsgrupp(id) ON DELETE CASCADE,
+  yta      TEXT NOT NULL,
+  PRIMARY KEY (grupp_id, yta)
+);
+
+-- Vem som tillhör vilken grupp. `till` i förfluten tid betyder att
+-- tillhörigheten upphört, men raden ligger kvar: att någon haft
+-- kassabehörighet en säsong är en uppgift värd att kunna svara på.
+CREATE TABLE IF NOT EXISTS grupptillhorighet (
+  id        INTEGER PRIMARY KEY,
+  grupp_id  INTEGER NOT NULL REFERENCES behorighetsgrupp(id) ON DELETE CASCADE,
+  medlem_id INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  fran      TEXT NOT NULL DEFAULT (date('now')),
+  -- Sista dagen tillhörigheten gäller, till och med. Ett planerat slut:
+  -- "volontär till och med 30 april".
+  till      TEXT,
+  -- Återkallad här och nu. Skild från `till` med flit: ett planerat slut
+  -- gäller dagen ut, men den som tas ur en grupp ska tappa tillträdet
+  -- direkt – inte vid midnatt. Datumet i `till` får stå kvar och berätta
+  -- vilken dag det hände.
+  aterkallad TEXT,
+  av_id     INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  UNIQUE(grupp_id, medlem_id)
+);
+CREATE INDEX IF NOT EXISTS idx_grupptillhorighet_medlem ON grupptillhorighet(medlem_id, till);
+CREATE INDEX IF NOT EXISTS idx_grupptillhorighet_grupp ON grupptillhorighet(grupp_id, till);

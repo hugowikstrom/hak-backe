@@ -11,33 +11,33 @@ export const MODULDATA = [
     nyckel: 'konto',
     namn: 'Konto och inloggning',
     karna: true,
-    sidor: [{ nyckel: 'mina', text: 'Mina sidor', stig: '/mina' }],
+    sidor: [{ nyckel: 'mina', grupp: 'mitt', text: 'Mina sidor', stig: '/mina' }],
   },
   {
     nyckel: 'forening',
     namn: 'Föreningen',
     beskrivning: 'Matrikel, sektioner, träningsgrupper och förtroendeuppdrag',
     karna: true,
-    sidor: [{ nyckel: 'forening', text: 'Föreningen', stig: '/forening' }],
+    sidor: [{ nyckel: 'forening', grupp: 'foreningen', text: 'Föreningen', stig: '/forening' }],
   },
   {
     nyckel: 'anlaggning',
     namn: 'Anläggning',
     beskrivning: 'Områden, utrustning, positioner och säsonger',
     karna: true,
-    sidor: [{ nyckel: 'register', text: 'Register', stig: '/register', roll: 'backansvarig' }],
+    sidor: [{ nyckel: 'register', grupp: 'backen', text: 'Register', stig: '/register', roll: 'backansvarig' }],
   },
   {
     nyckel: 'oversikt',
     namn: 'Översikt',
     karna: true,
-    sidor: [{ nyckel: 'oversikt', text: 'Hela läget', stig: '/oversikt' }],
+    sidor: [{ nyckel: 'oversikt', grupp: 'uppfoljning', text: 'Hela läget', stig: '/oversikt' }],
   },
   {
     nyckel: 'arenden',
     namn: 'Ärenden',
     beskrivning: 'Fel, brister, risker och förbättringar',
-    sidor: [{ nyckel: 'arenden', text: 'Ärenden', stig: '/arenden' }],
+    sidor: [{ nyckel: 'arenden', grupp: 'backen', text: 'Ärenden', stig: '/arenden' }],
   },
   {
     // Driftjournalen håller ihop ronder, mätningar, fel och incidenter till
@@ -46,7 +46,7 @@ export const MODULDATA = [
     namn: 'Driftjournal',
     beskrivning: 'Journal, talrapportering, utrustningshistorik och återkommande fel',
     beroenden: ['anlaggning', 'arenden'],
-    sidor: [{ nyckel: 'journal', text: 'Driftjournal', stig: '/journal' }],
+    sidor: [{ nyckel: 'journal', grupp: 'backen', text: 'Driftjournal', stig: '/journal' }],
   },
   {
     // Förebyggande underhåll: årshjul, serviceplaner ur manualerna och
@@ -55,7 +55,7 @@ export const MODULDATA = [
     namn: 'Underhåll',
     beskrivning: 'Serviceplaner, årshjul, manualer, reservdelar och kostnader',
     beroenden: ['anlaggning', 'drift'],
-    sidor: [{ nyckel: 'underhall', text: 'Underhåll', stig: '/underhall', behorighet: 'anlaggning' }],
+    sidor: [{ nyckel: 'underhall', grupp: 'backen', text: 'Underhåll', stig: '/underhall', behorighet: 'anlaggning' }],
   },
   {
     // Olyckor och tillbud ligger i egen modul: en klubb kan behöva journalen
@@ -64,20 +64,20 @@ export const MODULDATA = [
     namn: 'Incidenter',
     beskrivning: 'Olyckor, tillbud och arbetsskador med begränsad åtkomst',
     beroenden: ['drift'],
-    sidor: [{ nyckel: 'incidenter', text: 'Incidenter', stig: '/incidenter', behorighet: 'incident' }],
+    sidor: [{ nyckel: 'incidenter', grupp: 'backen', text: 'Incidenter', stig: '/incidenter', behorighet: 'incident' }],
   },
   {
     nyckel: 'checklistor',
     namn: 'Checklistor och ronder',
     beroenden: ['anlaggning', 'arenden'],
-    sidor: [{ nyckel: 'checklistor', text: 'Checklistor', stig: '/checklistor' }],
+    sidor: [{ nyckel: 'checklistor', grupp: 'backen', text: 'Checklistor', stig: '/checklistor' }],
   },
   {
     nyckel: 'snolaggning',
     namn: 'Snöläggning',
     beskrivning: 'Mätningar, wetbulb och väderprognos',
     beroenden: ['anlaggning'],
-    sidor: [{ nyckel: 'snolaggning', text: 'Snöläggning', stig: '/snolaggning' }],
+    sidor: [{ nyckel: 'snolaggning', grupp: 'backen', text: 'Snöläggning', stig: '/snolaggning' }],
   },
   {
     // Medlemmens egen vy: en sak i taget. Hör till bemanningen, för det är
@@ -93,7 +93,7 @@ export const MODULDATA = [
     namn: 'Bemanning',
     beskrivning: 'Pass, bokningar, kvoter och automatplanering',
     beroenden: ['anlaggning'],
-    sidor: [{ nyckel: 'bemanning', text: 'Bemanning', stig: '/bemanning' }],
+    sidor: [{ nyckel: 'bemanning', grupp: 'foreningen', text: 'Bemanning', stig: '/bemanning' }],
   },
   {
     // Prognosfönster blir bemanningsbehov. Egen modul, för en klubb kan ha
@@ -102,20 +102,20 @@ export const MODULDATA = [
     namn: 'Snöplanering',
     beskrivning: 'Produktionsfönster, säsongstillgänglighet och förfrågningar',
     beroenden: ['bemanning', 'snolaggning'],
-    sidor: [{ nyckel: 'snoplan', text: 'Snöplanering', stig: '/snoplan', behorighet: 'bemanning' }],
+    sidor: [{ nyckel: 'snoplan', grupp: 'backen', text: 'Snöplanering', stig: '/snoplan', behorighet: 'bemanning' }],
   },
   {
     nyckel: 'ekonomi',
     namn: 'Ekonomi',
     beskrivning: 'Bokföring, verifikationer, SIE-export och plånbok',
-    sidor: [{ nyckel: 'ekonomi', text: 'Ekonomi', stig: '/ekonomi', behorighet: 'ekonomi_las' }],
+    sidor: [{ nyckel: 'ekonomi', grupp: 'pengar', text: 'Ekonomi', stig: '/ekonomi', behorighet: 'ekonomi_las' }],
   },
   {
     nyckel: 'kiosk',
     namn: 'Kiosk',
     beskrivning: 'Beställning med QR, kassa och sortiment',
     beroenden: ['ekonomi'],
-    sidor: [{ nyckel: 'kassa', text: 'Kassa', stig: '/kassa', behorighet: 'kassa' }],
+    sidor: [{ nyckel: 'kassa', grupp: 'pengar', text: 'Kassa', stig: '/kassa', behorighet: 'kassa' }],
     gastklient: '/fik/',
   },
   {
@@ -131,20 +131,33 @@ export const MODULDATA = [
     namn: 'Träning',
     beskrivning: 'Träningstillfällen, närvaro och aktivitetsstöd',
     beroenden: ['forening'],
-    sidor: [{ nyckel: 'traning', text: 'Träning', stig: '/traning', behorighet: 'traning' }],
+    sidor: [{ nyckel: 'traning', grupp: 'foreningen', text: 'Träning', stig: '/traning', behorighet: 'traning' }],
   },
   {
     nyckel: 'ideer',
     namn: 'Idélåda',
     beskrivning: 'Skrivna och inspelade idéer, vidare till Backlog',
-    sidor: [{ nyckel: 'ideer', text: 'Idélådan', stig: '/ideer' }],
+    sidor: [{ nyckel: 'ideer', grupp: 'mitt', text: 'Idélådan', stig: '/ideer' }],
   },
   {
     nyckel: 'rapporter',
     namn: 'Rapporter',
     beroenden: ['arenden', 'bemanning'],
-    sidor: [{ nyckel: 'rapporter', text: 'Rapporter', stig: '/rapporter' }],
+    sidor: [{ nyckel: 'rapporter', grupp: 'uppfoljning', text: 'Rapporter', stig: '/rapporter' }],
   },
+];
+
+/** Menyns grenar, i den ordning de ska stå. En sida utan grupp står löst
+ *  högst upp – Start hör inte under någon rubrik.
+ *
+ *  Grenarna är få med flit. Fler än en handfull rubriker blir en lista att
+ *  leta i, och då är det ingen vinst mot den platta raden de ersätter. */
+export const MENYGRUPPER = [
+  { nyckel: 'backen', namn: 'Backen' },
+  { nyckel: 'foreningen', namn: 'Föreningen' },
+  { nyckel: 'pengar', namn: 'Pengar' },
+  { nyckel: 'uppfoljning', namn: 'Uppföljning' },
+  { nyckel: 'mitt', namn: 'Mitt' },
 ];
 
 const nyckelkarta = new Map(MODULDATA.map((m) => [m.nyckel, m]));

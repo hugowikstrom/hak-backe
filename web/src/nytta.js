@@ -78,6 +78,22 @@ export const ROLLNAMN = {
   anlaggningsansvarig: 'Anläggningsansvarig',
   admin: 'Administratör',
 };
+/** Spegling av UPPDRAG i server/behorighet.mjs, för att kunna visa namnet. */
+export const UPPDRAGSNAMN = {
+  ordforande: 'Ordförande',
+  vice_ordforande: 'Vice ordförande',
+  kassor: 'Kassör',
+  sekreterare: 'Sekreterare',
+  ledamot: 'Styrelseledamot',
+  suppleant: 'Suppleant',
+  valberedning: 'Valberedning',
+  revisor: 'Revisor',
+  sektionsansvarig: 'Sektionsansvarig',
+  tranare: 'Tränare',
+  volontar: 'Volontär',
+  backansvarig: 'Backansvarig',
+  anlaggningsansvarig: 'Anläggningsansvarig',
+};
 export const PASSLAG = { dag: 'Dag', kvall: 'Kväll', natt: 'Natt' };
 export const KLARTECKEN = {
   utmarkt: 'Utmärkt', mycket_bra: 'Mycket bra', bra: 'Bra', ok: 'OK',
@@ -90,7 +106,13 @@ export const RANG = {
   medlem: 1, volontar: 1, tranare: 2, backansvarig: 3, anlaggningsansvarig: 4, admin: 5,
 };
 export const far = (medlem, behorighet) => (medlem?.behorigheter || []).includes(behorighet);
-export const minstRoll = (medlem, roll) => (RANG[medlem?.roll] ?? 0) >= (RANG[roll] ?? 99);
+/**
+ * Rollnivån servern räknat fram, som väger in rollgolvet medlemmens grupper
+ * ger. Faller tillbaka på den egna rollen – en äldre session kan sakna
+ * fältet, och då är rollen rätt svar.
+ */
+export const minstRoll = (medlem, roll) =>
+  (medlem?.roll_niva ?? RANG[medlem?.roll] ?? 0) >= (RANG[roll] ?? 99);
 
 /** "2026-12-01 20:00" -> "20:00". Prognosen levereras i svensk lokaltid. */
 export const prognostimme = (tid) => (tid ? String(tid).slice(11, 16) : '');

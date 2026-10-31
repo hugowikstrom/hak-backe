@@ -1006,6 +1006,70 @@ iForeningen(() => transaktion(() => {
   // Kassören och tränarna ska komma åt sina delar.
   kor("UPDATE medlem SET roll='tranare' WHERE anvandarnamn IN ('lotta','stefan','johan')");
 
+  // ---------- Behörighetsgrupper ----------
+  // Klubbens egna samlingar av tillträden. De finns för att rollen är en
+  // enda nivå medan verkligheten är att samma person kör pistmaskin på
+  // kvällen och sitter i styrelsen på tisdagen.
+  //
+  // Grupperna är märkta `inbyggd`: de hör till uppsättningen och går att
+  // stänga av men inte att ta bort, så att en klubb aldrig råkar radera
+  // bort sin egen behörighetsuppsättning.
+  const tilltradesgrupp = (nyckel, namn, beskrivning, { roll_golv = null, behorigheter = [], ytor = [], medlemmar = [], ordning = 0 }) => {
+    const id = spara('behorighetsgrupp', {
+      nyckel, namn, beskrivning, roll_golv, inbyggd: 1, ordning,
+    });
+    for (const b of behorigheter) kor('INSERT INTO gruppbehorighet (grupp_id, behorighet) VALUES (?, ?)', id, b);
+    for (const y of ytor) kor('INSERT INTO gruppyta (grupp_id, yta) VALUES (?, ?)', id, y);
+    for (const anv of medlemmar)
+      if (mid[anv])
+        kor(
+          'INSERT INTO grupptillhorighet (grupp_id, medlem_id, fran, av_id) VALUES (?, ?, ?, ?)',
+          id, mid[anv], '2026-09-01', mid.jonas ?? null
+        );
+    return id;
+  };
+
+  tilltradesgrupp('snoganget', 'Snögänget', 'Kör snöläggningen: lansar, pumpstation och mätningar', {
+    behorigheter: ['anlaggning'],
+    ytor: ['back'],
+    medlemmar: ['jonas', 'per', 'tobias', 'anders'],
+    ordning: 1,
+  });
+  tilltradesgrupp('backlaget', 'Backlaget', 'Dagens drift: ronder, ärenden och bemanning', {
+    behorigheter: ['anlaggning', 'bemanning'],
+    ytor: ['back'],
+    medlemmar: ['per', 'johan', 'tobias'],
+    ordning: 2,
+  });
+  // Liftarna är säkerhetskritiska. Gruppen ger ett rollgolv, för den som
+  // kvitterar en lift driftklar måste kunna stänga ett säkerhetsärende.
+  tilltradesgrupp('liftansvariga', 'Liftansvariga', 'Ansvarar för liftarnas dagliga kontroll och kvittens', {
+    roll_golv: 'backansvarig',
+    behorigheter: ['anlaggning', 'incident'],
+    ytor: ['anlaggning', 'back'],
+    medlemmar: ['jonas', 'per'],
+    ordning: 3,
+  });
+  tilltradesgrupp('kioskvardar', 'Kioskvärdarna', 'Står i fiket och uthyrningen', {
+    behorigheter: ['kassa', 'uthyrning'],
+    ytor: ['kiosk', 'uthyrning'],
+    medlemmar: ['kiosk', 'uthyrning', 'emma', 'anders'],
+    ordning: 4,
+  });
+  tilltradesgrupp('tranarlaget', 'Tränarlaget', 'Håller träning, för närvaro och söker aktivitetsstöd', {
+    behorigheter: ['traning'],
+    ytor: ['traning'],
+    medlemmar: ['annika', 'per', 'karin', 'lotta', 'stefan', 'johan', 'tranare', 'freeski', 'fis'],
+    ordning: 5,
+  });
+  // Personuppgifter om skadade gäster är en snävare krets än incidenterna
+  // i stort. Egen grupp, med flit.
+  tilltradesgrupp('incidentgruppen', 'Incidentgruppen', 'Följer upp olyckor och tillbud, inklusive personuppgifter', {
+    behorigheter: ['incident', 'incident_person'],
+    medlemmar: ['jonas', 'annika'],
+    ordning: 6,
+  });
+
   // ---------- Matrikeln ----------
   const matrikel = {
     jonas: ['1972-03-14', 'ledare', 'Storgatan 4', '871 30', 'Härnösand'],
@@ -1283,7 +1347,8 @@ iForeningen(() => {
     'sektion', 'traningsgrupp', 'gruppmedlem', 'uppdrag', 'traningstillfalle', 'narvaro', 'medlemsavgift',
     'komponent', 'leverantor', 'driftpost', 'incident',
     'serviceplan', 'serviceatgard', 'reservdel', 'reservdelsuttag', 'hogbelastning', 'tillganglighet',
-    'dokument', 'snoplats', 'uppstallning'])
+    'dokument', 'snoplats', 'uppstallning',
+    'behorighetsgrupp', 'gruppbehorighet', 'gruppyta', 'grupptillhorighet'])
     console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
 });
 db.close();
