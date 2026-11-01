@@ -189,7 +189,7 @@ export function Incidenter({ ga }) {
           ))}
         </div>
       ) : (
-        <p className="svag" style={{ textAlign: 'center', marginTop: 40 }}>
+        <p className="kv-ingenting">
           {flik === 'aktiva' ? 'Inga aktiva incidenter.' : 'Inga klarmarkerade incidenter.'}
         </p>
       )}

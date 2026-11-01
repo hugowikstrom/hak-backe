@@ -3,7 +3,7 @@
 // Formen följer systemet klubben kommer ifrån. Det är inte en estetisk
 // preferens utan en övergångskostnad som slipper betalas: handen hittar
 // Ronder där handen redan vet att Ronder ligger.
-import { Marke } from '../delar.jsx';
+import { Logotyp, Marke } from '../delar.jsx';
 
 /** Ikonerna ritas som streck – de ska se lika ut på varje telefon. */
 export const Ikon = ({ namn, storlek = 26 }) => {
@@ -38,6 +38,9 @@ export const Ikon = ({ namn, storlek = 26 }) => {
     reglage: 'M4 7h9m3 0h4M4 17h4m3 0h9M15 4.3v5.4M9 14.3v5.4',
     kamera: 'M4 8h3.2l1.5-2h6.6l1.5 2H20a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1Zm8 3.2a3.4 3.4 0 1 1 0 6.8 3.4 3.4 0 0 1 0-6.8Z',
     ned: 'm6 9.5 6 6 6-6',
+    bakat: 'm15 5-7 7 7 7',
+    kryss: 'M6 6l12 12M18 6 6 18',
+    spela: 'M8 5.5v13l11-6.5-11-6.5Z',
     mer: 'M12 5.5h.01M12 12h.01M12 18.5h.01',
     plus: 'M12 5v14M5 12h14',
   }[namn];
@@ -53,16 +56,27 @@ export const Ikon = ({ namn, storlek = 26 }) => {
  * Hela skalet. `hero` visas bara på startskärmen – i undervyerna byts
  * det mot en rubrikrad med bakåtpil, precis som i förlagan.
  */
-export function Skal({ flik, sattFlik, titel, tillbaka, hero, antal, meny, children, hem }) {
+export function Skal({ flik, sattFlik, titel, prick, tillbaka, hero, antal, meny, children, hem }) {
   return (
     <div className="kv">
-      <header className="kv-topp">
+      <header className={`kv-topp${titel ? ' kv-titelrad' : ''}`}>
         {tillbaka ? (
-          <button className="ikon bak" onClick={tillbaka} aria-label="Tillbaka">‹</button>
+          <button className="ikon bak" onClick={tillbaka} aria-label="Tillbaka">
+            <Ikon namn="bakat" storlek={30} />
+          </button>
         ) : (
           <span />
         )}
-        <span className="marke">{titel ? <strong>{titel}</strong> : <Marke storlek={34} />}</span>
+        <span className="marke">
+          {titel ? (
+            <strong>
+              {titel}
+              {prick && <span className="kv-statusprick" aria-hidden="true" />}
+            </strong>
+          ) : (
+            <Logotyp bredd={120} />
+          )}
+        </span>
         <button className="ikon" onClick={meny} aria-label="Meny"><Ikon namn="meny" /></button>
       </header>
 

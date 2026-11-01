@@ -70,13 +70,10 @@ export function Kontrollval({ vy, ga }) {
   const k = i.kontroller || { forsenade: [], kommande: [], alla: [] };
   const mallar = m.data?.data || m.data || [];
 
-  const starta = (rad) => {
-    const mall = mallar.find((x) => x.id === rad.mall_id);
-    if (!mall) return notis('Checklistan gick inte att hämta – prova igen när telefonen har täckning.', 'fel');
-    const rond = startaRond(mall, vy.objekt, slag);
-    synka().catch(() => {});
-    gaApp('rond', { lokalId: rond.lokalId });
-  };
+  // Pilen startar inte ronden utan öppnar mellansidan. Det extra steget
+  // är förlagans, och det finns av ett skäl: där står hur många öppna
+  // avvikelser enheten har innan man börjar bocka av.
+  const starta = (rad) => ga('kontrollstart', { objekt: vy.objekt, stalle: vy.stalle, rad });
 
   const startaFlera = () => {
     const rader = k.alla.filter((r) => valda.includes(r.mall_id));
@@ -196,7 +193,7 @@ export function Kontrollval({ vy, ga }) {
         </section>
       )}
       {!k.alla.length && (
-        <p className="svag" style={{ textAlign: 'center', marginTop: 36 }}>
+        <p className="kv-ingenting">
           Ingen checklista gäller den här enheten ännu.
         </p>
       )}
@@ -208,6 +205,70 @@ export function Kontrollval({ vy, ga }) {
           </button>
         </div>
       )}
+    </>
+  );
+}
+
+/**
+ * "Utför kontroll" – mellansidan mellan listan och själva ronden.
+ *
+ * Den ser onödig ut tills man läser vad som står på den: antalet öppna
+ * avvikelser på enheten, innan man börjar bocka av. Den som ska
+ * kontrollera en lift bör veta att det redan finns tre fel anmälda på
+ * den.
+ */
+export function Kontrollstart({ vy, ga }) {
+  const { ga: gaApp } = useRuta();
+  const notis = useNotis();
+  const [oppet, sattOppet] = useState(false);
+  const slag = vy.objekt.slag || 'utrustning';
+  const d = useHamta(() => api.hamta(`/api/kontroll/objekt?slag=${slag}&id=${vy.objekt.id}`), [vy.objekt.id]);
+  const m = useHamta(() => api.hamta('/api/checklistor/mallar'));
+  if (d.laddar && !d.data) return <Vanta />;
+  const i = data(d);
+  const oppna = (i.avvikelser || []).filter((a) => !['atgardad', 'stangd'].includes(a.status));
+  const mallar = m.data?.data || m.data || [];
+
+  const starta = () => {
+    const mall = mallar.find((x) => x.id === vy.rad.mall_id);
+    if (!mall) return notis('Checklistan gick inte att hämta – prova igen när telefonen har täckning.', 'fel');
+    const rond = startaRond(mall, vy.objekt, slag);
+    synka().catch(() => {});
+    gaApp('rond', { lokalId: rond.lokalId });
+  };
+
+  return (
+    <>
+      <h1 className="kv-sidtitel">{vy.rad.namn}</h1>
+      <p className="kv-underrad">
+        {[i.arbetsstalle?.namn, vy.objekt.namn].filter(Boolean).join(' / ')} <span className="prick" />
+      </p>
+
+      <button className={`kv-raknare${oppna.length ? '' : ' tom'}`} disabled={!oppna.length}
+        aria-expanded={oppet} onClick={() => sattOppet((o) => !o)}>
+        <span className="ring">{oppna.length}</span>
+        <span className="txt">Aktiva avvikelser</span>
+        {!!oppna.length && (
+          <span className={`pil${oppet ? ' upp' : ''}`}><Ikon namn="ned" storlek={22} /></span>
+        )}
+      </button>
+      {oppet && (
+        <div className="kv-lista">
+          {oppna.map((a) => (
+            <button key={a.id} className="rad" onClick={() => ga('avvikelse', { arende: a })}>
+              <span className="txt"><strong>{a.titel}</strong><small>Prio {a.prioritet}</small></span>
+              <span aria-hidden="true">›</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div className="kv-starta-rad">
+        <button className="kv-pill delad" onClick={starta}>
+          <span className="rund gron"><Ikon namn="spela" storlek={26} /></span>
+          <span className="ord">Starta</span>
+        </button>
+      </div>
     </>
   );
 }

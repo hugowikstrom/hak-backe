@@ -29,12 +29,12 @@ export function Valjare({ etikett, platshallare, valt, poster, satt, grupper, fa
       {valt ? (
         <button className="kv-valj" onClick={() => satt(null)}>
           {valt.namn}
-          <span aria-hidden="true">✕</span>
+          <span className="pil"><Ikon namn="kryss" storlek={24} /></span>
         </button>
       ) : (
         <button className={`kv-valj${oppen ? '' : ' tom'}`} onClick={() => sattOppen((o) => !o)}>
           {platshallare}
-          <span aria-hidden="true">{oppen ? '⌃' : '⌄'}</span>
+          <span className={`pil${oppen ? ' upp' : ''}`}><Ikon namn="ned" storlek={24} /></span>
         </button>
       )}
       {oppen && !valt && (

@@ -76,11 +76,14 @@ export function Enhet({ vy, ga }) {
   const avdelning = (nyckel, rubrik, antal, tomt, rader) => (
     <section key={nyckel}>
       <h2 className="kv-avdelning">{rubrik}</h2>
-      <button className="kv-raknare" aria-expanded={oppna === nyckel}
+      <button className={`kv-raknare${antal ? '' : ' tom'}`} disabled={!antal}
+        aria-expanded={oppna === nyckel}
         onClick={() => sattOppna(oppna === nyckel ? null : nyckel)}>
         <span className="ring">{antal}</span>
         <span className="txt">{antal ? rubrik : tomt}</span>
-        <span className={`pil${oppna === nyckel ? ' upp' : ''}`}><Ikon namn="ned" storlek={22} /></span>
+        {!!antal && (
+          <span className={`pil${oppna === nyckel ? ' upp' : ''}`}><Ikon namn="ned" storlek={22} /></span>
+        )}
       </button>
       {oppna === nyckel && rader}
     </section>
@@ -89,11 +92,13 @@ export function Enhet({ vy, ga }) {
   return (
     <>
       <div className="kv-knapprad">
-        <button className="kv-pill" onClick={() => sattNyOppen(true)}>
-          <Ikon namn="plus" storlek={24} /> Ny
+        <button className="kv-pill delad" onClick={() => sattNyOppen(true)}>
+          <span className="rund"><Ikon namn="plus" storlek={24} /></span>
+          <span className="ord">Ny</span>
         </button>
-        <button className="kv-pill" onClick={() => sattMer(true)}>
-          Mer <Ikon namn="mer" storlek={22} />
+        <button className="kv-pill delad omvand" onClick={() => sattMer(true)}>
+          <span className="ord">Mer</span>
+          <span className="rund"><Ikon namn="mer" storlek={22} /></span>
         </button>
       </div>
 
@@ -115,23 +120,6 @@ export function Enhet({ vy, ga }) {
           </div>
         ))}
       </div>
-
-      {avdelning(
-        'kontroller',
-        'Kontroller',
-        forsenade.length,
-        'Inga försenade kontroller',
-        <div className="kv-lista">
-          {forsenade.length
-            ? forsenade.map((k) => (
-                <button key={k.mall_id} className="rad" onClick={vidare('kontrollval')}>
-                  <span className="txt"><strong>{k.namn}</strong><small>{k.aldrig ? 'Aldrig utförd' : `Försenad ${k.forsenad_dagar} dagar`}</small></span>
-                  <span aria-hidden="true">›</span>
-                </button>
-              ))
-            : <div className="tomt">Inget försenat på den här enheten.</div>}
-        </div>
-      )}
 
       {avdelning(
         'avvikelser',
@@ -249,13 +237,21 @@ export function Avvikelselista({ rader, ga, laddar }) {
           <Avvikelsekort key={a.id} a={a} bild={bilder} onClick={() => ga('avvikelse', { arende: a })} />
         ))
       ) : (
-        <p className="svag" style={{ textAlign: 'center', marginTop: 36 }}>Hittade inga avvikelser.</p>
+        <p className="kv-ingenting">Hittade inga avvikelser.</p>
       )}
     </>
   );
 }
 
-/** Kortet. Samma form i listan och i tidslinjen. */
+/**
+ * Kortet i avvikelselistan.
+ *
+ * Förlagan har två kortformer för samma ärende, och skillnaden är inte
+ * godtycklig: i listan letar man *vad* och *var*, så numret står ensamt
+ * överst och foten bär kategori och när det senast rördes. I tidslinjen
+ * letar man *när*, så datumet flyttar upp bredvid numret. Den andra
+ * formen bor i arenden.jsx.
+ */
 export function Avvikelsekort({ a, bild, onClick }) {
   const plats = [a.arbetsstalle, a.utrustning || a.omrade || a.plats].filter(Boolean).join(' / ');
   return (
@@ -264,13 +260,16 @@ export function Avvikelsekort({ a, bild, onClick }) {
       <div className="nrrad">
         <Ikon namn="nyckel" storlek={19} />
         <span className="nr">#D{String(a.id).padStart(6, '0')}</span>
-        <span className="tid">Senast ändrat: {String(a.uppdaterad || a.skapad).slice(0, 10)}</span>
       </div>
       <h3>{a.titel}</h3>
       {plats && <div className="objekt">{plats}</div>}
       <div className="fot">
-        <span className="del"><Ikon namn="kategori" storlek={18} /> {ARENDETYP[a.typ] || 'Avvikelse'}</span>
-        {a.prioritet && <span className={`prio p${a.prioritet}`}>Prio {a.prioritet}.</span>}
+        <span className="del">
+          <Ikon namn="kategori" storlek={18} /> Kategori: {ARENDETYP[a.typ] || 'Avvikelse'}
+        </span>
+        <span className="del helrad">
+          Senast ändrat: {String(a.uppdaterad || a.skapad).slice(0, 10)}
+        </span>
         {bild && a.bild && <img className="mini" src={`/api/bilder/${a.bild}`} alt="" />}
       </div>
     </article>

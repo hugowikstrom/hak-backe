@@ -2,7 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
-export { Marke } from '../../delad/marke.jsx';
+export { Logotyp, Marke } from '../../delad/marke.jsx';
 
 export const Bricka = ({ farg = '', children }) => <span className={`bricka ${farg}`}>{children}</span>;
 export const Tomt = ({ children = 'Inget här ännu.' }) => <div className="tomt">{children}</div>;

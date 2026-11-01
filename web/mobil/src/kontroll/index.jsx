@@ -22,7 +22,7 @@ import {
 import {
   Aktivitet, AllaAvvikelser, Avvikelse, Avvikelser, Besiktningar, Enhet, Enhetsdokument, Vatskor,
 } from './enhet.jsx';
-import { Kontrollval } from './kontrollval.jsx';
+import { Kontrollstart, Kontrollval } from './kontrollval.jsx';
 import { NyAvvikelse } from './nyavvikelse.jsx';
 import { Service } from './service.jsx';
 import { Korning } from './korning.jsx';
@@ -36,7 +36,7 @@ const TITLAR = {
   avvikelser: 'Avvikelser', enheter: 'Enheter', ronder: 'Ronder', dokument: 'Dokument',
   incidenter: 'Incidenter', genvagar: 'Genvägar', dokumentlista: 'Dokument',
   dokumentstallen: 'Arbetsställen',
-  kontrollval: 'Checklistor', vatskor: 'Vätsketyper', besiktningar: 'Besiktningar',
+  kontrollval: 'Checklistor', kontrollstart: 'Utför kontroll', vatskor: 'Vätsketyper', besiktningar: 'Besiktningar',
   enhetsavvikelser: 'Avvikelser',
   aktivitet: 'Aktivitet', enhetsdokument: 'Dokument', pafyllning: 'Påfyllning',
   nyavvikelse: 'Ny avvikelse', incident: 'Incident', service: 'Service', korning: 'Kontroll',
@@ -53,6 +53,7 @@ const VYER = {
   avvikelse: Avvikelse,
   nyavvikelse: NyAvvikelse,
   kontrollval: Kontrollval,
+  kontrollstart: Kontrollstart,
   vatskor: Vatskor,
   besiktningar: Besiktningar,
   aktivitet: Aktivitet,
@@ -95,7 +96,7 @@ export function Kontrollvy({ medlem, forening, meny }) {
   const innehall = () => {
     if (vy) {
       const Vy = VYER[vy.namn];
-      return Vy ? <Vy vy={vy} ga={ga} /> : <p className="svag">Den vyn är inte byggd ännu.</p>;
+      return Vy ? <Vy vy={vy} ga={ga} /> : <p className="kv-ingenting">Den vyn är inte byggd ännu.</p>;
     }
     if (flik === 'arenden') return <Arenden ga={ga} />;
     if (flik === 'pagaende') return <Pagaende ga={ga} />;
@@ -127,6 +128,7 @@ export function Kontrollvy({ medlem, forening, meny }) {
           sattFlik(f);
         }}
         titel={titel}
+        prick={['enhet', 'rondobjekt'].includes(vy?.namn)}
         tillbaka={vy ? tillbaka : null}
         antal={antal.avvikelse}
         meny={meny}

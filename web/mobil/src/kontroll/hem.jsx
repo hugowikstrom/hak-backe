@@ -21,7 +21,7 @@ export function Hem({ ga }) {
       <div className="kv-rutnat">
         {KORT.map((k) => (
           <button key={k.vy} className="kv-kort" onClick={() => ga(k.vy)}>
-            <Ikon namn={k.ikon} storlek={34} />
+            <Ikon namn={k.ikon} storlek={40} />
             <span className="namn">{k.namn}</span>
           </button>
         ))}

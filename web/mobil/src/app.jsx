@@ -40,6 +40,12 @@ export function App() {
     if (sparat !== null) return sparat === '1';
     return /^(checkproof|kontroll)\./i.test(window.location.hostname);
   });
+  // Märker dokumentet, så att stilmallen kan måla hela sidan – inklusive
+  // det som syns bakom telefonens navigeringsfält i appläge.
+  useEffect(() => {
+    document.documentElement.classList.toggle('kontrollvy', kontrollvy);
+  }, [kontrollvy]);
+
   const [vy, sattVy] = useState({ namn: 'mitt' });
   const [ronder, sattRonder] = useState(laddaRonder);
   const online = useNat();

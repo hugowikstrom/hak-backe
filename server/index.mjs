@@ -65,7 +65,10 @@ function manifest(req, forening) {
     display: 'standalone',
     orientation: 'portrait',
     background_color: '#ffffff',
-    theme_color: '#86bf58',
+    // Vitt, inte grönt: färgen målar telefonens statusrad, och förlagan
+    // har en vit topp med svart klocka. Grönt gjorde statusraden grön
+    // och appen främmande vid första anblicken.
+    theme_color: '#ffffff',
     categories: ['productivity', 'utilities'],
     icons: [
       { src: '/mobil/ikon.svg', sizes: 'any', type: 'image/svg+xml', purpose: 'any' },

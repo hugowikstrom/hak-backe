@@ -401,6 +401,23 @@ att lösa upp, ärvde appens textfärg i stället, och blev i mörkt läge
 nästan vit text på ett ljust ark. Det såg ut som att knappen inte gjorde
 någonting.
 
+### Där kopian och förlagan skiljer sig
+
+Två ställen är medvetna avvikelser, och båda syns:
+
+**Ronden.** Förlagan kör alla punkter i en rullande lista där man fäller
+ut en punkt i taget och svarar med två färgblock – gul med utropstecken,
+grön med bock – och har lägena *Standard* och *Fullskärmsläge*. Backis
+rond är en punkt i taget med *OK*, *Avvikelse* och *Går inte att utföra*,
+och lägena heter *Steg* och *Lista*. Begreppen är desamma, formen är
+inte. Ronden delas med Backis Rond, så ett byte här byter för alla –
+därför står den kvar tills klubben sagt att den ska bytas.
+
+**Aldrig utförd.** En daglig kontroll som aldrig gjorts hamnar under
+*Försenade* i Backis och under *Kommande* i förlagan. Skillnaden är inte
+ett fel i räkningen utan i indata: Backis rytm ger varje schemalagd
+kontroll en förfallodag, förlagan har ingen för en kontroll utan schema.
+
 ### Schemat: tre sorter, och nollpunkten
 
 En checklista har två oberoende egenskaper. **Rytmen** (`intervall`)

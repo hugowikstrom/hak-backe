@@ -15,6 +15,11 @@
  *
  * Bara variablerna är gemensamma. Layouten är inte det: arket är ett
  * fixerat lager underifrån, inte en spalt. */
+/* Sidans botten målar telefonens navigeringsfält i appläge. Utan den
+ * här raden lyser appens eget gröna igenom under innehållet, och
+ * förlagan har en ljus list där. */
+html.kontrollvy, html.kontrollvy body { background: #eceef1; }
+
 .kv,
 .kv-ark-bak,
 .inlogg.kv-inlogg {
@@ -43,21 +48,28 @@
 }
 
 /* ---- Topp ---- */
+/* Vit när logotypen står där, grå när det är en sidrubrik. Så gör
+ * förlagan, och det är inte en nyck: det vita fältet hör ihop med
+ * flikraden under, det grå hör ihop med innehållet. */
 .kv-topp {
-  background: var(--kv-bak);
+  background: var(--kv-yta);
   display: grid; grid-template-columns: 40px 1fr 40px; align-items: center;
   padding: 6px 8px; gap: 4px;
 }
 .kv-topp .marke { display: flex; justify-content: center; align-items: center; }
+.kv-topp .marke svg { --marke-motiv: var(--klubb-ren, #86bf58); display: block; }
+.kv-topp.kv-titelrad { background: var(--kv-bak); }
 .kv-topp button.ikon {
   background: none; border: 0; padding: 8px; min-height: 0;
   display: grid; place-items: center; color: var(--kv-text);
 }
-.kv-topp .bak { font-size: 26px; line-height: 1; }
+/* Bakåtpilen är grov och stor i förlagan – den träffas med vante. */
+.kv-topp .bak svg { stroke-width: 2.6; }
 
 /* Tre flikar: hem, mina ärenden, pågående. */
 .kv-flikar {
   background: var(--kv-yta);
+  border-bottom: 0;
   background: var(--kv-yta); display: grid; grid-template-columns: repeat(3, 1fr);
   border-bottom: 1px solid var(--kv-ram);
 }
@@ -81,15 +93,15 @@
  * svg i stället för en bild – en fil mindre att leverera. */
 .kv-hero {
   background: var(--kv-yta);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='34' height='30'%3E%3Cg fill='%23000' fill-opacity='.035'%3E%3Cpath d='M8 4l5 9H3zM25 17l5 9H20z'/%3E%3C/g%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='23'%3E%3Cg fill='%23000' fill-opacity='.045'%3E%3Cpath d='M6 3l4 7H2zM19 13l4 7h-8z'/%3E%3C/g%3E%3C/svg%3E");
   color: var(--kv-text);
   text-align: center;
-  padding: 16px 20px 34px;
-  border-radius: 0 0 50% 50% / 0 0 30px 30px;
+  padding: 14px 20px 40px;
+  border-radius: 0 0 50% 50% / 0 0 48px 48px;
 }
-.kv-hero h1 { margin: 0; font-size: 1.3rem; font-weight: 700; }
-.kv-hero p { margin: 2px 0 0; font-size: 1.18rem; color: #3a4047; }
-.kv-hero .kv-pill { margin: 22px auto 0; }
+.kv-hero h1 { margin: 0; font-size: 1.36rem; font-weight: 700; }
+.kv-hero p { margin: 3px 0 0; font-size: 1.3rem; font-weight: 400; color: #3a4047; }
+.kv-hero .kv-pill { margin: 30px auto 0; }
 
 /* Pillerknappen: vit med grå kontur, som förlagans Ny och Nästa. */
 .kv-pill {
@@ -102,15 +114,17 @@
  * button.stor som sätter width:100%, och då blir pillret en bred låda. */
 .kv-pill.hjalte { padding: 14px 42px; font-size: 1.2rem; }
 
-.kv-kropp { flex: 1; padding: 14px 12px 90px; overflow: auto; }
-.kv-rutnat { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.kv-kropp { flex: 1; padding: 6px 12px 90px; overflow: auto; }
+.kv-rutnat { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 10px; }
 .kv-kort {
   position: relative; background: var(--kv-yta); border: 0; border-radius: 12px;
-  padding: 22px 10px 16px; display: flex; flex-direction: column; align-items: center;
-  gap: 8px; color: var(--kv-text); min-height: 112px; justify-content: center;
+  padding: 26px 10px 20px; display: flex; flex-direction: column; align-items: center;
+  gap: 14px; color: var(--kv-text); min-height: 138px; justify-content: center;
   box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
-.kv-kort .namn { font-size: 1rem; }
+/* Etiketten är i normalvikt, inte fet. Sex feta ord i ett rutnät blir
+ * en vägg; förlagan låter ikonen bära blicken. */
+.kv-kort .namn { font-size: 1.22rem; font-weight: 400; }
 .kv-kort .raknare {
   position: absolute; top: 8px; right: 10px; background: var(--fara, #b3261e);
   color: #fff; border-radius: 999px; font-size: .72rem; font-weight: 700;
@@ -174,8 +188,8 @@
 
 /* ---- Kort i listor ---- */
 .kv-arende {
-  background: var(--kv-yta); border-radius: 10px; margin-bottom: 10px; overflow: hidden;
-  border-right: 5px solid var(--kv-ram); box-shadow: 0 1px 2px rgba(0,0,0,.06);
+  background: var(--kv-yta); border-radius: 10px; margin-bottom: 12px; overflow: hidden;
+  border-right: 8px solid var(--kv-ram); box-shadow: 0 1px 2px rgba(0,0,0,.06);
 }
 .kv-arende.avvikelse { border-right-color: #e0ae2f; }
 .kv-arende.kontroll { border-right-color: var(--ok, #1f7a4d); }
@@ -221,8 +235,8 @@
 /* Raderna är vänsterställda med ikonen först – förlagan centrerar inte. */
 .kv-ark button {
   width: 100%; background: none; border: 0; border-radius: 0; padding: 17px 20px;
-  text-align: left; font-size: 1.12rem; color: var(--kv-text); display: flex; gap: 16px;
-  align-items: center; justify-content: flex-start; min-height: 0;
+  text-align: left; font-size: 1.15rem; font-weight: 400; color: var(--kv-text);
+  display: flex; gap: 18px; align-items: center; justify-content: flex-start; min-height: 0;
 }
 .kv-ark button svg { flex: none; }
 .kv-ark .rubrik { padding: 14px 20px 2px; color: var(--kv-svag); font-size: 1.05rem; }
@@ -262,7 +276,7 @@
 .kv-sokfalt {
   display: flex; align-items: center; gap: 12px;
   background: var(--kv-yta); border: 0; border-radius: 10px;
-  padding: 14px 16px; margin-bottom: 12px; color: var(--kv-svag);
+  padding: 9px 16px; margin-bottom: 9px; color: var(--kv-svag);
 }
 .kv-sokfalt input { width: 100%; border: 0; background: none; color: inherit; font-size: 1rem; outline: none; }
 
@@ -396,10 +410,10 @@
 /* ---- Avvikelselistan ---- */
 .kv-filterrad {
   display: flex; align-items: center; justify-content: space-between;
-  background: var(--kv-yta); border-radius: 10px; padding: 16px;
-  font-size: 1.15rem; margin-bottom: 14px;
+  background: var(--kv-yta); border-radius: 10px; padding: 12px 16px;
+  font-size: 1.15rem; margin-bottom: 11px;
 }
-.kv-vippa { display: flex; align-items: center; gap: 12px; margin: 0 2px 16px; font-size: 1.15rem; }
+.kv-vippa { display: flex; align-items: center; gap: 14px; margin: 0 2px 14px; font-size: 1.15rem; }
 .kv-vippa input { position: absolute; opacity: 0; width: 0; height: 0; }
 .kv-vippa .spar {
   position: relative; flex: none; width: 50px; height: 28px; border-radius: 999px;
@@ -420,6 +434,7 @@
   color: var(--kv-svag); font-size: 1.02rem;
 }
 .kv-arende .fot .del { display: inline-flex; align-items: center; gap: 6px; }
+.kv-arende .fot .del.helrad { flex-basis: 100%; }
 .kv-arende .fot .prio {
   color: #7a3c00; background: #f6a623; border-radius: 4px; padding: 3px 10px; font-size: 1rem;
 }
@@ -521,3 +536,49 @@
   align-self: stretch; color: var(--kv-text); min-height: 0;
 }
 .kv-lista .rad.stjarnrad .stjarna.pa svg { fill: currentColor; }
+
+/* Tomtexten. Egen klass och inte appens .svag: den hämtar sin färg ur
+ * appens tema och blir ljus i mörkt läge – på vyns ljusa botten. */
+.kv-ingenting { text-align: center; margin-top: 38px; color: var(--kv-svag); font-size: 1.12rem; }
+
+/* Pillret med ikonen i en egen cirkel, som förlagans Ny och Mer. */
+.kv-pill.delad { position: relative; padding: 0; min-height: 58px; }
+.kv-pill.delad .rund {
+  position: absolute; left: 5px; top: 5px; width: 48px; height: 48px; border-radius: 50%;
+  background: #eef0f2; display: flex; align-items: center; justify-content: center;
+}
+.kv-pill.delad.omvand .rund { left: auto; right: 5px; }
+.kv-pill.delad .ord { flex: 1; text-align: center; font-size: 1.18rem; }
+
+/* Grön prick efter enhetens namn i rubriken: enheten är i drift. */
+.kv-statusprick {
+  display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+  background: var(--ok, #2e9e4f); margin-left: 7px; vertical-align: middle;
+}
+
+/* Avdelningsrubrik och räknare i normalvikt – förlagan låter siffran
+ * bära blicken, inte fetstilen. En rad utan innehåll är grå och inert. */
+.kv-avdelning { font-weight: 400; }
+.kv-raknare .txt { font-weight: 400; }
+.kv-raknare.tom { background: #e7eaed; color: #5c636a; }
+.kv-raknare.tom .ring { background: #dadee2; }
+
+/* Appens button-regler ligger i vägen: fetstil på all knapptext, och
+ * opacity .45 på allt avstängt. Här ska texten vara normalviktig och en
+ * tom räknare ska vara grå – inte blek. */
+.kv-pill.delad .ord { font-weight: 400; }
+.kv-raknare.tom:disabled { opacity: 1; }
+
+/* Väljarens pil och kryss ritas, inte skrivs: tecknen ⌄ och ✕ ser olika
+ * ut i varje typsnitt och hamnar sällan på rätt höjd. */
+.kv-valj .pil { display: flex; transition: transform .15s ease; }
+.kv-valj .pil.upp { transform: rotate(180deg); }
+/* Enhetens arbetsställe står i samma storlek som namnet i förlagan –
+ * det är en adress, inte en fotnot. */
+.kv-lista .rad.stjarnrad .txt small { font-size: 1.05rem; }
+.kv-falt > span { font-size: 1.14rem; margin-bottom: 8px; }
+
+/* Startknappen på mellansidan: grön pil i en ljus cirkel. */
+.kv-starta-rad { display: flex; justify-content: center; margin-top: 22px; }
+.kv-starta-rad .kv-pill { min-width: 230px; }
+.kv-pill.delad .rund.gron { color: var(--ok, #2e9e4f); }

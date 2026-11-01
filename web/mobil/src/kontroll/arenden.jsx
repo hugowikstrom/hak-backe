@@ -87,7 +87,7 @@ export function Arenden({ ga }) {
         </section>
       ))}
 
-      {!(data.dagar || []).length && <p className="svag">Inget att visa här.</p>}
+      {!(data.dagar || []).length && <p className="kv-ingenting">Inget att visa här.</p>}
     </>
   );
 }
@@ -148,7 +148,7 @@ export function Pagaende() {
           })}
         </div>
       ) : (
-        <p className="svag" style={{ textAlign: 'center', marginTop: 40 }}>
+        <p className="kv-ingenting">
           {vems === 'mina' ? 'Du har inga pågående kontroller' : 'Ingen annan har någon pågående kontroll'}
         </p>
       )}
