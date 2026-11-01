@@ -33,10 +33,46 @@ avstängd modul. Klienten frågar `/api/plattform` och bygger sin meny av
 svaret, så en avstängd modul försvinner också ur gränssnittet.
 
 **Behörighet.** `server/behorighet.mjs` skiljer på *roll* (nivå i systemet),
-*uppdrag* (ordförande, kassör, tränare, volontär) och *kompetens* (fik,
-uthyrning). En rutt kräver antingen en rollnivå (`'backansvarig'`) eller en
-behörighet (`'@ekonomi'`). Arbetsytorna – startsida och meny per uppgift –
-räknas fram ur samma underlag.
+*uppdrag* (ordförande, kassör, tränare, volontär), *kompetens* (fik,
+uthyrning) och *grupp* (en namngiven samling tillträden). En rutt kräver
+antingen en rollnivå (`'backansvarig'`) eller en behörighet (`'@ekonomi'`).
+Arbetsytorna – startsida och meny per uppgift – räknas fram ur samma
+underlag.
+
+De fyra källorna **läggs ihop**, och ingen av dem kan ta bort något en annan
+gett. Grupperna finns för att de tre första inte räcker: en klubb vill kunna
+säga "snögänget" och mena de nio som får starta pumpstationen, utan att göra
+var och en av dem backansvarig. En medlem kan vara med i flera, och en grupp
+ger behörigheter, arbetsytor och – om klubben vill – ett *rollgolv* som
+höjer men aldrig sänker.
+
+Tre saker är värda att veta om grupperna:
+
+- **`behorighetsgrupp` är inte `traningsgrupp`.** Den senare, med sin
+  `gruppmedlem`, är Freeski och U12 – vem som tränar med vem. Blandar man
+  ihop dem får en tolvåring kassabehörighet för att hens grupp har en
+  tränare. Därför heter tillträdenas tabeller `grupptillhorighet` och
+  rutterna `/api/tilltrade`.
+- **Ingen kan ge bort mer än hen själv har.** Rutterna kräver
+  `behorighetsstyrning` – ordförande eller administratör – och `provaDelning()`
+  i `server/api/tilltrade.mjs` stoppar den som försöker lägga en behörighet
+  eller ett rollgolv över sin egen nivå i en grupp. Administratören står över
+  spärren, för någon måste kunna sätta upp det första.
+- **Återkallelse gäller på en gång.** `till` är ett planerat slutdatum som
+  gäller dagen ut; `aterkallad` är en tidsstämpel som stänger tillträdet i
+  samma stund. Två kolumner, för ett planerat slut och ett indraget tillträde
+  är inte samma sak. Raden ligger kvar – att någon haft kassabehörighet en
+  säsong är en uppgift värd att kunna svara på.
+
+**Navigering.** Menyn är ett träd med få grenar, och modulen äger vilken
+gren dess sidor hänger i (`grupp` i `server/moduldata.mjs`). Grenarna
+kommer till klienten i `/api/plattform` som `menygrupper`, och
+`web/src/delar/navigering.jsx` bygger trädet ur det den inloggade faktiskt
+får se. En gren med en enda sida blir ingen gren – den sidan står löst,
+för en rubrik man måste slå upp för att hitta ett enda ord är en kostnad
+utan vinst. Samma träd ritas i sidomenyn och i luckan på liten skärm; det
+finns ingen egen mobilmeny att hålla i synk. `Ctrl+K` öppnar
+hoppa-till-rutan, som är den snabba vägen för den som redan kan systemet.
 
 **Profil.** Färger och märke ligger i `web/delad/`. Föreningens egna färger
 skrivs in i registret och läggs på som CSS-variabler när klienten startar.
@@ -242,7 +278,196 @@ backansvarig föreslås inte åt den som inte är det. Att visa ett förslag som
 ger ett nej är sämre än att inte visa det.
 
 Flikraden följer samma tanke: fyra flikar för en medlem, sju för den som
-har ansvar för backen.
+har ansvar för backen. Det som inte är en flik är en pushad vy med
+bakåtknapp – utlägget hör dit, för kvittot fotas på parkeringen utanför
+butiken och inte vid ett skrivbord.
+
+## Rollernas vyer
+
+Rollvyerna är arbetsytorna i `ARBETSYTOR`, och de väljs av **uppdraget**,
+inte av rollen: `arbetsytorFor()` ger ordföranden *Ordföranden*,
+sekreteraren *Sekreteraren*, kassören *Kassören*, tränaren *Tränaren*,
+kioskvärden *Kiosken*, och alla *Medlem* sist.
+
+Ordningen är startsidan – man landar i den första ytan – och därför kommer
+den egna rollen före den gemensamma `styrelse`. En kassör som loggar in ska
+börja i ekonomin, inte i en översikt över hela föreningen.
+
+Ordförande och sekreterare har **samma behörighet att läsa men inte samma
+arbete**: ordföranden svarar för ekonomin och tillträdena, sekreteraren för
+matrikeln och mötena. Att ge dem samma startsida gör att båda får leta förbi
+den andras. Ledamöter och suppleanter får bara `styrelse` – där finns inget
+eget arbete att skilja ut.
+
+En yta är ett **urval ur menyn, inte en spärr**. Skriver man in en adress
+eller följer en länk till en sida man har rätt till visas den, även om den
+inte hör till ytan man står i (`tillatna` mot `synliga` i `web/src/app.jsx`).
+Det som styr åtkomst är behörigheten på servern; ytan styr bara hur kort
+menyn är.
+
+## Kontrollvyn
+
+`web/mobil/src/kontroll/` är en **andra navigation över samma data**. Den
+är formad som systemet klubben kommer ifrån: vit topp med märket, tre
+flikar, ett välvt grönt fält med vem man är, och ett rutnät av kort.
+Allt under huven är Backis – samma API, samma offlinekö, samma
+inloggning, samma behörigheter. Det som skiljer är vägen in.
+
+Formen är avstämd **sida för sida mot den riktiga appen** på klubbens
+egen telefon: startskärmens ljusa mönstrade fält (inte grönt – förlagan
+bär sin färg i logotypen), ikonerna, de vänsterställda arken, enhetens
+två piller och utfällbara räknare, avvikelsekortens nummerrad och
+prioritetschip. Där jag först gissade blev det fel, och gissningarna är
+utbytta mot det som faktiskt står på skärmen.
+
+Inloggningen är telefonnummer och pinkod. Pinkoden ligger i ett
+**maskerat textfält, inte ett `type=password`** – ett lösenordsfält
+väcker webbläsarens lösenordshanterare, som erbjuder sig att spara koden
+och sedan varnar för att den finns i en dataläcka. Varningen är sann men
+står i vägen varje gång någon loggar in.
+
+Sessionen är **en hel säsong och glider framåt** (`HAK_SESSIONSDYGN`,
+180 dygn). Appen används i skov – några pass i november, inget i
+januari, varje helg i mars – och den som måste logga in på nytt mitt i
+ett pass gör det med vantar på i mörker, eller inte alls. Kakan förnyas
+vid varje `GET /api/jag`, alltså vid varje appstart.
+
+Vyn väljs av **värdnamnet** (`HAK_KONTROLLVARDAR`, som standard
+`checkproof` och `kontroll`), kan tvingas med `?kontroll=1` i adressen,
+och sparas sedan i `localStorage` under `hak-kontrollvy`.
+
+Trappan är ärvd och medvetet lång:
+
+    arbetsställe → objekt → vad man vill se → den enskilda posten
+
+Fyra steg för att nå ett besiktningsintyg är fler än en skulle ritat från
+början. Det är ändå rätt här: volontärerna kan trappan, och igenkänning
+är värd mer än ett sparat tryck. Den som vill gå raka vägen når samma
+ronder från Backis vanliga startsida.
+
+Navigationen är en **stack**, inte en router (`Kontrollvy` i
+`kontroll/index.jsx`). Varje steg lägger sig på föregående och bakåtpilen
+tar bort det översta. En router hade tappat vad man valde på väg ned.
+Ronden själv ligger kvar på appens yttre router, och kontrollvyn göms
+i stället för att plockas ned medan den pågår – annars hamnar den som
+avslutat en kontroll på startskärmen i stället för på maskinen hen stod
+vid.
+
+### Installerad app
+
+Båda klienterna är installerbara webbappar, och **manifestet skrivs av
+servern per värdnamn** (`manifest()` i `server/index.mjs`). Det går inte
+att ha som en statisk fil av två skäl: Backis är fleranvändarsystem och
+appen ska heta klubbens namn på hemskärmen, inte produktens; och
+kontrollvyn bor i roten på sitt eget värdnamn, så ett manifest med
+`start_url: /mobil/` hade öppnat ikonen i fel vy.
+
+Servicearbetaren serveras därför på två adresser — `/mobil/sw.js` och
+`/sw.js` — av samma fil. Var den hämtas ifrån avgör vad den styr, och
+filen läser själv ut sin rot (`new URL('./', self.location)`) för att veta
+vilket skal som ska cachas. På ett kontrollvärdnamn cachas `/` men aldrig
+`/index.html`: de är två olika sidor där, och fel av dem ger en app som
+öppnar administrationen när täckningen är borta.
+
+Servicearbetaren hämtar **sidan från nätet först** och tillgångarna ur
+cachen först. Tillgångarna har hash i filnamnet och kan aldrig bli fel;
+sidan pekar ut vilka som gäller. Med cache-först på båda syntes en
+driftsättning inte förrän appen startats om en andra gång.
+
+`beforeinstallprompt` fångas i `main.jsx`, **innan React monteras**.
+Fångas den först i en `useEffect` har webbläsaren redan skickat den, och
+knappen "Lägg till på hemskärmen" dyker aldrig upp. Haken `useInstallera`
+i `delar.jsx` läser bara det som lagts undan.
+
+### Generiska klassnamn i kontrollvyn
+
+Vyn har egna komponenter men delar stilmall med mobilappen, och appen
+äger korta namn som `.post`, `.topp`, `.stor` och `.rad`. Tre buggar i
+rad kom ur det: ärendekortens nummerrad blev grön och klistrad
+(`.topp`), heroknappen bredde ut sig över hela skärmen (`button.stor`
+sätter `width: 100%`), och enhetens etiketter la sig bredvid värdena i
+stället för ovanför (`.post` är en flexrad).
+
+Regeln är därför: ett generiskt namn inuti kontrollvyn måste antingen
+vara `kv-`-prefixat eller stå under en `.kv-`-förälder som väger tyngre
+än appens regel. Och en egenskap som appen sätter men vyn inte sätter
+tillbaka gäller — specificitet hjälper bara mot de deklarationer man
+faktiskt skriver.
+
+Samma sak gäller färger: tokens står på varje rot vyn kan ha
+(`.kv`, `.kv-ark-bak`, `.inlogg.kv-inlogg`), inte bara på `.kv`. Ett ark
+som renderades utanför `.kv` fick `color: var(--kv-text)` som inte gick
+att lösa upp, ärvde appens textfärg i stället, och blev i mörkt läge
+nästan vit text på ett ljust ark. Det såg ut som att knappen inte gjorde
+någonting.
+
+### Försenat och aktivitet
+
+Två begrepp är vyns egna och räknas i `server/api/kontroll.mjs`:
+
+* **Försenad** räknas från när kontrollen senast gjordes plus
+  intervallet, inte från periodens början. En daglig kontroll som gjordes
+  i går är inte försenad en dag bara för att dygnet bytts. En kontroll
+  som aldrig gjorts är försenad utan att ha någon siffra – den har ingen
+  historik att räkna från.
+* **Aktivitet** på ett objekt är kontroller, tankningar och service i
+  samma spalt. Tillsammans förklarar de varför maskinen mår som den gör;
+  var för sig gör de det inte.
+
+`POST /api/kontroll/service` skriver och kvitterar en åtgärd i **samma
+transaktion**. Backis vanliga modell är planerad åtgärd först och utförd
+sedan, men den som står med oljekannan i handen har inte planerat något –
+hen har gjort det. En tappad uppkoppling ska inte kunna lämna efter sig
+en service som ser planerad ut fast den är gjord.
+
+## Pengar som rör sig mellan klubben och medlemmen
+
+Tre vägar, och de är åtskilda för att de är olika saker:
+
+| | Vad | Konto |
+| --- | --- | --- |
+| **Plånbok** | Medlemmen har lagt in pengar i förväg | 2420, en skuld |
+| **Utlägg** | Medlemmen har lagt ut pengar åt klubben | 2890, en skuld |
+| **Avgift** | Medlemmen betalar för något | 3120 eller 31xx, en intäkt |
+
+**Plånboken är en skuld, inte en intäkt.** Pengarna är medlemmens ända till
+dess att något köps; påfyllningen krediterar 2420 och köpet debiterar det.
+Att bokföra påfyllningen som en intäkt vore att räkna in pengar klubben
+ännu inte tjänat.
+
+**Utlägget bokförs i två steg**, och det är med flit. Godkännandet lägger
+kostnaden på sitt konto och skulden till medlemmen på 2890; utbetalningen
+löser skulden mot banken eller mot plånboken. Mellan de två stegen kan ett
+månadsskifte ligga, och det är just uppdelningen som gör att kostnaden
+hamnar i rätt period. Ett avslag kräver alltid ett skäl – ett utlägg som
+bara tystnar är värre än ett som nekas – och ett redan bokfört utlägg kan
+inte avslås, bara rättas med en motbokning.
+
+Utbetalning **till plånboken** är inte en genväg utan det vanliga fallet i
+en klubb där samma person som handlar också står i fiket varje lördag.
+Verifikationen är densamma; bara motkontot skiljer.
+
+## Läger, tävlingar och samåkning
+
+`evenemang` är skilt från `traningstillfalle` med flit. Ett
+träningstillfälle är onsdag kväll för U12 och återkommer; ett evenemang är
+resan till Kläppen med anmälan, avgift, femton platser och sista
+anmälningsdag. Att trycka in båda i samma tabell ger den ena fält den inte
+behöver.
+
+**Reservkön är inte en extra funktion.** Utan den står någon och ringer
+runt när en familj hoppar av tre dagar före avresa. Kön behåller sin
+ordning efter anmälningstid, och `fyllFranKon()` körs efter varje avbokning
+och efter varje höjning av platsantalet – den tömmer sig själv.
+
+Att **anmäla sig** kräver ingen behörighet; att **arrangera** kräver
+`evenemang`. Skillnaden bär mer än den ser ut: arrangören ser deltagarnas
+behov (specialkost, allergier) och samåkningarnas telefonnummer. Kassören
+står därför inte i den kretsen – att kvittera en avgift går genom `kassa`.
+
+I samåkningen visas kontaktuppgifter för **föraren och dem som sitter i
+bilen**, ingen annan. En lista över vem som åker vart med vem är känsligare
+än den ser ut.
 
 ## Snöläggningsbemanning
 

@@ -61,18 +61,66 @@ export async function lasPdf(filnamn) {
  * modellen ska läsa de delar som faktiskt säger något om service, inte hela
  * boken – det blir både bättre och billigare.
  */
+const UNDERHALLSORD =
+  /underh[åa]ll|service|sm[öo]rj|byt[ea]?\b|kontroll|inspekt|rengör|rengor|intervall|maintenance|lubricat|replace|inspect/gi;
+
+/** Rubriker som *är* ett underhållsprogram, inte bara nämner underhåll. */
+const PROGRAMRUBRIK =
+  /maintenance\s+(programme|program|schedule|plan)|service\s+(schedule|plan|intervals?)|underh[åa]llsprogram|underh[åa]llsschema|underh[åa]llsplan|serviceschema|serviceintervall/i;
+
+/** "after 2000 hours", "var 500 timmar", "every 6 months", "efter 10 dagar". */
+const INTERVALLUTTRYCK =
+  /\b(after|every|var|varje|efter)\s+\d[\d\s.,]*\s*(h\b|hours?|timmar|tim\b|dagar|dag\b|veckor|vecka|m[åa]nader|m[åa]nad|year|år)/gi;
+
+const antal = (text, regel) => (text.match(regel) || []).length;
+
+/**
+ * Sidorna som troligast bär underhållsprogrammet.
+ *
+ * Tidigare togs sidorna *i ordning* tills teckenbudgeten tog slut. På en
+ * tjock manual räcker det att introt och säkerhetskapitlet nämner ordet
+ * "maintenance" för att hela budgeten ska gå åt där – och själva
+ * underhållsprogrammet, som kan ligga på sidan fyrtiotvå, nås aldrig.
+ * Det var precis vad som hände med kompressormanualen: sidorna 1, 2 och 4
+ * valdes, programmet på sidan 42 missades, och tolkningen hittade noll
+ * punkter i ett dokument som har ett komplett schema.
+ *
+ * Nu poängsätts sidorna först och de bästa får budgeten:
+ *
+ *   · en rubrik som *är* ett underhållsprogram väger tyngst
+ *   · därefter antalet intervalluttryck ("after 2000 hours")
+ *   · sist tätheten av underhållsord, som bara skiljer jämna fall åt
+ *
+ * Urvalet lämnas tillbaka i sidordning, för en modell som läser sidorna
+ * huller om buller läser dem sämre.
+ */
 export function underhallsavsnitt(sidor, { maxTecken = 9000 } = {}) {
-  const ord = /underh[åa]ll|service|sm[öo]rj|byt[ea]?\b|kontroll|inspekt|rengör|rengor|intervall|var\s+\d+\s*(tim|dag|vecka|m[åa]nad)|maintenance|lubricat|replace|inspect/i;
+  const poangsatta = [];
+  for (const [i, text] of sidor.entries()) {
+    const ordtraffar = antal(text, UNDERHALLSORD);
+    if (!ordtraffar) continue;
+    const intervall = antal(text, INTERVALLUTTRYCK);
+    const poang =
+      (PROGRAMRUBRIK.test(text) ? 100 : 0) +
+      Math.min(intervall, 12) * 8 +
+      Math.min(ordtraffar, 20);
+    poangsatta.push({ sida: i + 1, text: text.slice(0, 3000), poang });
+  }
+  if (!poangsatta.length) return [];
+
+  // Bäst först, och vid lika poäng den tidigare sidan: innehållsförteckningen
+  // och programmet kan båda bära rubriken, och programmet står efter.
+  poangsatta.sort((a, b) => b.poang - a.poang || a.sida - b.sida);
   const valda = [];
   let tecken = 0;
-  for (const [i, text] of sidor.entries()) {
-    if (!ord.test(text)) continue;
-    const bit = text.slice(0, 3000);
-    if (tecken + bit.length > maxTecken) break;
-    valda.push({ sida: i + 1, text: bit });
-    tecken += bit.length;
+  for (const s of poangsatta) {
+    if (tecken + s.text.length > maxTecken) continue;
+    valda.push(s);
+    tecken += s.text.length;
   }
-  return valda;
+  return valda
+    .sort((a, b) => a.sida - b.sida)
+    .map(({ sida, text }) => ({ sida, text }));
 }
 
 /**

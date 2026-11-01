@@ -350,7 +350,7 @@ export const rutter = [
     const antal = kropp.medlemmar?.length ? valda.length : Math.max(1, l.saknas - l.vantar);
     const mottagare = valda.slice(0, antal);
 
-    const bas = instans('bas_url', 'https://hak.nattviken.com');
+    const bas = instans('bas_url', 'https://backis.nattviken.com');
     const fonster = pass.snofonster_id ? hamtaFonster(pass.snofonster_id) : null;
     const skickade = [];
     for (const k of mottagare) {

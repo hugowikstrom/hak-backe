@@ -5,7 +5,7 @@
 // blivit en siffra fel ger fel del i lådan.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { innehallskarta, reservdelarUrText, sokIText } from '../server/dokument.mjs';
+import { innehallskarta, reservdelarUrText, sokIText, underhallsavsnitt } from '../server/dokument.mjs';
 
 const SIDOR = [
   'SNOKRAFT FK-200 FLAKTKANON\nTekniska data\nVattenflode: 2,5-11 l/s\nEffekt: 22 kW',
@@ -77,4 +77,44 @@ test('sökningen pekar ut sidan och visar sammanhanget', () => {
   assert.match(traffar[0].utdrag, /LN-BP-6/);
   // Kortare än två tecken fångas av anroparen, inte här.
   assert.deepEqual(sokIText(SIDOR.join('\f'), 'zebrafisk'), []);
+});
+
+/**
+ * Avsnittsväljaren ska ge teckenbudgeten till det verkliga
+ * underhållsprogrammet, inte till de första sidor som råkar nämna ordet.
+ *
+ * Fallet är taget ur verkligheten: en kompressormanual på 56 sidor där
+ * introt och säkerhetskapitlet nämner "maintenance", och själva programmet
+ * står på sidan 42. Den gamla väljaren tog sidorna i ordning tills budgeten
+ * tog slut och missade programmet helt – tolkningen hittade noll punkter i
+ * ett dokument med ett komplett schema.
+ */
+test('underhållsavsnitt väljer programmet, inte de första sidorna som nämner det', () => {
+  const fyllnad = (n) =>
+    `Sida ${n}\nAllmän text om maskinen. Service och underhåll ska utföras av behörig personal. ` +
+    'Kontroll och inspektion sker enligt anvisning. '.repeat(40);
+  const sidor = [];
+  for (let i = 1; i <= 41; i += 1) sidor.push(fyllnad(i));
+  sidor.push(
+    'MAINTENANCE PROGRAMME\n' +
+      'Every day the user is recommended to check the oil level.\n' +
+      'After 2000 hours: change the air filter cartridge. Change the oil filter cartridge.\n' +
+      'After 4000 hours: change the air-oil separator cartridge.\n' +
+      'After 8000 hours: change the minimum pressure valve kit.'
+  );
+  sidor.push('Fortsättning av programmet. After 6000 hours: clean the air-oil radiator.');
+
+  const valda = underhallsavsnitt(sidor);
+  const sidnummer = valda.map((v) => v.sida);
+  assert.ok(sidnummer.includes(42), `sidan med programmet ska vara med, fick ${sidnummer}`);
+  assert.ok(
+    valda.some((v) => v.text.includes('MAINTENANCE PROGRAMME')),
+    'programmets text ska följa med till tolkningen'
+  );
+  // Och urvalet ska komma i sidordning, för en modell läser bättre så.
+  assert.deepEqual(sidnummer, [...sidnummer].sort((a, b) => a - b));
+});
+
+test('underhållsavsnitt hittar inget i ett dokument utan underhåll', () => {
+  assert.deepEqual(underhallsavsnitt(['Fakturaunderlag', 'Belopp 1 200 kr']), []);
 });

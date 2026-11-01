@@ -4,6 +4,7 @@ import { maskinPa } from '../platser.mjs';
 import { RANG } from '../auth.mjs';
 import { csv, datum, ettAv, fel, heltal, kravTxt, rutt, svar, text, txt } from '../http.mjs';
 import { brevArende, skicka } from '../epost.mjs';
+import { bildfinns, sparaBild } from './bilder.mjs';
 
 export const TYPER = ['fel', 'brist', 'forbattring', 'risk'];
 export const ALLVAR = ['sakerhetsrisk', 'driftstopp', 'begransar', 'kosmetisk'];
@@ -77,6 +78,9 @@ export function skapaArende(data, medlem) {
     driftpaverkan: txt(data.driftpaverkan, 200),
     tilldelad_id: heltal(data.tilldelad_id),
     korning_id: heltal(data.korning_id),
+    // Fotot kommer antingen som ett redan sparat filnamn eller som en
+    // data-URL direkt från telefonens kamera.
+    bild: data.bild ? (bildfinns(data.bild) ? data.bild : sparaBild(data.bild)) : null,
     deadline: datum(data.deadline, 'Deadline'),
     skapad_av_id: medlem?.id ?? null,
   });

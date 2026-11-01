@@ -130,6 +130,53 @@ export function useHamta(hamtare, nycklar = []) {
   return { data, laddar, fel, uppdatera: () => sattRakna((n) => n + 1), sattData };
 }
 
+const iOS = () =>
+  /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+  // iPadOS säger sig vara en Mac. Pekskärmen avslöjar den.
+  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+const redanApp = () =>
+  window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+
+/**
+ * Går appen att installera, och i så fall hur?
+ * Returnerar `null` när den redan är installerad — då finns inget att
+ * erbjuda, och en knapp som inte gör något är värre än ingen knapp.
+ */
+export function useInstallera() {
+  // Händelsen fångas i main.jsx innan React startar – den kommer för
+  // tidigt för en useEffect. Här läses bara det som lagts undan.
+  const [handelse, sattHandelse] = useState(() => window.__hakInstallera || null);
+  const [app, sattApp] = useState(redanApp);
+
+  useEffect(() => {
+    const bytte = () => {
+      sattHandelse(window.__hakInstallera || null);
+      sattApp(redanApp());
+    };
+    window.addEventListener('hak-installerbar', bytte);
+    const media = window.matchMedia('(display-mode: standalone)');
+    media.addEventListener?.('change', bytte);
+    return () => {
+      window.removeEventListener('hak-installerbar', bytte);
+      media.removeEventListener?.('change', bytte);
+    };
+  }, []);
+
+  if (app) return null;
+  if (handelse)
+    return {
+      slag: 'knapp',
+      installera: () => {
+        handelse.prompt();
+        // Händelsen går bara att använda en gång.
+        window.__hakInstallera = null;
+      },
+    };
+  if (iOS()) return { slag: 'ios' };
+  return null;
+}
+
 /** Är vi online just nu? */
 export function useNat() {
   const [pa, satt] = useState(navigator.onLine);
@@ -154,6 +201,18 @@ export const UTRUSTNINGSTYP = {
   lans: 'Lans', flakt: 'Fläkt', pumpstation: 'Pumpstation', kompressor: 'Kompressor',
   lift: 'Lift', band: 'Band', pistmaskin: 'Pistmaskin', ovrigt: 'Övrigt',
 };
+// Databasens värden är utan diakriter och gemena; folk läser dem inte.
+export const ARENDESTATUS = {
+  ny: 'Ny', bekraftad: 'Bekräftad', pagar: 'Pågår', vantar: 'Väntar',
+  atgardad: 'Åtgärdad', stangd: 'Stängd',
+};
+export const ALLVARLIGHET = {
+  sakerhetsrisk: 'Säkerhetsrisk', driftstopp: 'Driftstopp',
+  begransar: 'Begränsar driften', kosmetisk: 'Kosmetisk',
+};
+export const ARENDETYP = { fel: 'Fel', brist: 'Brist', forbattring: 'Förbättring', risk: 'Risk' };
+export const UTRUSTNINGSSTATUS = { drift: 'I drift', service: 'På service', ur_drift: 'Ur drift' };
+
 export const UTRUSTNINGSTYP_FLERTAL = {
   lans: 'lansar', flakt: 'fläktar', pumpstation: 'pumpstationer', kompressor: 'kompressorer',
   lift: 'liftar', band: 'band', pistmaskin: 'pistmaskiner', ovrigt: 'enheter',
@@ -161,6 +220,18 @@ export const UTRUSTNINGSTYP_FLERTAL = {
 export const flertal = (typ) => UTRUSTNINGSTYP_FLERTAL[typ] || `${(UTRUSTNINGSTYP[typ] || typ).toLowerCase()}ar`;
 export const klockan = (t) =>
   t ? new Date(String(t).replace(' ', 'T')).toLocaleString('sv-SE', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+/**
+ * Som klockan(), men utan tid när värdet bara är ett datum. En tankning
+ * registrerad på "2026-10-29" skedde inte 01:00 – den saknar klockslag,
+ * och att hitta på ett är värre än att utelämna det.
+ */
+export const nar = (t) => {
+  if (!t) return '';
+  const s = String(t);
+  if (s.length <= 10)
+    return new Date(`${s}T12:00`).toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' });
+  return klockan(s);
+};
 export const sedan = (t) => {
   if (!t) return '';
   const min = (Date.now() - new Date(String(t).replace(' ', 'T')).getTime()) / 60000;

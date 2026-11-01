@@ -1,4 +1,4 @@
-/* HAK Rond – mobilappen.
+/* Backis Rond – mobilappen.
    Färgerna kommer från web/delad/profil.css. Här står tätheten: stora
    tryckytor, 16 px text och runda hörn som tål en vante.
 
@@ -73,14 +73,18 @@ a { color: var(--klubb); }
 .sida > * { flex: 0 0 auto; }
 
 .botten {
-  display: grid; grid-auto-flow: column; grid-auto-columns: 1fr;
+  /* minmax(0, 1fr) och inte 1fr: med `auto` som minimum vägrar en cell
+     bli smalare än sitt ord, och då växer raden ut ur telefonen i
+     stället – sista fliken hamnade utanför skärmen på 390 px. */
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr);
   background: var(--yta); border-top: 1px solid var(--ram);
   padding-bottom: var(--botten); position: sticky; bottom: 0; z-index: 20;
 }
 .botten a {
   display: flex; flex-direction: column; align-items: center; gap: 2px;
-  padding: 9px 4px 7px; color: var(--text-svag); text-decoration: none;
-  font-size: 11px; font-weight: 600;
+  padding: 9px 2px 7px; color: var(--text-svag); text-decoration: none;
+  font-size: 11px; font-weight: 600; min-width: 0; overflow: hidden;
+  white-space: nowrap;
 }
 .botten a .fig { font-size: 20px; line-height: 1; }
 .botten a[aria-current='page'] { color: var(--klubb); }
@@ -141,7 +145,7 @@ button.primar, .knapp.primar {
 button.stor { min-height: 60px; font-size: 17px; border-radius: var(--radie); width: 100%; }
 button.fara { background: var(--fara-mjuk); border-color: var(--fara-mjuk); color: var(--fara); }
 button.tom { border-color: transparent; background: transparent; color: var(--klubb); }
-button.full { width: 100%; }
+button.full, .knapp.full { width: 100%; }  /* .knapp sätts på en label när den döljer en filväljare */
 .knapprad { display: flex; gap: 10px; }
 .knapprad > * { flex: 1 1 0; }
 .segment { display: flex; background: var(--bak-2); border-radius: var(--radie-s); padding: 3px; gap: 3px; }
@@ -360,3 +364,27 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
   background: var(--klubb); color: var(--pa-klubb-fyll); font-weight: 600;
 }
 .boka:disabled { opacity: .5; }
+
+/* Provinloggning: två knappar som fyller i fälten nedanför. */
+.provinlogg {
+  display: flex; flex-direction: column; gap: 8px;
+  padding: 12px; border: 1px solid var(--ram); border-radius: var(--radie);
+  background: var(--bak-2);
+}
+.provinlogg .rubrik {
+  font-size: 0.7rem; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-svag);
+}
+.provinlogg button { width: 100%; min-height: 48px; font-size: 1rem; }
+.provinlogg button.vald { border-color: var(--klubb); background: var(--klubb-mjuk); color: var(--klubb-djup); }
+.provinlogg .kod { font-size: 0.8rem; color: var(--text-svag); text-align: center; }
+.provinlogg button { flex-direction: column; gap: 2px; }
+.provinlogg button small { font-size: 0.72rem; font-weight: 400; color: var(--text-svag); }
+
+/* Säkerhetsvalet i punktredigeraren: markerat, med konsekvensen utskriven.
+   Den som bockar i rutan stänger av möjligheten att hoppa över punkten. */
+.sakerhetsval { align-items: flex-start; gap: 10px; padding: 10px; border-radius: var(--radie);
+  border: 1px solid var(--fara-mjuk); background: var(--fara-mjuk); }
+.sakerhetsval span { display: flex; flex-direction: column; gap: 2px; }
+.sakerhetsval strong { color: var(--fara); }
+.sakerhetsval small { font-size: 0.76rem; color: var(--text-svag); line-height: 1.35; }

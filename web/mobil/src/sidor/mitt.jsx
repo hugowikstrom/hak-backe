@@ -46,7 +46,7 @@ export function Mitt() {
   if (d.fel && !d.data) return <div className="meddelande fel">{d.fel}</div>;
 
   const m = d.data.data;
-  const { lage, pass, ronder, forfragningar, kvot, att_boka, mina_arenden, kommande, nu } = m;
+  const { lage, pass, ronder, forfragningar, kvot, att_boka, mina_arenden, kommande, evenemang, nu } = m;
 
   const svara = async (f, ja) => {
     sattArbetar(f.id);
@@ -286,6 +286,45 @@ export function Mitt() {
           </div>
         </section>
       )}
+
+      {/* ---- Läger och tävlingar man anmält sig till ---- */}
+      {!!evenemang?.length && (
+        <section className="kort tyst">
+          <header>
+            <h2>Dina läger och tävlingar</h2>
+          </header>
+          <div className="lista">
+            {evenemang.map((e) => (
+              <div key={e.id} className="passrad liten">
+                <span className="txt">
+                  <strong>{e.namn}</strong>
+                  <span className="svag">
+                    {String(e.start).slice(0, 10)}
+                    {e.plats ? ` · ${e.plats}` : ''}
+                  </span>
+                </span>
+                {e.min_status === 'reserv' ? (
+                  <Bricka farg="varning">reserv</Bricka>
+                ) : e.avgift_ore > 0 && !e.betald_tid ? (
+                  <Bricka farg="varning">obetald</Bricka>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ---- Utlägg: hör hemma i telefonen, för det är där kvittot är ---- */}
+      <section className="kort tyst">
+        <div className="lista">
+          <Post
+            figur="🧾"
+            titel="Lämna in ett utlägg"
+            under="Fota kvittot – kassören bokför och betalar ut"
+            onClick={() => ga('utlagg')}
+          />
+        </div>
+      </section>
 
       {lage === 'lugnt' && !ronder.length && !kommande.length && (
         <Tomt>Här dyker ditt nästa pass upp, och ronderna som hör till det.</Tomt>

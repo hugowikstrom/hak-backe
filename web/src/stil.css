@@ -1,4 +1,4 @@
-/* HAK Backe – webbklienten.
+/* Backis – webbklienten.
    Färger, typsnitt och skuggor kommer från den gemensamma profilen i
    web/delad/profil.css. Här står bara tätheten: ett arbetsverktyg med små
    texter, smala rader och knappa marginaler.
@@ -47,7 +47,7 @@ p { margin: 0 0 8px; }
 .hopp { flex-wrap: wrap; }
 
 /* ---------- 2 Ram och navigering ---------- */
-.skal { display: grid; grid-template-rows: auto 1fr; height: 100%; }
+.skal { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; }
 .topp {
   display: flex; align-items: center; gap: 14px;
   padding: 0 14px; height: 46px;
@@ -60,15 +60,180 @@ p { margin: 0 0 8px; }
    I mörkt läge byter --klubb-ren inte färg: grönan bär sig själv mot båda. */
 .marke .marke-svg { display: block; --marke-motiv: var(--klubb-ren); }
 .marke small { font-weight: 500; color: var(--text-svag); letter-spacing: 0; }
-.meny { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
-.meny::-webkit-scrollbar { display: none; }
-.meny a {
-  padding: 5px 10px; border-radius: var(--radie-s); color: var(--text-svag);
-  white-space: nowrap; font-weight: 500;
-}
-.meny a:hover { background: var(--bak-2); color: var(--text); text-decoration: none; }
-.meny a[aria-current='page'] { background: var(--klubb-mjuk); color: var(--klubb); }
 .toppslut { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* Knappen som fäller menyn på stor skärm och öppnar luckan på liten. */
+.lucka-knapp { padding: 6px; min-height: 30px; display: grid; place-items: center; }
+.hamburgare, .hamburgare::before, .hamburgare::after {
+  display: block; width: 15px; height: 1.5px; border-radius: 2px;
+  background: var(--text-svag); content: '';
+}
+.hamburgare { position: relative; }
+.hamburgare::before { position: absolute; top: -5px; }
+.hamburgare::after { position: absolute; top: 5px; }
+.lucka-knapp:hover .hamburgare, .lucka-knapp:hover .hamburgare::before,
+.lucka-knapp:hover .hamburgare::after { background: var(--text); }
+
+/* Hoppa-till: den snabba vägen för den som kan systemet. Står mitt i
+   listen, för en genväg ingen ser är ingen genväg. */
+.hoppa {
+  margin-left: 10px; display: flex; align-items: center; justify-content: flex-start; gap: 10px;
+  min-width: 210px; padding: 4px 8px 4px 10px; min-height: 28px;
+  background: var(--bak-2); border: 1px solid var(--ram);
+  border-radius: 999px; color: var(--text-svagare); font-size: 12px;
+  cursor: pointer; text-align: left;
+}
+.hoppa:hover { border-color: var(--ram-stark); color: var(--text-svag); background: var(--yta); }
+.hoppa > span:first-child { flex: 1; }
+.hoppa .tasta { flex: none; }
+
+/* Mikrofonen: en liten kapsel med fot, ritad i ram så den följer temat. */
+.talknapp { padding: 5px 7px; min-height: 30px; }
+.mikrofon {
+  display: block; position: relative; width: 9px; height: 13px;
+  border: 1.5px solid var(--text-svag); border-radius: 999px;
+}
+.mikrofon::after {
+  content: ''; position: absolute; left: 50%; bottom: -5px; translate: -50% 0;
+  width: 9px; height: 4px;
+  border: 1.5px solid var(--text-svag); border-top: 0;
+  border-radius: 0 0 9px 9px;
+}
+.talknapp:hover .mikrofon, .talknapp:hover .mikrofon::after { border-color: var(--klubb); }
+
+/* ---------- Menyträdet ---------- */
+/* Få grenar, och bara den man står i uppslagen. Rubriken är en knapp och
+   inte en länk: den slår upp grenen, den går inte någonstans. */
+/* Heter skalkropp och inte kropp: `.kropp` är redan kortets och lådans
+   innehållsyta. En oscopad .kropp-regel här gör varje kort i appen till
+   ett tvåkolumnsrutnät. */
+.skalkropp { display: grid; grid-template-columns: 216px minmax(0, 1fr); min-height: 0; }
+.skal.utan-meny .skalkropp { grid-template-columns: minmax(0, 1fr); }
+.sidomeny {
+  overflow-y: auto; padding: 10px 8px 20px;
+  border-right: 1px solid var(--ram); background: var(--bak);
+}
+.skal.utan-meny .sidomeny { display: none; }
+
+.menytrad { display: flex; flex-direction: column; gap: 1px; }
+.menylank {
+  display: block; padding: 6px 10px; border-radius: var(--radie-s);
+  color: var(--text-svag); font-weight: 500; font-size: 12.5px;
+}
+.menylank:hover { background: var(--bak-2); color: var(--text); text-decoration: none; }
+.menylank[aria-current='page'] {
+  background: var(--klubb-mjuk); color: var(--klubb); font-weight: 600;
+  box-shadow: inset 2px 0 0 var(--klubb);
+}
+.menygren { margin-top: 6px; }
+.grenknapp {
+  display: flex; align-items: center; justify-content: flex-start; gap: 7px; width: 100%;
+  padding: 4px 10px; min-height: 24px;
+  background: none; border: 0; border-radius: var(--radie-s);
+  color: var(--text-svagare); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .07em; cursor: pointer;
+}
+.grenknapp:hover { background: var(--bak-2); color: var(--text-svag); }
+/* Pilen pekar åt höger när grenen är stängd, nedåt när den är uppslagen. */
+.pil {
+  flex: none; width: 0; height: 0;
+  border-left: 4px solid currentColor; border-top: 3.5px solid transparent;
+  border-bottom: 3.5px solid transparent;
+  transition: rotate var(--snabbt);
+}
+.menygren.uppe .pil { rotate: 90deg; translate: -1px 1px; }
+/* Prick på en stängd gren som bär den sida man står på. */
+.prick { width: 5px; height: 5px; border-radius: 50%; background: var(--klubb); }
+/* Siffran som säger att något väntar. Står till höger, för ögat läser
+   namnet först och antalet sedan. */
+.menysiffra {
+  margin-left: auto; min-width: 19px; padding: 0 6px;
+  border-radius: 999px; background: var(--varning-mjuk); color: var(--varning);
+  font-size: 11px; font-weight: 700; line-height: 17px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.menylank { display: flex; align-items: center; gap: 8px; }
+.menylank[aria-current='page'] .menysiffra { background: var(--yta); }
+.grenkropp { display: flex; flex-direction: column; gap: 1px; padding-left: 11px; }
+
+/* Menyn som lucka på liten skärm. Samma träd, inte en egen meny. */
+.lucka-bak {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(27, 33, 22, .4); display: flex;
+}
+.lucka {
+  width: min(290px, 86vw); display: flex; flex-direction: column;
+  background: var(--bak); border-right: 1px solid var(--ram);
+  box-shadow: var(--skugga-lyft); padding: 10px 8px;
+  animation: in-fran-vanster var(--lugnt);
+}
+@keyframes in-fran-vanster { from { translate: -14px 0; opacity: .6; } }
+.lucka-topp { display: flex; align-items: center; justify-content: space-between; padding: 2px 6px 10px; }
+.lucka-topp .marke { font-size: 13px; }
+.lucka .menytrad { overflow-y: auto; }
+.lucka-fot { margin-top: auto; padding: 10px 10px 2px; border-top: 1px solid var(--ram); }
+
+/* ---------- Hoppa-till-rutan ---------- */
+.palett-bak {
+  position: fixed; inset: 0; z-index: 80;
+  background: rgba(27, 33, 22, .35);
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: 12vh 16px 16px;
+}
+.palett {
+  width: min(520px, 100%); background: var(--yta);
+  border: 1px solid var(--ram-stark); border-radius: var(--radie);
+  box-shadow: var(--skugga-lyft); overflow: hidden;
+  animation: in var(--lugnt);
+}
+.palettfalt {
+  width: 100%; border: 0; border-bottom: 1px solid var(--ram);
+  border-radius: 0; padding: 11px 14px; font-size: 14px; background: var(--yta);
+}
+.palettfalt:focus-visible { outline: 0; border-bottom-color: var(--klubb); }
+.palettlista { max-height: 46vh; overflow-y: auto; padding: 5px; }
+.palettrad {
+  display: flex; align-items: center; justify-content: flex-start; gap: 10px; width: 100%;
+  padding: 7px 10px; background: none; border: 0; border-radius: var(--radie-s);
+  color: var(--text); font-size: 13px; text-align: left; cursor: pointer;
+}
+.palettrad.pa { background: var(--klubb-mjuk); color: var(--klubb); }
+.palettfot {
+  display: flex; gap: 14px; padding: 7px 14px;
+  border-top: 1px solid var(--ram); background: var(--bak-2);
+}
+
+/* ---------- Talrutan ---------- */
+/* Pricken pulsar bara när mikrofonen är på. En symbol som rör sig när
+   ingenting spelas in är en lögn om att något händer. */
+.talbuk { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0 4px; }
+.talprick {
+  width: 54px; height: 54px; border-radius: 50%;
+  background: var(--bak-2); border: 2px solid var(--ram-stark);
+}
+.talprick.spelar {
+  background: var(--fara-mjuk); border-color: var(--fara);
+  animation: pulsa 1.4s ease-in-out infinite;
+}
+@keyframes pulsa {
+  50% { box-shadow: 0 0 0 9px color-mix(in srgb, var(--fara) 14%, transparent); }
+}
+.talklocka { font-size: 21px; font-weight: 600; }
+.skrivinstallet { margin-top: 12px; border-top: 1px solid var(--ram); padding-top: 8px; }
+.skrivinstallet summary { cursor: pointer; }
+.skrivinstallet textarea { margin-top: 8px; }
+
+/* ---------- Kryssrutor i rutnät ---------- */
+/* Behörigheter och ytor: många val som ska gå att överblicka. Låsta val
+   står kvar synliga, för frånvaron av ett val är svårare att förstå än ett
+   val man inte får göra. */
+.valrutor { display: grid; gap: 2px 14px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.valruta { display: flex; align-items: flex-start; gap: 8px; padding: 4px 2px; font-size: 12.5px; cursor: pointer; }
+.valruta input { margin-top: 1px; flex: none; }
+.valruta.last { color: var(--text-svagare); cursor: not-allowed; }
+.valruta em { font-style: normal; font-family: var(--mono); }
+.historik { margin-top: 10px; }
+.historik summary { cursor: pointer; padding: 4px 0; }
 .ytval {
   width: auto; min-height: 28px; padding: 3px 8px; font-size: 12.5px; font-weight: 600;
   background: var(--klubb-mjuk); color: var(--klubb); border-color: transparent;
@@ -337,11 +502,21 @@ ul.lista { margin: 0; padding: 0; }
 @keyframes in { from { opacity: 0; transform: translateY(6px); } }
 .tasta { font-family: var(--mono); font-size: 10.5px; border: 1px solid var(--ram-stark); border-bottom-width: 2px; border-radius: 3px; padding: 0 4px; background: var(--bak-2); color: var(--text-svag); }
 
+/* Under 860 px finns ingen fast meny – den ligger i luckan i stället. */
+@media (max-width: 860px) {
+  .skalkropp, .skal.utan-meny .skalkropp { grid-template-columns: minmax(0, 1fr); }
+  .sidomeny { display: none; }
+  .hoppa { min-width: 0; }
+  .hoppa > span:first-child { display: none; }
+  .hoppa .tasta { display: none; }
+  .hoppa::after { content: 'Sök'; }
+}
 @media (max-width: 720px) {
   .topp { height: auto; flex-wrap: wrap; padding: 6px 10px; gap: 8px; }
-  .meny { width: 100%; order: 3; }
   .innehall { padding: 10px; }
   .stapel .post { grid-template-columns: 90px 1fr 46px; }
+  .doljs-smalt { display: none; }
+  .palett-bak { padding: 6vh 10px 10px; }
 }
 @media print {
   .topp, .knapprad, .legend { display: none !important; }
@@ -577,3 +752,378 @@ dl.uppgifter dd { margin: 0; white-space: pre-wrap; }
 /* Inloggningens logotyp: hela lockupen i klubbgrönt, centrerad. */
 .inlogg .logotyp { display: flex; justify-content: center; margin-bottom: 10px; --marke-motiv: var(--klubb-ren); }
 .inlogg .marke { justify-content: center; font-size: 15px; color: var(--text-svag); font-weight: 600; }
+
+/* ---------- Luckan ---------- */
+/* Personalens vy i fiket och uthyrningen. Allt här är större än i resten
+   av appen med flit: den som står i luckan har vantar, lutar sig över en
+   platta och har folk framför sig. 44 px är minsta tryckyta. */
+.luckan { display: flex; flex-direction: column; gap: 14px; }
+
+.lagevaljare { display: inline-flex; align-self: flex-start; border: 1px solid var(--ram-stark); border-radius: 999px; overflow: hidden; }
+.lagevaljare button {
+  border: 0; border-radius: 0; min-height: 40px; padding: 0 22px;
+  font-size: 14px; font-weight: 600; background: var(--yta); color: var(--text-svag);
+}
+.lagevaljare button[aria-selected='true'] { background: var(--klubb-ren); color: var(--pa-klubb); }
+
+.luckotopp { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.luckolage { display: flex; gap: 10px; flex: 1 1 auto; flex-wrap: wrap; }
+.lagetal {
+  display: flex; flex-direction: column; gap: 2px; min-width: 120px;
+  padding: 10px 16px; border: 1px solid var(--ram); border-radius: var(--radie);
+  background: var(--yta);
+}
+.lagetal .tal { font-size: 30px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.lagetal .etikett { font-size: 11.5px; color: var(--text-svag); text-transform: uppercase; letter-spacing: .05em; }
+.lagetal.ok .tal { color: var(--ok); }
+.lagetal.varning .tal { color: var(--varning); }
+.lagetal.fara .tal { color: var(--fara); }
+.luckoknappar { display: flex; gap: 8px; align-items: center; }
+
+button.stor, .knapp.stor { min-height: 44px; padding: 0 18px; font-size: 14.5px; font-weight: 600; }
+button.stor.full { width: 100%; }
+
+/* Korten: ett per beställning eller hyra, äldst överst. */
+.luckokort { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); align-items: start; }
+.luckokort-ett {
+  display: flex; flex-direction: column; gap: 10px; padding: 14px;
+  background: var(--yta); border: 1px solid var(--ram); border-left: 4px solid var(--klubb-ren);
+  border-radius: var(--radie); box-shadow: var(--skugga);
+}
+.luckokort-ett.obetald { border-left-color: var(--fara); }
+.luckokort-ett.forsenad { border-left-color: var(--fara); background: var(--fara-mjuk); }
+.luckokort-ett > header { display: flex; align-items: center; gap: 12px; }
+.luckokort-ett .nummer { font-size: 26px; font-weight: 700; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.luckokort-ett .plats { font-size: 14px; }
+.luckomarke {
+  padding: 2px 9px; border-radius: 999px; font-size: 11.5px; font-weight: 600;
+  background: var(--bak-2); color: var(--text-svag); align-self: flex-start;
+}
+.luckomarke.betald { background: var(--ok-mjuk); color: var(--ok); }
+.luckomarke.fara { background: var(--fara-mjuk); color: var(--fara); }
+
+.luckorader { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.luckorader li { display: flex; align-items: baseline; gap: 8px; font-size: 14.5px; }
+.luckorader.stor li { font-size: 16px; }
+.luckorader .antal { font-variant-numeric: tabular-nums; color: var(--text-svag); font-weight: 600; min-width: 26px; }
+.luckorader .markning {
+  margin-left: auto; font-size: 12px; padding: 1px 8px; border-radius: 999px;
+  background: var(--bak-2); color: var(--text-svag);
+}
+.luckonotis {
+  margin: 0; padding: 8px 10px; border-radius: var(--radie-s);
+  background: var(--varning-mjuk); color: var(--varning); font-size: 13px;
+}
+.betalrad { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.betalrad .liten { color: var(--fara); font-weight: 600; }
+.luckokort-ett > footer { display: flex; gap: 8px; margin-top: auto; }
+.luckokort-ett footer .vaxa { flex: 1; }
+.luckomer { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding-top: 8px; border-top: 1px solid var(--ram); }
+
+/* Sälj: varorna som knappar, korgen bredvid. */
+.saljvy { display: grid; gap: 16px; grid-template-columns: minmax(0, 1fr) 290px; }
+.chipsrad { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.chipsrad button {
+  min-height: 34px; padding: 0 14px; border-radius: 999px;
+  background: var(--bak-2); border-color: transparent; color: var(--text-svag); font-weight: 600;
+}
+.chipsrad button.pa { background: var(--klubb-mjuk); color: var(--klubb); border-color: var(--klubb-ram); }
+.varurutnat { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+.varuknapp {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
+  min-height: 72px; padding: 10px 12px; text-align: left; white-space: normal;
+}
+.varuknapp .emoji { font-size: 17px; }
+.varuknapp .namn { font-size: 13px; font-weight: 600; line-height: 1.25; }
+.varuknapp .pris { font-size: 12px; color: var(--text-svag); margin-top: auto; }
+.saljkorg { display: flex; flex-direction: column; gap: 10px; border-left: 1px solid var(--ram); padding-left: 16px; }
+.korglista { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.korglista li { display: flex; align-items: center; gap: 8px; font-size: 13.5px; }
+.korglista .antal { min-width: 26px; color: var(--text-svag); }
+.saljsumma { font-size: 28px; font-weight: 700; text-align: right; border-top: 1px solid var(--ram); padding-top: 8px; }
+
+.slutlista { display: flex; flex-direction: column; gap: 4px; max-height: 60vh; overflow-y: auto; }
+.slutrad {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  min-height: 42px; justify-content: flex-start; text-align: left;
+}
+.slutrad .lage { font-size: 12px; font-weight: 600; color: var(--ok); }
+.slutrad.slut { background: var(--fara-mjuk); border-color: color-mix(in srgb, var(--fara) 35%, transparent); }
+.slutrad.slut .lage { color: var(--fara); }
+.slutrad.slut .vaxa { text-decoration: line-through; color: var(--text-svag); }
+
+/* Utlämningen: en rad per del, märkningen i fokus. */
+.utlamning { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.utrad { display: flex; align-items: center; gap: 12px; }
+.utrad .vad { flex: 1; font-size: 14.5px; }
+.utrad .antal { color: var(--text-svag); font-weight: 600; margin-right: 4px; }
+.utrad input { width: 170px; min-height: 40px; font-size: 15px; font-family: var(--mono); }
+
+@media (max-width: 860px) {
+  .saljvy { grid-template-columns: minmax(0, 1fr); }
+  .saljkorg { border-left: 0; padding-left: 0; border-top: 1px solid var(--ram); padding-top: 12px; }
+  .luckokort { grid-template-columns: minmax(0, 1fr); }
+  .lagetal { flex: 1; min-width: 0; }
+  .utrad { flex-wrap: wrap; }
+  .utrad input { width: 100%; }
+}
+
+/* ---------- Hjälpen ---------- */
+/* En rad per film: stillbild, vad den handlar om, och en knapp. Formen är
+   nästan tom med flit – den som öppnar hjälpen vet redan vad hen undrar. */
+.filmlista { display: flex; flex-direction: column; gap: 10px; }
+.filmrad { display: flex; align-items: center; gap: 16px; padding: 12px; }
+.filmaffisch {
+  position: relative; flex: none; width: 200px; height: 113px; padding: 0;
+  border: 1px solid var(--ram); border-radius: var(--radie-s); overflow: hidden;
+  background: var(--bak-2); cursor: pointer;
+}
+.filmaffisch img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.filmaffisch .utanaffisch { display: block; width: 100%; height: 100%; }
+/* Spelaknappen: en triangel ritad i ram, så den följer temat. */
+.spelaknapp {
+  position: absolute; inset: 0; margin: auto; width: 44px; height: 44px;
+  border-radius: 50%; background: rgba(27, 33, 22, .55);
+}
+.spelaknapp::after {
+  content: ''; position: absolute; left: 17px; top: 13px;
+  border-left: 15px solid #fff; border-top: 9px solid transparent;
+  border-bottom: 9px solid transparent;
+}
+.filmaffisch:hover .spelaknapp { background: var(--klubb); }
+.filmtext { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.filmtext p { margin: 0; font-size: 13px; }
+.filmfor {
+  padding: 1px 9px; border-radius: 999px;
+  background: var(--klubb-mjuk); color: var(--klubb); font-weight: 600;
+}
+.filmruta { padding: 0 12px 12px; }
+.filmruta video {
+  width: 100%; max-height: 72vh; display: block; background: #000;
+  border-radius: var(--radie-s);
+}
+
+@media (max-width: 720px) {
+  .filmrad { flex-wrap: wrap; }
+  .filmaffisch { width: 100%; height: auto; aspect-ratio: 16 / 9; }
+  .filmrad > button.stor { width: 100%; }
+}
+
+/* ---------- 16 Utlägg, evenemang och samåkning ---------- */
+
+.gap-8 { gap: 8px; }
+/* Det som varit, eller ställts in. Kvar men inte i vägen. */
+.blek { opacity: .62; }
+
+/* Kvittot först i blanketten: det är det man har i handen. */
+.kvittoruta { display: flex; flex-direction: column; align-items: center; gap: 6px; margin-bottom: 10px; }
+.kvittoruta img {
+  max-width: 100%; max-height: 240px; object-fit: contain;
+  border: 1px solid var(--ram); border-radius: var(--radie); background: var(--bak-2);
+}
+.kvittoknapp {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; width: 100%; min-height: 130px; padding: 14px; cursor: pointer;
+  border: 1px dashed var(--ram-stark); border-radius: var(--radie);
+  background: var(--bak-2); color: var(--text-svag); text-align: center;
+}
+.kvittoknapp:hover { border-color: var(--klubb); background: var(--klubb-mjuk); color: var(--text); }
+.kvittoknapp .stor { font-size: 28px; line-height: 1; }
+
+/* Granskningen: kvittot till vänster, fälten till höger. På en smal skärm
+   under varandra – kvittot ska aldrig krympas till oläslighet. */
+.granskning { display: grid; gap: 14px; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.granskning-kvitto img {
+  width: 100%; max-height: 62vh; object-fit: contain;
+  border: 1px solid var(--ram); border-radius: var(--radie); background: var(--bak-2);
+}
+.granskning-falt { display: flex; flex-direction: column; gap: 10px; }
+.granskning-falt dl.uppgifter { margin-bottom: 0; }
+@media (max-width: 900px) { .granskning { grid-template-columns: 1fr; } }
+
+/* Ett evenemang är ett kort och inte en tabellrad: det en medlem vill veta
+   är fyra saker, och den vanligaste åtgärden är en enda knapp. */
+.evenemangsrutnat,
+.bilrutnat { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+.evenemangskort,
+.bilkort {
+  display: flex; flex-direction: column; gap: 8px; padding: 12px;
+  background: var(--yta); border: 1px solid var(--ram);
+  border-radius: var(--radie); box-shadow: var(--skugga);
+}
+.evenemangskort > header,
+.bilkort > header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.evenemangskort > header > button:last-child,
+.bilkort > header > .bricka { margin-left: auto; }
+.evenemangskort h3,
+.bilkort h3 { margin: 0; font-size: 15px; line-height: 1.25; }
+.evenemangskort dl,
+.bilkort dl {
+  display: grid; grid-template-columns: 72px 1fr; gap: 3px 10px; margin: 0; font-size: 12.5px;
+}
+.evenemangskort dt,
+.bilkort dt { color: var(--text-svag); }
+.evenemangskort dd,
+.bilkort dd { margin: 0; }
+.evenemangskort p,
+.bilkort p { margin: 0; }
+.evenemangskort > footer,
+.bilkort > footer {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  margin-top: auto; padding-top: 8px; border-top: 1px solid var(--ram);
+}
+/* Knappen är sidans åtgärd och får ta plats; pekarmålet ska vara stort nog
+   för en tumme i vante. */
+.evenemangskort > footer > button.primar { min-height: 34px; }
+.evenemangskort > footer > a { margin-left: auto; }
+.bilkort > footer > .falt { flex: 1; min-width: 120px; }
+
+ul.passagerare { margin: 0; padding: 0; list-style: none; }
+ul.passagerare li { padding: 1px 0; }
+
+/* ---------- 17 Provinloggning ---------- */
+
+/* Två knappar som fyller i fälten nedanför, inte loggar in rakt av. Den
+   som provar ska se vad hen loggar in med – nästa gång kommer hen från sin
+   egen telefon och behöver inte knapparna. */
+.provinlogg {
+  display: flex; flex-direction: column; gap: 6px;
+  padding: 10px; margin: 2px 0;
+  border: 1px solid var(--ram); border-radius: var(--radie); background: var(--bak-2);
+}
+.provinlogg .rubrik {
+  font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--text-svag);
+}
+.provinlogg .val { display: flex; flex-direction: column; gap: 6px; }
+.provinlogg .val button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  width: 100%; padding: 8px 10px; min-height: 44px; text-align: left;
+  justify-content: center; font-weight: 500;
+  /* Knappar är annars nowrap i hela appen. Här är texten en mening. */
+  white-space: normal; overflow-wrap: anywhere;
+}
+.provinlogg .val button strong { font-size: 13.5px; }
+.provinlogg .val button span { font-size: 11.5px; color: var(--text-svag); font-weight: 400; line-height: 1.3; }
+.provinlogg .val button.vald { border-color: var(--klubb); background: var(--klubb-mjuk); }
+.provinlogg .val button.vald span { color: var(--klubb-djup); }
+.provinlogg .hjalp { margin: 2px 0 0; text-align: left; }
+.provinlogg code {
+  font-family: var(--mono, ui-monospace, monospace); font-size: 12.5px;
+  padding: 1px 5px; border-radius: var(--radie-s);
+  background: var(--yta); border: 1px solid var(--ram);
+}
+
+/* Dagens ronder grupperade efter när de ska göras. Före öppning står
+   först och räknas för sig – en dag med nio avgörande kontroller ska
+   inte läsas som femtio. */
+.rondgren { border-left: 2px solid var(--ram); padding-left: 10px; }
+.rondgren:first-child { border-left-color: var(--klubb); }
+.rondgren h4 { font-size: 12px; }
+
+/* ---------- 18 Projektsidan ---------- */
+
+/* Öppet skal: projektsidan läses utan inloggning och har därför ingen meny. */
+.oppensida { display: flex; flex-direction: column; height: 100dvh; }
+.oppentopp {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 14px; border-bottom: 1px solid var(--ram); background: var(--bak-2);
+}
+.oppentopp .namn { font-weight: 700; letter-spacing: -.01em; }
+.oppentopp .vaxa { flex: 1; }
+
+.projekthuvud { display: flex; flex-direction: column; gap: 8px; }
+.projekthuvud .etikett {
+  font-size: 11px; font-weight: 600; letter-spacing: .07em;
+  text-transform: uppercase; color: var(--klubb);
+}
+.projekthuvud h1 { margin: 0; font-size: clamp(24px, 4vw, 34px); line-height: 1.1; text-wrap: balance; }
+.projekthuvud p { margin: 0; max-width: 62ch; }
+.projekthuvud .ingress { font-size: 15px; color: var(--text-svag); }
+
+/* Delarna som kort: den som inte är insatt scannar, läser inte en lista. */
+.delrutnat { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); padding: 10px; }
+.delkort {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 5px;
+  padding: 12px; min-height: 0; text-align: left; white-space: normal;
+  background: var(--yta); border: 1px solid var(--ram); border-radius: var(--radie);
+  justify-content: flex-start; font-weight: 400;
+}
+.delkort:hover { border-color: var(--klubb); box-shadow: var(--skugga); }
+.delkort > header { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.delkort h3 { margin: 0; font-size: 15px; line-height: 1.25; font-weight: 600; }
+.delkort p { margin: 0; font-size: 12.5px; color: var(--text-svag); line-height: 1.45; }
+
+.projektfilm {
+  width: 100%; max-height: 54vh; border-radius: var(--radie);
+  background: #000; display: block; margin-bottom: 12px;
+}
+
+.box-varfor {
+  border-left: 3px solid var(--klubb-ren); background: var(--klubb-mjuk);
+  padding: 10px 12px; border-radius: 0 var(--radie) var(--radie) 0; margin-bottom: 10px;
+}
+.box-varfor .etikett {
+  display: block; font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--klubb); margin-bottom: 3px;
+}
+.box-varfor p { margin: 0; }
+
+/* Idérutan: knappen ska vara det mest inbjudande på sidan. */
+.ideruta { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--ram); }
+.ideruta h4 { margin: 0 0 4px; font-size: 13px; text-transform: none; letter-spacing: 0; color: var(--text); }
+.ideruta .knapprad { margin-top: 8px; }
+.ideruta .knapprad button { min-height: 36px; }
+
+.idelista { display: flex; flex-direction: column; gap: 8px; margin-top: 14px; }
+.idepost {
+  padding: 9px 11px; border: 1px solid var(--ram); border-radius: var(--radie);
+  background: var(--bak-2);
+}
+.idepost.egen { border-color: var(--klubb-ram); background: var(--klubb-mjuk); }
+.idepost > header { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 3px; }
+.idepost p { margin: 0; font-size: 13px; }
+.idepost .svar { margin-top: 7px; padding-left: 9px; border-left: 2px solid var(--klubb-ren); }
+.idepost .svar .etikett {
+  font-size: 10.5px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--klubb);
+}
+
+/* Gantt: tolv kolumner och en rad per del. Inget diagrambibliotek. */
+.gantt { display: flex; flex-direction: column; gap: 3px; }
+.gantt-skala { position: relative; height: 16px; margin-left: 180px; border-bottom: 1px solid var(--ram); }
+.gantt-skala span {
+  position: absolute; font-size: 10.5px; color: var(--text-svag);
+  text-transform: uppercase; letter-spacing: .04em;
+}
+.gantt-rad { display: grid; grid-template-columns: 180px 1fr; align-items: center; gap: 8px; }
+.gantt-rad .namn { font-size: 12.5px; font-weight: 600; }
+.gantt-rad .spar { position: relative; height: 18px; background: var(--bak-2); border-radius: 3px; }
+.gantt-rad .stapel {
+  position: absolute; top: 3px; height: 12px; border-radius: 3px;
+  background: var(--klubb-ren); min-width: 4px;
+}
+.gantt-rad .stapel.i_drift { background: var(--ok); }
+.gantt-rad .stapel.provas { background: var(--varning); }
+.gantt-rad .stapel.planerad,
+.gantt-rad .stapel.ide { background: var(--ram-stark); }
+@media (max-width: 700px) {
+  .gantt-skala { margin-left: 110px; }
+  .gantt-rad { grid-template-columns: 110px 1fr; }
+  .gantt-rad .namn { font-size: 11.5px; }
+}
+/* Översiktsfilmen högst upp: den är sidans ingång och får ta plats. */
+.projektfilm.oversikt { max-width: 760px; max-height: 44vh; margin: 10px 0 4px; }
+/* Varje provinloggning visar sitt eget konto och sin egen kod: den som
+   läser ska kunna skriva in dem för hand nästa gång. */
+.provinlogg .val button .kod { font-size: 11px; margin-top: 2px; }
+.provinlogg .val button .kod code {
+  font-size: 11px; padding: 0 3px; background: var(--yta);
+  border: 1px solid var(--ram); border-radius: 3px;
+}
+
+/* En säkerhetskritisk punkt ska synas i mallredigeraren utan att man
+   behöver leta i en kolumn långt till höger. */
+table.data tr.sakerhetsrad td:first-child { box-shadow: inset 2px 0 0 var(--fara); }
+table.data tr.sakerhetsrad { background: color-mix(in srgb, var(--fara) 5%, transparent); }

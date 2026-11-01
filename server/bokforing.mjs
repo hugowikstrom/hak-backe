@@ -23,8 +23,34 @@ export const STANDARDKONTON = [
   ['3020', 'Uthyrning av utrustning', 'intakt'],
   ['3030', 'Liftkort', 'intakt'],
   ['3110', 'Medlemsavgifter', 'intakt'],
+  ['3120', 'Deltagaravgifter läger och tävling', 'intakt'],
   ['3990', 'Övriga intäkter', 'intakt'],
+  // Kostnadskontona används av medlemmarnas utlägg. Namnen är satta för en
+  // idrottsförening snarare än ordagrant ur BAS – kontoplanen går att
+  // ändra i registret, och den som har en redovisningskonsult gör det.
+  ['2641', 'Ingående moms', 'tillgang'],
+  ['2890', 'Skuld för medlemmars utlägg', 'skuld'],
+  ['4010', 'Inköp av varor till kiosken', 'kostnad'],
+  ['5410', 'Förbrukningsinventarier och material', 'kostnad'],
+  ['5800', 'Resekostnader', 'kostnad'],
+  ['6110', 'Kontorsmateriel', 'kostnad'],
+  ['6590', 'Tävlings- och lägerkostnader', 'kostnad'],
+  ['6990', 'Övriga kostnader', 'kostnad'],
 ];
+
+/** Vilket kostnadskonto ett utlägg hamnar på. */
+export const UTLAGGSKONTON = {
+  fiket: '4010',
+  backen: '5410',
+  resa: '5800',
+  kontor: '6110',
+  traning: '6590',
+  tavling: '6590',
+  ovrigt: '6990',
+};
+
+/** Ingående moms – motsatsen till MOMSKONTON, som är den utgående. */
+export const INGAENDE_MOMS = '2641';
 
 export const MOMSKONTON = { 0.25: '2611', 0.12: '2621', 0.06: '2631' };
 
@@ -277,7 +303,7 @@ export function sie4({ fran, till, foretag = instans('namn', 'Föreningen'), org
   const konton = kontoplan().filter((k) => anvanda.includes(k.nummer));
   const rader = [
     '#FLAGGA 0',
-    `#PROGRAM ${sieText('HAK Backe')} ${sieText('1.0')}`,
+    `#PROGRAM ${sieText('Backis')} ${sieText('1.0')}`,
     '#FORMAT PC8',
     `#GEN ${sieDatum(idag())}`,
     '#SIETYP 4',

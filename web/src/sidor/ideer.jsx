@@ -105,6 +105,7 @@ function NyIde({ kategorier, klar }) {
   const [text, sattText] = useState('');
   const [rubrik, sattRubrik] = useState('');
   const [kategori, sattKategori] = useState('ovrigt');
+  const [skickar, sattSkickar] = useState(false);
   const { spelar, ljud, sekunder, fel: mikrofel, starta: startaInspelning, stoppa, nollstall } = useInspelning();
 
   useEffect(() => mikrofel && notis(mikrofel, 'fel'), [mikrofel]);

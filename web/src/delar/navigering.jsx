@@ -13,6 +13,27 @@
 // och två bokstäver tar en vart som helst, utan att öppna någon gren alls.
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+/**
+ * Samma brytpunkt som stilmallen använder för att gömma sidomenyn.
+ *
+ * Står på ett ställe med flit: ett magiskt 860 i JS och ett till i CSS
+ * glider isär, och då finns det ett fönsterintervall där varken menyn eller
+ * luckan går att få fram.
+ */
+export const SMAL = '(max-width: 860px)';
+
+export function useSmalSkarm() {
+  const [smal, sattSmal] = useState(() => window.matchMedia(SMAL).matches);
+  useEffect(() => {
+    const mq = window.matchMedia(SMAL);
+    const vid = (e) => sattSmal(e.matches);
+    mq.addEventListener('change', vid);
+    sattSmal(mq.matches);
+    return () => mq.removeEventListener('change', vid);
+  }, []);
+  return smal;
+}
+
 const lasGrenar = (nyckel) => {
   try {
     return new Set(JSON.parse(localStorage.getItem(nyckel) || '[]'));
@@ -63,8 +84,11 @@ export function byggTrad(synliga, menygrupper, gruppAvSida) {
   return { losa: [...losa, ...enstaka], grenar: grenar.filter((g) => g.sidor.length > 1) };
 }
 
-export function Menytrad({ trad, aktiv, ga, oppna, vaxla, vidVal }) {
+export function Menytrad({ trad, aktiv, ga, oppna, vaxla, vidVal, notiser = {} }) {
   const { losa, grenar } = trad;
+  // En hopfälld gren bär sina barns siffror: annars göms just det som
+  // siffran finns till för att visa.
+  const grensumma = (g) => g.sidor.reduce((a, s) => a + (notiser[s.nyckel] || 0), 0);
   // Grenen man står i är alltid uppslagen, oavsett vad som sparats.
   const grenMedAktiv = grenar.find((g) => g.sidor.some((s) => s === aktiv))?.nyckel;
 
@@ -80,6 +104,7 @@ export function Menytrad({ trad, aktiv, ga, oppna, vaxla, vidVal }) {
       }}
     >
       {s.text}
+      {notiser[s.nyckel] > 0 && <span className="menysiffra">{notiser[s.nyckel]}</span>}
     </a>
   );
 
@@ -91,6 +116,7 @@ export function Menytrad({ trad, aktiv, ga, oppna, vaxla, vidVal }) {
       {grenar.map((g) => {
         const uppe = oppna.has(g.nyckel) || grenMedAktiv === g.nyckel;
         const harAktiv = g.sidor.some((s) => s === aktiv);
+        const summa = grensumma(g);
         return (
           <div className={`menygren${uppe ? ' uppe' : ''}`} key={g.nyckel}>
             <button
@@ -101,6 +127,7 @@ export function Menytrad({ trad, aktiv, ga, oppna, vaxla, vidVal }) {
               <span className="pil" aria-hidden="true" />
               {g.namn}
               {!uppe && harAktiv && <span className="prick" aria-hidden="true" />}
+              {!uppe && summa > 0 && <span className="menysiffra">{summa}</span>}
             </button>
             {uppe && (
               <div className="grenkropp">

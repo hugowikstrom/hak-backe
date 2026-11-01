@@ -1,4 +1,4 @@
-# HAK Backe
+# Backis
 
 Ett system för hela backen: snöläggning och snöplanering, checklistor,
 driftjournal, förebyggande underhåll, ärenden, incidenter, bemanning, kiosk,
@@ -9,9 +9,9 @@ Plattformen bär **flera föreningar**. Varje förening har en egen databasfil,
 egna färger och egna påslagna moduler; värdnamnet avgör vilken förening en
 begäran gäller. `docs/ARKITEKTUR.md` beskriver sömmarna och gränserna.
 
-Drift: <https://hak.nattviken.com> (systemd-tjänsten `hak`, 127.0.0.1:8120).
-Mobilappen för checklistor: <https://hak.nattviken.com/mobil/>.
-Fiket och uthyrningen för gästerna: <https://hak.nattviken.com/fik/> (öppen, ingen inloggning).
+Drift: <https://backis.nattviken.com> (systemd-tjänsten `hak`, 127.0.0.1:8120).
+Mobilappen för checklistor: <https://backis.nattviken.com/mobil/>.
+Fiket och uthyrningen för gästerna: <https://backis.nattviken.com/fik/> (öppen, ingen inloggning).
 
 ## Kom igång
 
@@ -24,6 +24,10 @@ npm run build        # bygger alla tre klienterna till web/dist
 npm run foreningar   # vilka föreningar som finns och vad de har påslaget
 npm run ny-forening -- --nyckel vargen --namn "Vargens SK" --doman vargen.se
 ```
+
+Grunddatat lägger upp sex behörighetsgrupper – Snögänget, Backlaget,
+Liftansvariga, Kioskvärdarna, Tränarlaget och Incidentgruppen – som sköts
+under *Föreningen → Tillträden*.
 
 Inloggningar i grunddatat (alla har lösenordet `hak`):
 
@@ -76,6 +80,28 @@ något skrivs.
 pass som saknar folk. Allt som skickas loggas i `epostlogg`, även när
 sändningen är avstängd.
 
+**Plånbok.** Varje medlem har ett förskottskonto som används i fiket, i
+uthyrningen och till klubbens avgifter. Kassan fyller på, kassören betalar
+tillbaka. Saldot är en **skuld** i bokföringen (konto 2420) – pengarna är
+medlemmens ända till dess att något köps.
+
+**Utlägg.** Den som handlat åt klubben fotar kvittot i mobilen. Kassören
+granskar, godkänner (kostnad + ingående moms + skuld till medlemmen) och
+betalar ut – till bankkontot eller rakt in i medlemmens plånbok. Avslag
+kräver ett skäl; ett godkänt utlägg rättas med en motbokning, inte med ett
+avslag.
+
+**Läger och tävling.** Evenemang med anmälan, avgift, platsbegränsning och
+sista anmälningsdag. Är det fullt hamnar man i en reservkö som tömmer sig
+själv när någon hoppar av. Avgiften kan betalas med plånboken av medlemmen
+själv, eller kvitteras i kassan. Deltagarlista med behov (specialkost,
+allergier) som CSV – men behoven syns bara för arrangören.
+
+**Samåkning.** Vem som kör, varifrån, när och hur många platser som är
+lediga – kopplat till ett evenemang eller fristående. Varje medlem får
+erbjuda och boka plats utan behörighet. Telefonnumren visas för föraren och
+dem som faktiskt sitter i bilen, ingen annan.
+
 **Rapporter.** För anläggningsansvarig: drifttimmar och uppskattad
 vattenvolym per lans och fläkt, ärendeläge med åtgärdstider och
 säkerhetsrisker, samt bemanningstäckning, hål i schemat och varje medlems
@@ -86,7 +112,7 @@ insatser mot kvoten. CSV-export och utskriftsvänlig vy.
 ```
 server/            API och logik, inga ramverk
   bokforing.mjs    verifikationer, rättelser, SIE-export
-  behorighet.mjs   roller, uppdrag och vem som får vad
+  behorighet.mjs   roller, uppdrag, grupper och vem som får vad
   stod.mjs         aktivitetsstödets villkor som data
   swish.mjs        betalnings-QR  ·  sms.mjs  46elks  ·  tal.mjs  tal till text
   index.mjs        HTTP-server, routing, statiska filer
@@ -105,7 +131,7 @@ web/src/           Webbklienten: React + Vite, en formgivningsfil
   sidor/           översikt, snöläggning, checklistor, ärenden, bemanning,
                    mina sidor, rapporter, register
 web/kiosk/         Fiket och uthyrningen för gästerna, på /fik/ – ingen inloggning
-web/mobil/         HAK Rond: mobilklienten på /mobil/
+web/mobil/         Backis Rond: mobilklienten på /mobil/
   public/          manifest, servicearbetare och ikoner
   src/ko.js        ronder i telefonen och synken mot servern
   src/sidor/       hem, rond, historik, checklistor (redigering), konto
@@ -131,6 +157,16 @@ Hållpunkter:
   belopp. Det gäller både kiosken och uthyrningen.
 - **Behörighet före roll.** Rutter som rör ekonomi, träning eller
   medlemsregister kräver en behörighet (`@ekonomi`), inte en rollnivå.
+- **Grupper lägger till, aldrig till avdrag.** En medlem kan vara med i
+  flera behörighetsgrupper, och varje grupp ger behörigheter, arbetsytor och
+  eventuellt ett rollgolv. Ingen grupp kan ta bort något medlemmen redan har
+  via roll, uppdrag eller kompetens. Grupperna sköts under *Föreningen →
+  Tillträden* av den som har `behorighetsstyrning`, och ingen kan dela ut
+  mer än hen själv har.
+- **Menyn är ett träd, inte en rad.** Vilken gren en sida hänger i står på
+  modulen (`grupp` i `server/moduldata.mjs`), inte i klienten. Sidomenyn och
+  luckan på liten skärm ritar samma träd. `Ctrl+K` hoppar direkt,
+  `Ctrl+.` öppnar talrutan.
 - **Mobilens ronder är dokument, inte köade anrop.** `web/mobil/src/ko.js`
   sparar hela ronden i telefonen och spelar upp den mot API:et när det går.
   Därför överlever en rond både dålig täckning och att appen stängs.
@@ -153,10 +189,10 @@ Hållpunkter:
 | `HAK_PORT` | 8120 | port |
 | `HAK_VARD` | 127.0.0.1 | adress att lyssna på |
 | `HAK_DB` | `data/hak.db` | databasfil, `:memory:` går för test |
-| `HAK_BAS_URL` | `https://hak.nattviken.com` | länkar i e-post |
+| `HAK_BAS_URL` | `https://backis.nattviken.com` | länkar i e-post |
 | `HAK_SMTP_HOST` / `HAK_SMTP_PORT` | 127.0.0.1 / 1025 | SMTP (Mailpit lokalt) |
 | `HAK_SMTP_USER` / `HAK_SMTP_LOSEN` | – | sätts bara om servern kräver det |
-| `HAK_EPOST_FRAN` | `HAK Backe <backe@nattviken.com>` | avsändare |
+| `HAK_EPOST_FRAN` | `Backis <backe@nattviken.com>` | avsändare |
 | `HAK_EPOST_AV` | på | `0` loggar utskick utan att skicka |
 | `HAK_SWISH_NUMMER` | 1234567890 | klubbens swishnummer; utan det hänvisas gästen till luckan |
 | `HAK_46ELKS_ANVANDARE` / `HAK_46ELKS_LOSEN` | – | sms via 46elks; utan dem loggas breven bara |

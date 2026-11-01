@@ -1,13 +1,24 @@
 # ===================================================================
-# HAK Backe — snöläggning och backadministration
+# Backis — snöläggning och backadministration
 # ===================================================================
 #
 # `hak.service` lyssnar på 127.0.0.1:8120. All data ligger i SQLite under
 # /home/hugo/hak/backe/data och lämnar aldrig maskinen. Inloggning sker med
-# sessionskaka, så inget extra skal behövs — men inget indexeras heller:
-# allt utom inloggningssidan kräver session.
+# sessionskaka, så inget extra skal behövs.
+#
+# Fyra namn på samma tjänst, och var och ett av ett skäl:
+#   backis.nattviken.com     det riktiga namnet
+#   hak.nattviken.com        det gamla – länkar ute i världen ska leva vidare
+#   checkproof.nattviken.com kontrollvyn, formad som systemet klubben
+#   kontroll.nattviken.com   kommer ifrån (se docs/ARKITEKTUR.md, "Kontrollvyn")
+#
+# De två sista styr bara vilken vy appen öppnar i – samma server, samma
+# data, samma inloggning.
+#
+# Det här är en kopia av blocket i /home/hugo/aiserver/caddy/Caddyfile.
+# Ändra där, och håll den här i takt.
 
-hak.nattviken.com {
+backis.nattviken.com, checkproof.nattviken.com, kontroll.nattviken.com, hak.nattviken.com {
 	bind 192.168.68.88
 	encode zstd gzip
 	header {
@@ -15,17 +26,31 @@ hak.nattviken.com {
 		X-Content-Type-Options "nosniff"
 		Referrer-Policy "same-origin"
 		X-Frame-Options "DENY"
-		# Appen behöver ingen av de känsliga webbfunktionerna.
-		Permissions-Policy "geolocation=(), microphone=(), camera=()"
+		# Mikrofonen behövs: personalen talar in ronder och idéer. Kameran
+		# används för bilder på avvikelser. Positionen gör appen aldrig något av.
+		Permissions-Policy "geolocation=(), microphone=(self), camera=(self)"
 		-Server
 	}
 	@private path /.env /.env.* /.git /.git/* /data/* /node_modules/* /server/*
 	respond @private 404
-	request_body {
-		max_size 2MiB
+	# Manualer och ritningar strömmas till disk och kan vara stora.
+	@dokument path /api/underhall/dokument
+	request_body @dokument {
+		max_size 300MiB
+	}
+	# Allt annat är JSON och har inget där att göra. Matchningen måste
+	# utesluta dokumentvägen – annars gäller det snävare taket där också.
+	@ejdokument not path /api/underhall/dokument
+	request_body @ejdokument {
+		max_size 16MiB
 	}
 	reverse_proxy 127.0.0.1:8120 {
 		header_up X-Forwarded-For {remote_host}
 		header_up X-Forwarded-Proto {scheme}
 	}
 }
+
+# ===================================================================
+# Regelreform Sverige — analys av jordbrukets regelbörda
+# ===================================================================
+#

@@ -1,5 +1,17 @@
 // Belopp räknas i ören, hela vägen. Bara vid utskrift blir de kronor.
-export const kronor = (ore) => (ore == null ? '–' : `${(ore / 100).toLocaleString('sv-SE', { maximumFractionDigits: 2 })} kr`);
+/**
+ * Jämna kronor skrivs utan decimaler, allt annat med två. Ett belopp med
+ * ören är inte "97,8 kr" i något sammanhang där pengar räknas – men att
+ * skriva "45,00 kr" på en korv är lika fel åt andra hållet.
+ */
+export const kronor = (ore) => {
+  if (ore == null) return '–';
+  const decimaler = ore % 100 === 0 ? 0 : 2;
+  return `${(ore / 100).toLocaleString('sv-SE', {
+    minimumFractionDigits: decimaler,
+    maximumFractionDigits: decimaler,
+  })} kr`;
+};
 export const tillOre = (kr) => Math.round(Number(kr) * 100);
 export const summa = (rader) => rader.reduce((a, r) => a + r.styckpris_ore * r.antal, 0);
 

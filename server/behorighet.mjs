@@ -86,6 +86,22 @@ export const BEHORIGHETER = {
     uppdrag: ['anlaggningsansvarig', 'ordforande'],
   },
   traning: { roller: ['tranare', 'anlaggningsansvarig', 'admin'], uppdrag: ['tranare', 'sektionsansvarig', 'ordforande'] },
+  // Läger, tävlingar och aktiviteter. Vidare krets än `traning`: en resa
+  // till Kläppen arrangeras ofta av en förälder utan tränaruppdrag, och
+  // styrelsen lägger in årsmötet. Att anmäla sig kräver ingen behörighet.
+  //
+  // Kassören står med flit inte här. Att kvittera en avgift går genom
+  // `kassa`, och behörigheten att arrangera bär också rätten att se
+  // deltagarnas behov och samåkningarnas telefonnummer – en krets som ska
+  // vara de som faktiskt behöver dem.
+  evenemang: {
+    roller: ['tranare', 'backansvarig', 'anlaggningsansvarig', 'admin'],
+    uppdrag: ['tranare', 'sektionsansvarig', 'ordforande', 'sekreterare'],
+  },
+  // Projektsidans texter och tidplan. Snäv krets: sidan är klubbens
+  // ansikte utåt mot sina egna medlemmar, och datum som står där läses
+  // som löften även när de är förslag.
+  projekt: { roller: ['admin'], uppdrag: ['ordforande', 'sekreterare'] },
   // Att styra vem som kommer åt vad är inte samma sak som att föra
   // medlemsregister. Kretsen är snäv med flit: den som kan dela ut
   // behörigheter kan dela ut alla de andra.
@@ -108,6 +124,8 @@ export const BEHORIGHETSNAMN = {
   incident: 'Rapportera och följa upp incidenter',
   incident_person: 'Se personuppgifter i incidenter',
   traning: 'Hålla träning och föra närvaro',
+  projekt: 'Redigera projektsidan',
+  evenemang: 'Lägga upp läger, tävlingar och aktiviteter',
   uthyrning: 'Sköta uthyrningen',
   behorighetsstyrning: 'Styra grupper och tillträden',
 };
@@ -210,43 +228,60 @@ export const ARBETSYTOR = {
     namn: 'Anläggningen',
     beskrivning: 'Snöläggning, utrustning och backens skick',
     sidor: ['snolaggning', 'snoplan', 'checklistor', 'journal', 'underhall', 'arenden', 'incidenter',
-      'bemanning', 'rapporter', 'register', 'ideer', 'mina'],
+      'bemanning', 'rapporter', 'register', 'utlagg', 'ideer', 'mina'],
   },
   back: {
     namn: 'Backen',
     beskrivning: 'Dagens drift: bemanning, ronder och ärenden',
     sidor: ['bemanning', 'snoplan', 'checklistor', 'journal', 'arenden', 'incidenter', 'snolaggning',
-      'underhall', 'ideer', 'mina'],
+      'underhall', 'utlagg', 'ideer', 'mina'],
   },
   kiosk: {
     namn: 'Kiosken',
     beskrivning: 'Beställningar, försäljning och sortiment',
-    sidor: ['kassa', 'ideer', 'mina'],
+    sidor: ['luckan', 'kassa', 'planbok', 'ideer', 'mina'],
   },
   uthyrning: {
     namn: 'Uthyrningen',
     beskrivning: 'Utrustning ut och in, och dagens hyror',
-    sidor: ['kassa', 'ideer', 'mina'],
+    sidor: ['luckan', 'kassa', 'planbok', 'ideer', 'mina'],
   },
   ekonomi: {
-    namn: 'Ekonomi',
-    beskrivning: 'Bokföring, avgifter och rapporter',
-    sidor: ['ekonomi', 'kassa', 'forening', 'rapporter', 'ideer', 'mina'],
+    namn: 'Kassören',
+    beskrivning: 'Bokföring, utlägg, plånböcker och avgifter',
+    sidor: ['ekonomi', 'utlagg', 'planbok', 'kassa', 'luckan', 'forening', 'rapporter', 'ideer', 'mina'],
+  },
+  // Ordförande, sekreterare och övriga ledamöter har samma behörighet att
+  // läsa, men inte samma arbete. Ordföranden styr tillträden och svarar
+  // för ekonomin; sekreteraren för matrikeln och mötena. Att ge dem samma
+  // startsida gör att båda får leta förbi den andras arbete.
+  ordforande: {
+    namn: 'Ordföranden',
+    beskrivning: 'Hela föreningen: ekonomi, tillträden och uppföljning',
+    sidor: ['oversikt', 'forening', 'ekonomi', 'utlagg', 'rapporter', 'arenden', 'incidenter',
+      'bemanning', 'traning', 'evenemang', 'ideer', 'mina'],
+  },
+  sekreterare: {
+    namn: 'Sekreteraren',
+    beskrivning: 'Matrikel, möten, kallelser och evenemang',
+    sidor: ['forening', 'evenemang', 'samakning', 'rapporter', 'arenden', 'incidenter', 'ideer', 'mina'],
   },
   styrelse: {
     namn: 'Styrelsen',
     beskrivning: 'Överblick över hela föreningen',
-    sidor: ['forening', 'ekonomi', 'arenden', 'incidenter', 'bemanning', 'traning', 'rapporter', 'ideer', 'mina'],
+    sidor: ['oversikt', 'forening', 'ekonomi', 'arenden', 'incidenter', 'bemanning', 'traning',
+      'evenemang', 'rapporter', 'ideer', 'mina'],
   },
   traning: {
-    namn: 'Träningen',
-    beskrivning: 'Grupper, närvaro och aktivitetsstöd',
-    sidor: ['traning', 'forening', 'bemanning', 'ideer', 'mina'],
+    namn: 'Tränaren',
+    beskrivning: 'Grupper, närvaro, läger och tävlingar',
+    sidor: ['traning', 'evenemang', 'samakning', 'forening', 'bemanning', 'utlagg', 'ideer', 'mina'],
   },
   medlem: {
     namn: 'Medlem',
     beskrivning: 'Dina pass, dina ronder och läget i backen',
-    sidor: ['bemanning', 'checklistor', 'journal', 'arenden', 'snolaggning', 'ideer', 'mina'],
+    sidor: ['bemanning', 'checklistor', 'journal', 'arenden', 'snolaggning', 'evenemang',
+      'samakning', 'planbok', 'utlagg', 'ideer', 'mina'],
   },
 };
 
@@ -264,8 +299,13 @@ export function arbetsytorFor(medlem) {
   const ut = [];
   const lagg = (x) => !ut.includes(x) && ut.push(x);
 
-  if (uppdrag.includes('ordforande') || uppdrag.includes('vice_ordforande') || uppdrag.includes('sekreterare')) lagg('styrelse');
+  // Ordningen är startsidan: den första ytan är den man landar i. Därför
+  // kommer den egna rollen före den gemensamma styrelseytan – en kassör
+  // ska börja i ekonomin, inte i en översikt över hela föreningen.
+  if (uppdrag.includes('ordforande') || uppdrag.includes('vice_ordforande')) lagg('ordforande');
+  if (uppdrag.includes('sekreterare')) lagg('sekreterare');
   if (uppdrag.includes('kassor') || uppdrag.includes('revisor')) lagg('ekonomi');
+  if (uppdrag.some((u) => STYRELSEN.includes(u))) lagg('styrelse');
   if (medlem.roll === 'anlaggningsansvarig' || uppdrag.includes('anlaggningsansvarig')) lagg('anlaggning');
   if (medlem.roll === 'backansvarig' || uppdrag.includes('backansvarig')) lagg('back');
   if (medlem.roll === 'tranare' || uppdrag.includes('tranare') || uppdrag.includes('sektionsansvarig')) lagg('traning');

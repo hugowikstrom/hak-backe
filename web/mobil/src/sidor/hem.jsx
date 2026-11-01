@@ -37,7 +37,15 @@ export function Hem({ vy, ronder }) {
   const attSkicka = ronder.filter((r) => r.klar && !r.avslutad);
 
   // Ronder som ska göras i dag enligt checklistornas intervall.
-  const attGora = (lage.data?.data?.mallar || []).filter((m) => m.kvar > 0);
+  // Dagliga kontroller först. De avgör om backen får öppna; snöläggningens
+  // startkontroller är fler men gäller bara de maskiner som ska köra. En
+  // lista sorterad på antal lägger dem i precis fel ordning.
+  const attGora = (lage.data?.data?.mallar || [])
+    .filter((m) => m.kvar > 0)
+    .sort((a, b) => (a.intervall === 'dagligen' ? 0 : 1) - (b.intervall === 'dagligen' ? 0 : 1));
+  const foreOppning = attGora
+    .filter((m) => m.intervall === 'dagligen')
+    .reduce((a, m) => a + m.kvar, 0);
 
   const starta = (mall, objekt) => {
     const rond = nyRond({
@@ -73,7 +81,8 @@ export function Hem({ vy, ronder }) {
           <header>
             <h2>Att göra i dag</h2>
             <p className="liten svag" style={{ margin: '4px 0 10px' }}>
-              {lage.data.data.kvar} ronder kvar · {lage.data.data.klara} gjorda
+              {foreOppning ? `${foreOppning} före öppning · ` : ''}
+              {lage.data.data.kvar} totalt · {lage.data.data.klara} gjorda
               {lage.data.data.snopass ? ' · snöpass pågår' : ''}
             </p>
           </header>
@@ -132,7 +141,7 @@ export function Hem({ vy, ronder }) {
                 figurfarg="varning"
                 titel={r.mallnamn}
                 under={r.fel ? `Fel: ${r.fel}` : 'Skickas när det finns täckning'}
-                hoger={<span className="bricka gul">väntar</span>}
+                hoger={<span className="bricka varning">väntar</span>}
                 onClick={() => ga('rond', { lokalId: r.lokalId })}
               />
             ))}

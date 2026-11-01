@@ -143,6 +143,11 @@ export const rutter = [
         svarstyp: ettAv(p.svarstyp, ['bock', 'varde', 'text'], 'Svarstyp') || 'bock',
         enhet: txt(p.enhet, 16),
         obligatorisk: bool(p.obligatorisk) ?? 1,
+        // Den viktigaste egenskapen en punkt har. Gick tidigare bara att
+        // sätta genom att så databasen, vilket innebar att en klubb som
+        // redigerade sina egna listor inte kunde märka något som
+        // säkerhetskritiskt – och då finns spärren bara på pappret.
+        sakerhetskritisk: bool(p.sakerhetskritisk) ?? 0,
       });
     }
     svar(res, 201, mallMedPunkter(id));
@@ -176,6 +181,7 @@ export const rutter = [
             svarstyp: ettAv(p.svarstyp, ['bock', 'varde', 'text'], 'Svarstyp') || 'bock',
             enhet: txt(p.enhet, 16),
             obligatorisk: bool(p.obligatorisk) ?? 1,
+            sakerhetskritisk: bool(p.sakerhetskritisk) ?? 0,
           };
           if (p.id) uppdatera('checklistpunkt', p.id, data);
           else spara('checklistpunkt', { mall_id: m.id, ...data });
@@ -205,6 +211,9 @@ export const rutter = [
         spara('checklistpunkt', {
           mall_id: ny, ordning: p.ordning, text: p.text, hjalptext: p.hjalptext,
           svarstyp: p.svarstyp, enhet: p.enhet, obligatorisk: p.obligatorisk,
+          // En kopierad lista som tappar sina säkerhetspunkter är farligare
+          // än originalet: den ser likadan ut men spärrar ingenting.
+          sakerhetskritisk: p.sakerhetskritisk,
         });
       return ny;
     });

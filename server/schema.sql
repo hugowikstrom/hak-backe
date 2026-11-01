@@ -397,6 +397,9 @@ CREATE TABLE IF NOT EXISTS verifikation (
   UNIQUE(serie, ar, nummer)
 );
 CREATE INDEX IF NOT EXISTS idx_verifikation_datum ON verifikation(datum);
+-- verifikationFor() slås upp per rad i utläggslistan och i affärerna; utan
+-- index blir det en genomsökning av hela boken för varje rad.
+CREATE INDEX IF NOT EXISTS idx_verifikation_referens ON verifikation(referens_slag, referens_id);
 
 CREATE TABLE IF NOT EXISTS verifikationsrad (
   id              INTEGER PRIMARY KEY,
@@ -985,3 +988,336 @@ CREATE TABLE IF NOT EXISTS grupptillhorighet (
 );
 CREATE INDEX IF NOT EXISTS idx_grupptillhorighet_medlem ON grupptillhorighet(medlem_id, till);
 CREATE INDEX IF NOT EXISTS idx_grupptillhorighet_grupp ON grupptillhorighet(grupp_id, till);
+
+-- ---------------------------------------------------------------------------
+-- Utlägg
+-- ---------------------------------------------------------------------------
+
+-- En medlem som lagt ut egna pengar för klubben. Hela poängen är att den
+-- som handlat ska slippa maila ett kvitto till kassören och sedan vänta på
+-- att någon kommer ihåg det: hen fotar kvittot i mobilen och ser själv var
+-- ärendet ligger.
+--
+-- Tre statusar och inte fler: ny, godkänd, utbetald. Avslag är en egen
+-- status eftersom ett avslag måste bära ett skäl – ett utlägg som bara
+-- försvinner är värre än ett som nekas.
+CREATE TABLE IF NOT EXISTS utlagg (
+  id            INTEGER PRIMARY KEY,
+  medlem_id     INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  datum         TEXT NOT NULL,                    -- inköpsdatum, inte inlämningsdatum
+  belopp_ore    INTEGER NOT NULL,
+  moms_ore      INTEGER,                          -- om kvittot visar den
+  syfte         TEXT NOT NULL,
+  kategori      TEXT NOT NULL DEFAULT 'ovrigt',   -- backen | fiket | traning | tavling | kontor | resa | ovrigt
+  kvitto        TEXT,                             -- bildfil i data/bilder
+  status        TEXT NOT NULL DEFAULT 'ny',       -- ny | godkand | utbetald | avslagen
+  utbetalning   TEXT NOT NULL DEFAULT 'bank',     -- bank | planbok
+  granskad_av_id INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  granskad_tid  TEXT,
+  betald_tid    TEXT,
+  avslagsskal   TEXT,
+  anteckning    TEXT,
+  skapad        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_utlagg_status ON utlagg(status, skapad);
+CREATE INDEX IF NOT EXISTS idx_utlagg_medlem ON utlagg(medlem_id, skapad);
+
+-- ---------------------------------------------------------------------------
+-- Evenemang: läger, tävlingar, aktiviteter
+-- ---------------------------------------------------------------------------
+
+-- Skilt från `traningstillfalle` med flit. Ett träningstillfälle är en
+-- återkommande kvällsträning för en grupp; ett evenemang är en resa till
+-- Kläppen med anmälan, avgift, platsbegränsning och sista anmälningsdag.
+-- Att trycka in båda i samma tabell gör att det ena alltid får fält det
+-- inte behöver.
+CREATE TABLE IF NOT EXISTS evenemang (
+  id            INTEGER PRIMARY KEY,
+  slag          TEXT NOT NULL DEFAULT 'aktivitet', -- lager | tavling | aktivitet | mote
+  namn          TEXT NOT NULL,
+  plats         TEXT,
+  start         TEXT NOT NULL,                     -- datum eller datum+tid
+  slut          TEXT,
+  sista_anmalan TEXT,
+  avgift_ore    INTEGER NOT NULL DEFAULT 0,
+  platser       INTEGER,                           -- null = obegränsat
+  beskrivning   TEXT,
+  sektion_id    INTEGER REFERENCES sektion(id) ON DELETE SET NULL,
+  grupp_id      INTEGER REFERENCES traningsgrupp(id) ON DELETE SET NULL,
+  ansvarig_id   INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  status        TEXT NOT NULL DEFAULT 'oppet',     -- planerat | oppet | genomfort | installt
+  skapad        TEXT NOT NULL DEFAULT (datetime('now')),
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL
+);
+CREATE INDEX IF NOT EXISTS idx_evenemang_start ON evenemang(start, status);
+
+-- Anmälan. Är evenemanget fullt hamnar nästa i reservkön, och reserverna
+-- behåller sin ordning – den som anmälde sig först står först även när
+-- någon hoppar av.
+CREATE TABLE IF NOT EXISTS evenemangsanmalan (
+  id            INTEGER PRIMARY KEY,
+  evenemang_id  INTEGER NOT NULL REFERENCES evenemang(id) ON DELETE CASCADE,
+  medlem_id     INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  status        TEXT NOT NULL DEFAULT 'anmald',    -- anmald | reserv | avbokad
+  anmald_tid    TEXT NOT NULL DEFAULT (datetime('now')),
+  betald_tid    TEXT,
+  betalsatt     TEXT,                              -- planbok | swish | kort | kontant | faktura
+  behov         TEXT,                              -- specialkost, allergier, annat
+  anteckning    TEXT,
+  UNIQUE(evenemang_id, medlem_id)
+);
+CREATE INDEX IF NOT EXISTS idx_anmalan_evenemang ON evenemangsanmalan(evenemang_id, status, anmald_tid);
+
+-- ---------------------------------------------------------------------------
+-- Samåkning
+-- ---------------------------------------------------------------------------
+
+-- Vem som kör och vem som åker med. Hör oftast till ett evenemang, men
+-- behöver inte: en samåkning till lördagsträningen är lika användbar.
+CREATE TABLE IF NOT EXISTS samakning (
+  id            INTEGER PRIMARY KEY,
+  evenemang_id  INTEGER REFERENCES evenemang(id) ON DELETE CASCADE,
+  forare_id     INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  fran          TEXT NOT NULL,                     -- "Härnösand, Coop Maxi"
+  avresa        TEXT NOT NULL,                     -- datum och tid
+  platser       INTEGER NOT NULL DEFAULT 3,
+  bil           TEXT,
+  anteckning    TEXT,
+  status        TEXT NOT NULL DEFAULT 'oppen',     -- oppen | installd
+  skapad        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_samakning_avresa ON samakning(avresa, status);
+
+CREATE TABLE IF NOT EXISTS samakningsplats (
+  id            INTEGER PRIMARY KEY,
+  samakning_id  INTEGER NOT NULL REFERENCES samakning(id) ON DELETE CASCADE,
+  medlem_id     INTEGER NOT NULL REFERENCES medlem(id) ON DELETE CASCADE,
+  pastigning    TEXT,                              -- om hen kliver på någon annanstans
+  status        TEXT NOT NULL DEFAULT 'bokad',     -- bokad | avbokad
+  skapad        TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(samakning_id, medlem_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- Räkenskapsår, kassaavstämning och räkenskapsunderlag
+--
+-- Bokföringslagen (1999:1078) gäller för föreningen oavsett skattestatus.
+-- Det tre tabellerna här bär de krav som inte går att uppfylla med bara en
+-- verifikationstabell: att året tar slut och låses, att kontanterna i lådan
+-- stäms av mot böckerna, och att underlagen finns kvar i sju år.
+-- ---------------------------------------------------------------------------
+
+-- BFL 1 kap 4 §, 3 kap. Verifikationsnumren löper obrutet inom ett
+-- räkenskapsår, och när året är låst går ingenting mer att bokföra på det.
+-- `gallras` räknas ut vid skapandet enligt BFL 7 kap 2 §: till och med
+-- sjunde året efter utgången av det kalenderår då räkenskapsåret avslutades.
+CREATE TABLE IF NOT EXISTS rakenskapsar (
+  id          INTEGER PRIMARY KEY,
+  beteckning  TEXT NOT NULL UNIQUE,            -- "2026" eller "2026/27"
+  fran        TEXT NOT NULL,
+  till        TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'oppet',   -- oppet | last
+  last_tid    TEXT,
+  last_av_id  INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  last_av     TEXT,
+  arkiv_tid   TEXT,                            -- när arkivet senast togs fram
+  gallras     TEXT NOT NULL,                   -- BFL 7:2, arkiveringstidens slut
+  automatiskt INTEGER NOT NULL DEFAULT 0,      -- skapat av systemet, inte valt
+  skapad      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_rakenskapsar_period ON rakenskapsar(fran, till);
+
+-- Dagsavslut: kontanterna i lådan mot kontanterna i boken.
+--
+-- Ingen lag kräver avstämningen i sig, men BFL 5 kap 2 § kräver att
+-- kontanta in- och utbetalningar bokförs senast påföljande arbetsdag, och
+-- utan en räkning vet man inte om boken stämmer. En differens är i sig
+-- ingen oegentlighet – men en obokförd differens är det.
+CREATE TABLE IF NOT EXISTS kassaavstamning (
+  id              INTEGER PRIMARY KEY,
+  datum           TEXT NOT NULL,
+  kassa           TEXT NOT NULL DEFAULT 'fiket',  -- fiket | uthyrningen | ovrigt
+  vaxelkassa_ore  INTEGER NOT NULL DEFAULT 0,     -- det som låg i lådan vid start
+  raknat_ore      INTEGER NOT NULL,               -- räknat vid dagens slut
+  bokfort_ore     INTEGER NOT NULL,               -- kontant enligt böckerna
+  differens_ore   INTEGER NOT NULL,
+  kommentar       TEXT,
+  verifikation_id INTEGER REFERENCES verifikation(id),  -- differensen, om den bokförts
+  av_id           INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  av              TEXT,
+  skapad          TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE(datum, kassa)
+);
+
+-- Underlagen till en verifikation: kvittofoton, kontoutdrag, avtal.
+--
+-- BFL 5 kap 7 § kräver upplysning om vilka handlingar som ligger till grund
+-- för affärshändelsen och var de finns. BFL 7 kap 1–2 §§ kräver att de
+-- bevaras i varaktig form i sju år. Därför pekar raden ut filen med namn
+-- och storlek, så att en saknad fil går att upptäcka – en trasig länk till
+-- ett kvitto är en lucka i räkenskapsinformationen, inte ett skönhetsfel.
+CREATE TABLE IF NOT EXISTS rakenskapsunderlag (
+  id              INTEGER PRIMARY KEY,
+  verifikation_id INTEGER NOT NULL REFERENCES verifikation(id),
+  slag            TEXT NOT NULL,                  -- kvitto | avtal | kontoutdrag | rapport | ovrigt
+  beskrivning     TEXT NOT NULL,
+  katalog         TEXT,                           -- bilder | dokument
+  filnamn         TEXT,
+  mediatyp        TEXT,
+  storlek         INTEGER,
+  skapad          TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_underlag_ver ON rakenskapsunderlag(verifikation_id);
+
+-- Underlaget är räkenskapsinformation och lyder under samma orörbarhet som
+-- verifikationen det hör till.
+CREATE TRIGGER IF NOT EXISTS underlag_far_inte_andras
+BEFORE UPDATE ON rakenskapsunderlag
+BEGIN SELECT RAISE(ABORT, 'Ett underlag till en bokförd verifikation får inte ändras.'); END;
+
+CREATE TRIGGER IF NOT EXISTS underlag_far_inte_raderas
+BEFORE DELETE ON rakenskapsunderlag
+BEGIN SELECT RAISE(ABORT, 'Ett underlag till en bokförd verifikation får inte tas bort.'); END;
+
+-- Ett låst räkenskapsår får öppnas igen bara genom att raden skrivs om med
+-- avsikt; däremot får det aldrig raderas, för då försvinner spåret av att
+-- året någonsin varit stängt.
+CREATE TRIGGER IF NOT EXISTS rakenskapsar_far_inte_raderas
+BEFORE DELETE ON rakenskapsar
+BEGIN SELECT RAISE(ABORT, 'Ett räkenskapsår får inte tas bort.'); END;
+
+-- ---------------------------------------------------------------------------
+-- Projektsidan
+--
+-- En levande beskrivning av vad som byggs, varför, och när det ska vara i
+-- drift. Den finns för att styrelsen och medlemmarna ska kunna följa
+-- arbetet utan att fråga, och för att idéer ska kunna lämnas där de hör
+-- hemma – vid den del de gäller.
+--
+-- Sidan går att läsa utan inloggning. Att lämna något kräver konto: en
+-- idé utan avsändare går inte att följa upp.
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS projektdel (
+  id             INTEGER PRIMARY KEY,
+  nyckel         TEXT NOT NULL UNIQUE,
+  rubrik         TEXT NOT NULL,
+  sammanfattning TEXT,                            -- en mening, den som syns i listan
+  text           TEXT,                            -- vad delen gör
+  varfor         TEXT,                            -- varför den finns
+  film           TEXT,                            -- nyckel i filmkatalogen
+  modul          TEXT,                            -- modulen den beskriver
+  status         TEXT NOT NULL DEFAULT 'planerad', -- ide | planerad | byggs | provas | i_drift
+  -- Datumen är förslag tills styrelsen beslutat. Därför `beslutad`: utan
+  -- den läses en plan som ett löfte.
+  planerad_start TEXT,
+  planerad_klar  TEXT,
+  provas_fran    TEXT,
+  driftsatt      TEXT,
+  beslutad       INTEGER NOT NULL DEFAULT 0,
+  ordning        INTEGER NOT NULL DEFAULT 0,
+  aktiv          INTEGER NOT NULL DEFAULT 1,
+  uppdaterad     TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_projektdel_ordning ON projektdel(ordning);
+
+-- Projektets egna texter: syfte, bakgrund, avgränsning. En rad per stycke
+-- så att de går att ändra var för sig medan arbetet pågår.
+CREATE TABLE IF NOT EXISTS projekttext (
+  nyckel     TEXT PRIMARY KEY,                    -- syfte | bakgrund | avgransning | ...
+  rubrik     TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  ordning    INTEGER NOT NULL DEFAULT 0,
+  uppdaterad TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
+-- ---------------------------------------------------------------------------
+-- Arbetsställen, påfyllningar och besiktningar
+--
+-- Modellen är hämtad från det klubben redan arbetar efter: allt hänger på
+-- ett arbetsställe, och på ett objekt registreras händelser av några få
+-- slag. Volontärerna känner igen den, och det är värt mer än en modell som
+-- är snyggare på pappret.
+-- ---------------------------------------------------------------------------
+
+-- Lift & Pist, Fordon, Snöläggning. En gruppering ovanför områden och
+-- utrustning – den som ska göra något väljer arbetsställe först.
+CREATE TABLE IF NOT EXISTS arbetsstalle (
+  id          INTEGER PRIMARY KEY,
+  nyckel      TEXT NOT NULL UNIQUE,
+  namn        TEXT NOT NULL,
+  beskrivning TEXT,
+  ikon        TEXT,                              -- lift | fordon | sno | ovrigt
+  ordning     INTEGER NOT NULL DEFAULT 0,
+  aktiv       INTEGER NOT NULL DEFAULT 1
+);
+
+-- Vad som hör till vilket arbetsställe. En maskin kan höra till flera –
+-- pistmaskinen är både fordon och pist.
+CREATE TABLE IF NOT EXISTS arbetsstalleobjekt (
+  arbetsstalle_id INTEGER NOT NULL REFERENCES arbetsstalle(id) ON DELETE CASCADE,
+  slag            TEXT NOT NULL,                 -- utrustning | omrade | snoplats
+  objekt_id       INTEGER NOT NULL,
+  PRIMARY KEY (arbetsstalle_id, slag, objekt_id)
+);
+
+-- Påfyllningar: diesel i pistmaskinen, olja i kompressorn.
+--
+-- Mätarställningen är med för att den är det enda som gör förbrukningen
+-- beräkningsbar – liter i sig säger ingenting utan timmarna emellan. Den
+-- uppdaterar också maskinens drifttimmar, som underhållsplanerna räknar på.
+CREATE TABLE IF NOT EXISTS pafyllning (
+  id             INTEGER PRIMARY KEY,
+  utrustning_id  INTEGER NOT NULL REFERENCES utrustning(id) ON DELETE CASCADE,
+  datum          TEXT NOT NULL DEFAULT (date('now')),
+  slag           TEXT NOT NULL DEFAULT 'bransle', -- bransle | vatska
+  vatsketyp      TEXT,                            -- diesel | hydraulolja | ...
+  mangd          REAL NOT NULL,
+  matenhet       TEXT NOT NULL DEFAULT 'liter',
+  matarstallning REAL,                            -- drifttimmar vid påfyllning
+  kostnad_ore    INTEGER,
+  anteckning     TEXT,
+  av_id          INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  av             TEXT,
+  skapad         TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_pafyllning_utr ON pafyllning(utrustning_id, datum);
+
+-- Besiktningar och certifikat: det som har ett giltighetsdatum och gör en
+-- maskin olaglig att köra när det gått ut. Liftbesiktning, tryckkärl,
+-- lyftanordningar.
+CREATE TABLE IF NOT EXISTS besiktning (
+  id            INTEGER PRIMARY KEY,
+  utrustning_id INTEGER REFERENCES utrustning(id) ON DELETE CASCADE,
+  arbetsstalle_id INTEGER REFERENCES arbetsstalle(id) ON DELETE SET NULL,
+  slag          TEXT NOT NULL,                   -- besiktning | certifikat | tillstand
+  namn          TEXT NOT NULL,
+  utfard_av     TEXT,                            -- organet som utfört den
+  utfardad      TEXT,
+  giltig_till   TEXT,
+  anmarkning    TEXT,
+  dokument      TEXT,                            -- filnamn under data/dokument
+  av_id         INTEGER REFERENCES medlem(id) ON DELETE SET NULL,
+  skapad        TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_besiktning_giltig ON besiktning(giltig_till);
+
+-- Genvägar: namngivna länkar till det klubben använder vid sidan av
+-- systemet – väderstationen på toppen, fläktarnas styrpanel, en
+-- bemanningslista i ett kalkylblad.
+--
+-- De pekar oftast på något Backis också kan, och det är meningen: en
+-- genväg som leder till en egen sida i Backis är en genväg som kan tas
+-- bort den dagen alla vant sig. Tills dess ska den finnas kvar.
+CREATE TABLE IF NOT EXISTS genvag (
+  id       INTEGER PRIMARY KEY,
+  namn     TEXT NOT NULL,
+  url      TEXT NOT NULL,
+  -- Pekar genvägen in i Backis självt skrivs den sidans stig här i
+  -- stället, så att den öppnas utan att lämna appen.
+  intern   INTEGER NOT NULL DEFAULT 0,
+  beskrivning TEXT,
+  ordning  INTEGER NOT NULL DEFAULT 0,
+  aktiv    INTEGER NOT NULL DEFAULT 1,
+  skapad   TEXT NOT NULL DEFAULT (datetime('now'))
+);

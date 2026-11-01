@@ -80,6 +80,9 @@ function migrera(db) {
   // rör inte befintliga tabeller, så de måste läggas till här.
   for (const [tabell, kolumn, typ] of [
     ['checklistsvar', 'bild', 'TEXT'],
+    // Återkallelsen är skild från slutdatumet: ett planerat slut gäller
+    // dagen ut, en återkallelse gäller på en gång. Se behorighetsgrupp.
+    ['grupptillhorighet', 'aterkallad', 'TEXT'],
     ['checklistkorning', 'kalla', "TEXT NOT NULL DEFAULT 'webb'"],
     ['checklistmall', 'position_nyckel', 'TEXT'],
     ['kundorder', 'kod', 'TEXT'],
@@ -129,6 +132,25 @@ function migrera(db) {
     // med ronden så att de syns i efterhand.
     ['checklistkorning', 'brister', 'TEXT'],
     ['checklistkorning', 'brist_motivering', 'TEXT'],
+    // Utlägg, evenemang och samåkning kom till efter att databasen togs i
+    // bruk. Tabellerna skapas av schemat; de här kolumnerna gör att en
+    // databas som hunnit få tabellerna i ett tidigare skick följer med.
+    ['utlagg', 'moms_ore', 'INTEGER'],
+    ['utlagg', 'avslagsskal', 'TEXT'],
+    ['utlagg', 'utbetalning', "TEXT NOT NULL DEFAULT 'bank'"],
+    ['evenemang', 'sista_anmalan', 'TEXT'],
+    ['evenemang', 'platser', 'INTEGER'],
+    ['evenemangsanmalan', 'behov', 'TEXT'],
+    ['samakning', 'status', "TEXT NOT NULL DEFAULT 'oppen'"],
+    // Idéer kan höra till en del av projektet. Idélådan fanns före
+    // projektsidan, så kopplingen kommer som en migrering.
+    ['ide', 'projektdel_id', 'INTEGER'],
+    // Var en inloggning landar. Tomt betyder startsidan, som förut.
+    // Provinloggningen för projektet ska landa på projektsidan – den
+    // delas ut för att visa vad klubben bygger, inte för att göra ronder.
+    ['medlem', 'startsida', 'TEXT'],
+    // Drifttimmarna uppdateras av påfyllningarnas mätarställning.
+    ['utrustning', 'matarstallning_tid', 'TEXT'],
     // Beslutet att ta en lift i drift fattas av en människa, och skrivs ner
     // som ett eget steg efter ronden.
     ['checklistkorning', 'kvittens_beslut', 'TEXT'],
@@ -144,6 +166,8 @@ function migrera(db) {
     // sitter oftast på platsen – vattenuttaget, slangen, elen – och inte på
     // kanonen som råkar stå där.
     ['arende', 'snoplats_id', 'INTEGER'],
+    // Avvikelser bär ofta ett foto. Filnamnet, aldrig bilden – den ligger under data/bilder.
+    ['arende', 'bild', 'TEXT'],
     ['matning', 'snoplats_id', 'INTEGER'],
     ['checklistkorning', 'snoplats_id', 'INTEGER'],
     ['driftpost', 'snoplats_id', 'INTEGER'],

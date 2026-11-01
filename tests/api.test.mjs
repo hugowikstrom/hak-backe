@@ -153,8 +153,13 @@ test('checklistkörning med avvikelse skapar ärende', async () => {
   assert.equal(oklar.status, 400, 'obligatorisk punkt saknar svar');
 
   await ok('PUT', `/api/checklistor/svar/${k.id}/${k.punkter[0].id}`, { bockad: false, avvikelse: true, kommentar: 'Spricka i slangen' });
-  const klar = await ok('POST', `/api/checklistor/korningar/${k.id}/avsluta`, {});
+  const klar = await ok('POST', `/api/checklistor/korningar/${k.id}/avsluta`, {
+    anteckning: 'Blåste hårt, svårt att höra nödstoppet',
+  });
   assert.equal(klar.korning.status, 'klar');
+  // Avslutsrutan frågar efter en anteckning. Frågas den efter ska den
+  // också sparas – annars är frågan en lögn.
+  assert.equal(klar.korning.anteckning, 'Blåste hårt, svårt att höra nödstoppet');
   assert.equal(klar.nya_arenden.length, 1);
   assert.match(klar.nya_arenden[0].titel, /Spricka|Kopplingar/);
   assert.equal(klar.nya_arenden[0].utrustning, 'Lans 1');

@@ -55,6 +55,8 @@ export const rutter = [
       ljudfil,
       sekunder: kropp.sekunder ? Number(kropp.sekunder) : null,
       kategori: ettAv(kropp.kategori, KATEGORIER, 'Kategori') || 'ovrigt',
+      // Idéer från projektsidan hör till den del de lämnades vid.
+      projektdel_id: kropp.projektdel_id ? Number(kropp.projektdel_id) : null,
       skapad_av_id: medlem.id,
       skapad_av: medlem.namn,
     });
@@ -114,7 +116,7 @@ export const rutter = [
     const beskrivning = [
       kropp.beskrivning || i.text || '',
       i.transkript && i.transkript !== i.text ? `\n\nOrdagrant inspelat:\n${i.transkript}` : '',
-      `\n\nIdé #${i.id} ur HAK Backes idélåda, inlämnad av ${i.skapad_av || 'okänd'} ${i.skapad}.`,
+      `\n\nIdé #${i.id} ur Backiss idélåda, inlämnad av ${i.skapad_av || 'okänd'} ${i.skapad}.`,
     ].join('');
 
     try {

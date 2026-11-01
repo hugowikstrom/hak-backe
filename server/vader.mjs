@@ -7,7 +7,7 @@ import { instans } from './foreningar.mjs';
 /** Föreningens backe. Varje förening har sina egna koordinater. */
 export const plats = () => instans('plats', { namn: 'Backen', lat: 62.627, lon: 17.914, hojd: 170 });
 
-const AGENT = process.env.HAK_VADER_AGENT || 'HAK-Backe/1.0 (+https://hak.nattviken.com)';
+const AGENT = process.env.HAK_VADER_AGENT || 'Backis/1.0 (+https://backis.nattviken.com)';
 const TTL_MINUTER = Number(process.env.HAK_VADER_TTL || 30);
 
 const KALLOR = {

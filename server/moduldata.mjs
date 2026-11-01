@@ -28,6 +28,15 @@ export const MODULDATA = [
     sidor: [{ nyckel: 'register', grupp: 'backen', text: 'Register', stig: '/register', roll: 'backansvarig' }],
   },
   {
+    // Hjälpen är kärna: en klubb ska aldrig kunna stänga av vägen till
+    // genomgångarna, och en ny volontär ska hitta dem utan att fråga.
+    nyckel: 'hjalp',
+    namn: 'Hjälp',
+    beskrivning: 'Genomgångsfilmer, en per roll i klubben',
+    karna: true,
+    sidor: [{ nyckel: 'hjalp', grupp: 'mitt', text: 'Hjälp', stig: '/hjalp' }],
+  },
+  {
     nyckel: 'oversikt',
     namn: 'Översikt',
     karna: true,
@@ -108,14 +117,35 @@ export const MODULDATA = [
     nyckel: 'ekonomi',
     namn: 'Ekonomi',
     beskrivning: 'Bokföring, verifikationer, SIE-export och plånbok',
-    sidor: [{ nyckel: 'ekonomi', grupp: 'pengar', text: 'Ekonomi', stig: '/ekonomi', behorighet: 'ekonomi_las' }],
+    sidor: [
+      { nyckel: 'ekonomi', grupp: 'pengar', text: 'Ekonomi', stig: '/ekonomi', behorighet: 'ekonomi_las' },
+      // Plånboken står utan behörighet med flit: varje medlem har en egen
+      // och ska se sitt saldo utan att be någon. Sidan visar klubbens
+      // samtliga plånböcker bara för den som får se dem.
+      { nyckel: 'planbok', grupp: 'pengar', text: 'Plånbok', stig: '/planbok' },
+    ],
+  },
+  {
+    // Utlägg hör till ekonomin men är allas sida. Den som handlat ska nå
+    // den utan att ha fått någon behörighet – annars fotas inget kvitto.
+    nyckel: 'utlagg',
+    namn: 'Utlägg',
+    beskrivning: 'Fota kvittot, kassören godkänner och betalar ut',
+    beroenden: ['ekonomi'],
+    sidor: [{ nyckel: 'utlagg', grupp: 'pengar', text: 'Utlägg', stig: '/utlagg' }],
   },
   {
     nyckel: 'kiosk',
     namn: 'Kiosk',
     beskrivning: 'Beställning med QR, kassa och sortiment',
     beroenden: ['ekonomi'],
-    sidor: [{ nyckel: 'kassa', grupp: 'pengar', text: 'Kassa', stig: '/kassa', behorighet: 'kassa' }],
+    sidor: [
+      // Luckan är personalens arbetsyta, Kassa är administrationen.
+      // Två sidor med flit: den som står i luckan ska inte behöva leta
+      // förbi sortiment och plånböcker för att se nästa beställning.
+      { nyckel: 'luckan', grupp: 'pengar', text: 'Luckan', stig: '/luckan', behorighet: 'kassa' },
+      { nyckel: 'kassa', grupp: 'pengar', text: 'Kassa', stig: '/kassa', behorighet: 'kassa' },
+    ],
     gastklient: '/fik/',
   },
   {
@@ -132,6 +162,33 @@ export const MODULDATA = [
     beskrivning: 'Träningstillfällen, närvaro och aktivitetsstöd',
     beroenden: ['forening'],
     sidor: [{ nyckel: 'traning', grupp: 'foreningen', text: 'Träning', stig: '/traning', behorighet: 'traning' }],
+  },
+  {
+    nyckel: 'evenemang',
+    namn: 'Läger och tävling',
+    beskrivning: 'Läger, tävlingar, aktiviteter och möten med anmälan',
+    beroenden: ['forening'],
+    sidor: [{ nyckel: 'evenemang', grupp: 'foreningen', text: 'Läger och tävling', stig: '/evenemang' }],
+  },
+  {
+    // Egen modul, för samåkning är inte självklar i varje klubb – och den
+    // behöver evenemangen att hänga resorna på.
+    nyckel: 'samakning',
+    namn: 'Samåkning',
+    beskrivning: 'Vem kör, vem åker med, och varifrån',
+    beroenden: ['evenemang'],
+    sidor: [{ nyckel: 'samakning', grupp: 'foreningen', text: 'Samåkning', stig: '/samakning' }],
+  },
+  {
+    // Projektsidan är kärna: den förklarar vad systemet är, och en klubb
+    // ska inte kunna stänga av sin egen förklaring. Den läses utan
+    // inloggning – se server/api/projekt.mjs.
+    nyckel: 'projekt',
+    namn: 'Projektet',
+    beskrivning: 'Vad som byggs, varför, och var det står. Öppen att läsa, inloggning för att bidra.',
+    karna: true,
+    beroenden: ['ideer', 'hjalp'],
+    sidor: [{ nyckel: 'projekt', grupp: 'mitt', text: 'Projektet', stig: '/projekt' }],
   },
   {
     nyckel: 'ideer',

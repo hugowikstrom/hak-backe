@@ -141,7 +141,7 @@ function MallArk({ mall, typer, omraden, stang, klar }) {
         </>
       }
     >
-      <Text etikett="Namn" varde={f.namn} satt={satt('namn')} placeholder="t.ex. Lans – start av snöläggning" />
+      <Text etikett="Namn" varde={f.namn} satt={satt('namn')} placeholder="t.ex. Lans – före start" />
 
       <label className="falt">
         <span>Gäller</span>
@@ -281,13 +281,35 @@ function PunktArk({ punkt, nytt, stang, spara, taBort }) {
         <Text etikett="Enhet" varde={p.enhet || ''} satt={satt('enhet')} placeholder="bar, °C, cm …" />
       )}
       <Omrade etikett="Hjälptext (frivillig)" varde={p.hjalptext || ''} satt={satt('hjalptext')} placeholder="Normalvärde, var man hittar den, vad man ska se efter." />
+
       <label className="rad" style={{ gap: 10 }}>
         <input
           type="checkbox"
           checked={p.obligatorisk !== 0 && p.obligatorisk !== false}
           onChange={(e) => satt('obligatorisk')(e.target.checked ? 1 : 0)}
         />
-        <span>Obligatorisk</span>
+        <span>Obligatorisk — ronden kan inte avslutas utan svar</span>
+      </label>
+
+      {/* Den viktigaste egenskapen en punkt har, och den enda som gör att
+          systemet vägrar. Därför står den sist, med sin konsekvens
+          utskriven: den som bockar i rutan ska veta vad hen gör. */}
+      <label className="rad sakerhetsval">
+        <input
+          type="checkbox"
+          checked={!!p.sakerhetskritisk}
+          onChange={(e) => {
+            const pa = e.target.checked ? 1 : 0;
+            sattP((g) => ({ ...g, sakerhetskritisk: pa, obligatorisk: pa ? 1 : g.obligatorisk }));
+          }}
+        />
+        <span>
+          <strong>Säkerhetskritisk</strong>
+          <small>
+            Går varken att hoppa över eller markera som ej tillämplig. En avvikelse här
+            blir ett akut ärende med allvarlighet säkerhetsrisk.
+          </small>
+        </span>
       </label>
     </Ark>
   );

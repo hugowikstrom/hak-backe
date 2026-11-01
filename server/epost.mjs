@@ -4,8 +4,8 @@ import { alla, en, kor, spara } from './db.mjs';
 const PA = process.env.HAK_EPOST_AV !== '0';
 import { instans } from './foreningar.mjs';
 
-const FRAN = () => instans('epost_fran', process.env.HAK_EPOST_FRAN || 'HAK Backe <backe@nattviken.com>');
-const BAS = () => instans('bas_url', process.env.HAK_BAS_URL || 'https://hak.nattviken.com');
+const FRAN = () => instans('epost_fran', process.env.HAK_EPOST_FRAN || 'Backis <backe@nattviken.com>');
+const BAS = () => instans('bas_url', process.env.HAK_BAS_URL || 'https://backis.nattviken.com');
 
 let transport = null;
 async function hamtaTransport() {
@@ -72,7 +72,7 @@ export function brevBokning({ medlem, lage, minaPass, lediga, fran, till }) {
     if (lediga.length > 25) rader.push(`  ... och ${lediga.length - 25} till`);
     rader.push('');
   }
-  rader.push(`Boka här: ${lank('/bemanning')}`, '', 'Hälsningar', 'HAK Backe');
+  rader.push(`Boka här: ${lank('/bemanning')}`, '', 'Hälsningar', 'Backis');
   return rader.join('\n');
 }
 

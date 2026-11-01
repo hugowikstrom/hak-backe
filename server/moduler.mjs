@@ -12,6 +12,7 @@ import { rutter as konto } from './api/konto.mjs';
 import { rutter as register } from './api/register.mjs';
 import { rutter as forening } from './api/forening.mjs';
 import { rutter as tilltrade } from './api/tilltrade.mjs';
+import { rutter as hjalp } from './api/hjalp.mjs';
 import { rutter as bilder } from './api/bilder.mjs';
 import { rutter as oversikt } from './api/oversikt.mjs';
 import { rutter as sno } from './api/sno.mjs';
@@ -32,19 +33,26 @@ import { rutter as incident } from './api/incident.mjs';
 import { rutter as underhall } from './api/underhall.mjs';
 import { rutter as snoplan } from './api/snoplan.mjs';
 import { rutter as platser } from './api/platser.mjs';
+import { rutter as utlagg } from './api/utlagg.mjs';
+import { rutter as evenemang } from './api/evenemang.mjs';
+import { rutter as samakning } from './api/samakning.mjs';
+import { rutter as projekt } from './api/projekt.mjs';
+import { rutter as arbetsstalle } from './api/arbetsstalle.mjs';
+import { rutter as kontroll } from './api/kontroll.mjs';
 
 // Rutterna kopplas på metadatan i moduldata.mjs. Lägg till modulen där,
 // och dess rutter här.
 const RUTTER = {
   konto: [...konto, ...bilder],
   forening: [...forening, ...tilltrade],
-  anlaggning: register,
+  anlaggning: [...register, ...arbetsstalle],
+  hjalp: hjalp,
   oversikt: oversikt,
   arenden: arenden,
   drift: drift,
   underhall: underhall,
   incidenter: incident,
-  checklistor: checklistor,
+  checklistor: [...checklistor, ...kontroll],
   snolaggning: [...sno, ...vader, ...platser],
   mitt: mitt,
   bemanning: bemanning,
@@ -53,6 +61,10 @@ const RUTTER = {
   kiosk: fik,
   uthyrning: uthyrning,
   traning: traning,
+  utlagg: utlagg,
+  evenemang: evenemang,
+  samakning: samakning,
+  projekt: projekt,
   ideer: ide,
   rapporter: rapport,
 };

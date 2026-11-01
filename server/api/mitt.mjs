@@ -4,7 +4,7 @@
 // som är viktigast görs här och inte i klienten – dels för att det ska gå
 // att pröva i ett test, dels för att en telefon i en skidbacke inte ska
 // behöva fem anrop för att veta vad användaren ska göra.
-import { alla, en } from '../db.mjs';
+import { aktuellForening, alla, en } from '../db.mjs';
 import { attBoka, kvottext, lage as avgorLage, minuterTill, pagar } from '../mitt.mjs';
 import { RANG } from '../auth.mjs';
 import { rutt, svar } from '../http.mjs';
@@ -12,6 +12,8 @@ import { idag, klockan, plusDagar } from '../tid.mjs';
 import { lageFor, passlista } from './bemanning.mjs';
 import { lage as rondlage } from './checklistor.mjs';
 import { aktivSasong } from './register.mjs';
+import { modulPa } from '../moduldata.mjs';
+import { minaKommande } from './evenemang.mjs';
 
 const AKTIVA = ['bokad', 'tilldelad', 'narvarande'];
 
@@ -118,6 +120,10 @@ export const rutter = [
         medlem.id
       ),
       kommande: mina.filter((p) => minuterTill(p, nu) > 0).slice(0, 5),
+      // Nästa läger eller tävling man anmält sig till. Hör hemma här för
+      // att det är samma fråga som passen svarar på: vad har jag framför
+      // mig. Är modulen av finns det ingenting att visa.
+      evenemang: modulPa(aktuellForening(), 'evenemang') ? minaKommande(medlem.id) : [],
     });
   }),
 ];

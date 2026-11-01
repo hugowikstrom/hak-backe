@@ -64,3 +64,29 @@ export const fragestrang = (obj) => {
   const s = p.toString();
   return s ? `?${s}` : '';
 };
+
+/**
+ * Skalar ned en bild innan den lämnar datorn. Kvitton får en längre kant
+ * och lite högre kvalitet än ronderna bilder: det är text som ska gå att
+ * läsa i efterhand, inte en spricka i ett rör.
+ */
+export function krympBild(fil, maxKant = 1600, kvalitet = 0.72) {
+  return new Promise((klar, fel) => {
+    const lasare = new FileReader();
+    lasare.onerror = () => fel(new Error('Kunde inte läsa bilden'));
+    lasare.onload = () => {
+      const bild = new Image();
+      bild.onerror = () => fel(new Error('Kunde inte tolka bilden'));
+      bild.onload = () => {
+        const skala = Math.min(1, maxKant / Math.max(bild.width, bild.height));
+        const duk = document.createElement('canvas');
+        duk.width = Math.round(bild.width * skala);
+        duk.height = Math.round(bild.height * skala);
+        duk.getContext('2d').drawImage(bild, 0, 0, duk.width, duk.height);
+        klar(duk.toDataURL('image/jpeg', kvalitet));
+      };
+      bild.src = lasare.result;
+    };
+    lasare.readAsDataURL(fil);
+  });
+}

@@ -419,3 +419,43 @@ test('rabattsatsen går att ändra av kassören', async () => {
   assert.equal(min.rabatt_procent, 15);
   await ok('PUT', '/api/planbok/installningar', { medlemsrabatt_procent: '10' });
 });
+
+/**
+ * Menysiffrorna.
+ *
+ * Reglerna som gör dem användbara: bara sådant som kräver en åtgärd, och
+ * aldrig en nolla. En siffra som alltid står där slutar betyda något.
+ */
+test('notiser räknar bara det som väntar på någon', async () => {
+  const { notiser } = await import('../server/notiser.mjs');
+  const { spara, kor } = db;
+  const forening = { moduler: ['*'] };
+  const chef = { id: 1, roll: 'admin', uppdrag: [], grupper: [] };
+
+  const fore = notiser(chef, forening);
+
+  // Ett lågprioriterat ärende är ingen notis – det ligger och väntar på
+  // rätt väder eller rätt reservdel.
+  spara('arende', { titel: 'Önskemål: fler krokar', prioritet: 4, status: 'ny', typ: 'forbattring' });
+  assert.equal(
+    notiser(chef, forening).arenden ?? 0,
+    fore.arenden ?? 0,
+    'lågprioriterat ärende ska inte räknas'
+  );
+
+  // Ett akut gör det.
+  spara('arende', { titel: 'Nödstopp trögt', prioritet: 1, status: 'ny', typ: 'fel' });
+  assert.equal((notiser(chef, forening).arenden ?? 0) - (fore.arenden ?? 0), 1);
+
+  // Och en säkerhetsrisk, oavsett prioritet.
+  spara('arende', { titel: 'Lös skylt', prioritet: 4, status: 'ny', typ: 'brist', allvarlighet: 'sakerhetsrisk' });
+  assert.equal((notiser(chef, forening).arenden ?? 0) - (fore.arenden ?? 0), 2);
+
+  // En avstängd modul räknas inte alls.
+  const utanArenden = notiser(chef, { moduler: ['ideer'] });
+  assert.equal(utanArenden.arenden, undefined, 'avstängd modul ger ingen siffra');
+
+  // Och en nolla visas inte.
+  kor("UPDATE arende SET status='stangd'");
+  assert.equal(notiser(chef, forening).arenden, undefined, 'noll ska utelämnas');
+});

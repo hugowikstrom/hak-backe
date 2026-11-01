@@ -13,7 +13,7 @@ import { tak } from './fik.mjs';
 const STATUSAR = ['bokad', 'ute', 'aterlamnad', 'forsenad', 'avbruten'];
 const BETALSATT = ['swish', 'kort', 'kontant', 'ej_betald'];
 const UTE = ['bokad', 'ute', 'forsenad'];
-const BAS = process.env.HAK_BAS_URL || 'https://hak.nattviken.com';
+const BAS = process.env.HAK_BAS_URL || 'https://backis.nattviken.com';
 
 export const TIDNAMN = {
   halvdag: 'Halvdag eller kväll',

@@ -120,7 +120,7 @@ export function Rond({ vy, ronder }) {
                 <span className="markor">{s?.avvikelse ? '!' : klar ? '✓' : i + 1}</span>
                 <span>
                   {p.text}
-                  {p.sakerhetskritisk && <span className="bricka rod liten"> säkerhet</span>}
+                  {!!p.sakerhetskritisk && <span className="bricka rod liten"> säkerhet</span>}
                   {s?.varde != null && <span className="liten svag"> — {s.varde} {p.enhet || ''}</span>}
                   {s?.kommentar && <span className="liten svag" style={{ display: 'block' }}>{s.kommentar}</span>}
                 </span>

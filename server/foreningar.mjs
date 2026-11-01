@@ -39,8 +39,8 @@ const franMiljon = () => ({
   // Modellen som tolkar talade driftrapporter. 'lokal' körs på maskinen.
   ai_modell: process.env.HAK_AI_MODELL || 'lokal',
   sms_fran: process.env.HAK_SMS_FRAN || 'HAKbacken',
-  epost_fran: process.env.HAK_EPOST_FRAN || 'HAK Backe <backe@nattviken.com>',
-  bas_url: process.env.HAK_BAS_URL || 'https://hak.nattviken.com',
+  epost_fran: process.env.HAK_EPOST_FRAN || 'Backis <backe@nattviken.com>',
+  bas_url: process.env.HAK_BAS_URL || 'https://backis.nattviken.com',
   profil: {},
 });
 

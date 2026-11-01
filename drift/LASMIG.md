@@ -70,7 +70,7 @@ npm run verify                 # tester + bygge
 sudo systemctl restart hak     # servern läser web/dist vid varje svar,
                                # men omstart tömmer också sessionstabellen
 systemctl status hak --no-pager
-curl -s https://hak.nattviken.com/halsa
+curl -s https://backis.nattviken.com/halsa
 ```
 
 Båda klienterna byggs till `web/dist` (webben i roten, mobilappen i

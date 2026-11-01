@@ -181,7 +181,22 @@ Du tolkar dokumentet. Du bestämmer ingenting.
 - Står intervallet otydligt ("regelbundet", "vid behov") sätter du intervall
   till null och osaker till true. Gissa aldrig en siffra.
 - Står det att arbetet kräver behörig tekniker ska det stå i kompetens, och
-  kritisk sättas till true.`;
+  kritisk sättas till true.
+
+Intervalltypen väljs efter hur manualen själv uttrycker sig:
+
+- "efter 2000 timmar", "after 4000 hours", "var 500 driftstimmar" är
+  **drifttimmar**, och intervall är antalet timmar. Missa inte dessa: på en
+  maskin som mäts i drifttimmar är det de blocken som bär underhållet.
+- "dagligen", "varje dag", "före start" är **dagar** med intervall 1.
+- "varje vecka" är **veckor**, "var sjätte månad" är **manader** med
+  intervall 6, "inför säsongen" är **sasong**.
+- Står arbetet utan återkommande intervall, och bara ska göras när något
+  inträffar, är det **handelse**.
+
+Ett underhållsprogram med flera block – 2000, 4000, 6000 och 8000 timmar –
+ger en punkt per arbete och block. Står samma arbete i två block är det två
+punkter med olika intervall, för det är så manualen menar det.`;
 
 /** Planen med nästa förfallodatum uträknat. */
 const berika = (plan) => {
@@ -330,7 +345,7 @@ const kanskedatum = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? v : nu
  * en sanning. Allt går att rätta i efterhand, och tolkningen sparas rå så
  * att det syns vad modellen faktiskt sa.
  */
-async function klassificera(text) {
+export async function klassificera(text) {
   if (!text) return { data: null, modell: null, fel: 'Ingen text att läsa' };
   // Början räcker: titelsidan och innehållsförteckningen säger vad det är.
   return tolka({

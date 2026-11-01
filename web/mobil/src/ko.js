@@ -168,6 +168,9 @@ async function synkaEn(lokalId) {
     // sådan rond ända hit är det ett fel, och servern ska säga nej.
     const brister = obesvaradObligatorisk(rond).length;
     const r = await api.skapa(`/api/checklistor/korningar/${rond.serverId}/avsluta`, {
+      // Anteckningen frågades efter i avslutsrutan och ska följa med.
+      // Skickas den inte är frågan en lögn.
+      anteckning: rond.anteckning ?? null,
       ...(brister ? { tvinga: true, motivering: rond.motivering } : {}),
     });
     if (rond.kvittens)

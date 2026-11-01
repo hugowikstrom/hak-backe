@@ -231,3 +231,24 @@ test('en ny förening får grunden men ingen demodata', async () => {
   foreningar.korSom(ny, () => laggGrund({ foreningsnamn: ny.namn }));
   foreningar.korSom(ny, () => assert.equal(db.alla('SELECT * FROM position').length, 8));
 });
+
+/**
+ * Luckan är personalens vy och Kassa är administrationen. Båda hör till
+ * kioskmodulen, och båda kräver kassabehörighet – en vanlig medlem ska
+ * varken se dem i menyn eller komma åt dem.
+ */
+test('luckan hör till kiosken och kräver kassabehörighet', async () => {
+  const { MODULDATA } = await import('../server/moduldata.mjs');
+  const kiosk = MODULDATA.find((m) => m.nyckel === 'kiosk');
+  const sidor = kiosk.sidor.map((s) => s.nyckel);
+  assert.deepEqual(sidor, ['luckan', 'kassa'], 'luckan står före kassan i menyn');
+  for (const s of kiosk.sidor) {
+    assert.equal(s.behorighet, 'kassa', `${s.nyckel} ska kräva kassabehörighet`);
+    assert.equal(s.grupp, 'pengar');
+  }
+
+  // Och den som står i luckan ska få den som startsida i sin arbetsyta.
+  const { ARBETSYTOR } = await import('../server/behorighet.mjs');
+  assert.ok(ARBETSYTOR.kiosk.sidor.includes('luckan'));
+  assert.ok(ARBETSYTOR.uthyrning.sidor.includes('luckan'));
+});

@@ -8,7 +8,10 @@ test('belopp skrivs som kronor med tusenmellanrum', () => {
   assert.equal(kronor(209500), '2\u00a0095 kr');
   assert.equal(kronor(0), '0 kr');
   assert.equal(kronor(null), '–');
-  assert.equal(kronor(4550), '45,5 kr');
+  // Ören skrivs alltid med två decimaler; jämna kronor utan.
+  assert.equal(kronor(4550), '45,50 kr');
+  assert.equal(kronor(9780), '97,80 kr');
+  assert.equal(kronor(-9780), '\u221297,80 kr');
 });
 
 test('kronor till ören blir heltal', () => {

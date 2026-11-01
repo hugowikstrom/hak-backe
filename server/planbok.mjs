@@ -57,11 +57,22 @@ export const historik = (medlem_id, antal = 100) =>
 export const totaltSaldo = () =>
   en('SELECT coalesce(sum(belopp_ore),0) AS s FROM planbokstransaktion').s;
 
+/**
+ * Alla aktiva medlemmars plånböcker, också de tomma.
+ *
+ * Tidigare lämnade den här frågan ut bara plånböcker med pengar i, och det
+ * gjorde den oanvändbar för den som står i luckan: den vanligaste åtgärden
+ * är att fylla på en plånbok som är tom. Den som bara vill se skulden
+ * räknar på `totaltSaldo()` i stället.
+ */
 export const alla_saldon = () =>
   alla(
-    `SELECT m.id, m.namn, m.medlemsnummer, coalesce(sum(p.belopp_ore),0) AS saldo_ore
+    `SELECT m.id, m.namn, m.medlemsnummer,
+            coalesce(sum(p.belopp_ore),0) AS saldo_ore,
+            max(p.skapad) AS senast
      FROM medlem m LEFT JOIN planbokstransaktion p ON p.medlem_id=m.id
-     WHERE m.aktiv=1 GROUP BY m.id HAVING saldo_ore <> 0 ORDER BY saldo_ore DESC`
+     WHERE m.aktiv=1 GROUP BY m.id
+     ORDER BY saldo_ore DESC, m.namn`
   ).map((r) => ({ ...r, saldo: kronor(r.saldo_ore) }));
 
 function skriv({ medlem_id, slag, belopp_ore, beskrivning, referens_slag = null, referens_id = null, verifikation_id = null, av }) {
@@ -161,6 +172,26 @@ export function betalaMedPlanbok({ medlem, rader, beskrivning, serie = 'K', refe
 }
 
 /** Återbetalning till medlem, t.ex. när någon slutar. */
+/**
+ * Lägger pengar i plånboken för en händelse som bokförs någon annanstans –
+ * i dag ett godkänt utlägg som medlemmen vill ha till plånboken i stället
+ * för till banken. Den som anropar har redan skapat verifikationen och
+ * skickar med den; plånboken får bara sin rad och sitt nya saldo.
+ */
+export function krediteraPlanbok({ medlem, belopp_ore, beskrivning, referens_slag = null, referens_id = null, verifikation_id = null, av }) {
+  if (!Number.isFinite(belopp_ore) || belopp_ore <= 0) throw fel(400, 'Beloppet måste vara större än noll');
+  return skriv({
+    medlem_id: medlem.id,
+    slag: 'insattning',
+    belopp_ore,
+    beskrivning,
+    referens_slag,
+    referens_id,
+    verifikation_id,
+    av,
+  });
+}
+
 export function aterbetala({ medlem, belopp_ore, betalmedel = 'swish', av, anteckning }) {
   const nu = saldo(medlem.id);
   if (belopp_ore > nu) throw fel(409, `Plånboken innehåller bara ${kronor(nu)}`);

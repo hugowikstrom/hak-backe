@@ -2,7 +2,7 @@
 import { api } from '../api.js';
 import { useJag } from '../app.jsx';
 import { laddaRonder, synka } from '../ko.js';
-import { Bricka, Marke, useHamta, useNat, useNotis, Vanta } from '../delar.jsx';
+import { Bricka, Marke, useHamta, useInstallera, useNat, useNotis, Vanta } from '../delar.jsx';
 
 const ROLLNAMN = {
   medlem: 'Medlem', backansvarig: 'Backansvarig',
@@ -18,6 +18,7 @@ export function Konto() {
   const ronder = laddaRonder();
   const kvar = ronder.filter((r) => !r.avslutad).length;
   const installerad = window.matchMedia('(display-mode: standalone)').matches;
+  const installera = useInstallera();
 
   return (
     <>
@@ -114,11 +115,22 @@ export function Konto() {
         <section className="kort gron">
           <div className="kropp">
             <strong>Lägg appen på hemskärmen</strong>
-            <p className="liten" style={{ margin: '6px 0 0' }}>
-              iPhone: dela-knappen → <em>Lägg till på hemskärmen</em>.<br />
-              Android: menyn ⋮ → <em>Installera app</em>.<br />
-              Då startar HAK Rond i helskärm och fungerar utan täckning.
-            </p>
+            {/* Går det att installera med ett tryck gör vi det. Annars
+                står instruktionen kvar – den gäller alltid på iPhone. */}
+            {installera?.slag === 'knapp' ? (
+              <>
+                <p className="liten" style={{ margin: '6px 0 10px' }}>
+                  Då startar Backis Rond i helskärm och fungerar utan täckning.
+                </p>
+                <button className="primar" onClick={installera.installera}>Installera appen</button>
+              </>
+            ) : (
+              <p className="liten" style={{ margin: '6px 0 0' }}>
+                iPhone: dela-knappen → <em>Lägg till på hemskärmen</em>.<br />
+                Android: menyn ⋮ → <em>Installera app</em>.<br />
+                Då startar Backis Rond i helskärm och fungerar utan täckning.
+              </p>
+            )}
           </div>
         </section>
       )}
@@ -138,7 +150,7 @@ export function Konto() {
           </button>
         </div>
       </section>
-      <p className="liten svagare mitten">HAK Rond · Härnösands Alpina Klubb</p>
+      <p className="liten svagare mitten">Backis Rond · Härnösands Alpina Klubb</p>
     </>
   );
 }

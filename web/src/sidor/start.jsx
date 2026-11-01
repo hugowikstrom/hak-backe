@@ -82,11 +82,19 @@ function Rondkort({ titel = 'Ronder att göra i dag' }) {
   const { data } = useHamta(() => (pa ? api.hamta('/api/checklistor/lage') : Promise.resolve(null)), [pa]);
   if (!pa) return null;
   if (!data) return <Kort titel={titel}><Vanta /></Kort>;
-  const kvar = data.mallar.filter((m) => m.kvar);
+  // Dagliga kontroller först. De avgör om backen får öppna, och en lista
+  // sorterad på antal hade lagt dem under snöläggningens startkontroller –
+  // som är fler, men bara gäller de maskiner som faktiskt ska köra.
+  const kvar = data.mallar
+    .filter((m) => m.kvar)
+    .sort((a, b) => (a.intervall === 'dagligen' ? 0 : 1) - (b.intervall === 'dagligen' ? 0 : 1));
+  const dagligen = kvar.filter((m) => m.intervall === 'dagligen').reduce((a, m) => a + m.kvar, 0);
   return (
     <Kort
       titel={titel}
-      undertext={data.kvar ? `${data.kvar} kvar · ${data.klara} gjorda` : 'Allt gjort'}
+      undertext={
+        data.kvar ? `${dagligen} före öppning · ${data.kvar} totalt · ${data.klara} gjorda` : 'Allt gjort'
+      }
       verktyg={<Lank till="/checklistor" className="knapp liten">Öppna</Lank>}
     >
       {kvar.length ? (
@@ -747,10 +755,51 @@ function Medlemmen() {
           )}
         </Kort>
 
+        <Evenemangskort />
         <Rondkort titel="Check-slingor i dag" />
         <Vaderkort kompakt />
         <Arendekort titel="Ärenden i backen" />
       </div>
     </>
+  );
+}
+
+/**
+ * Nästa läger eller tävling man anmält sig till. Samma fråga som passen
+ * svarar på – vad har jag framför mig – och därför samma rad av kort.
+ * Modulen avgör om kortet finns alls.
+ */
+function Evenemangskort() {
+  const { harModul } = usePlattform();
+  const d = useHamta(() => api.hamta('/api/mitt'));
+  if (!harModul('evenemang')) return null;
+  const mina = d.data?.evenemang || [];
+  return (
+    <Kort titel="Mina läger och tävlingar" verktyg={<Lank till="/evenemang" className="knapp liten">Allt som är på gång</Lank>}>
+      {mina.length ? (
+        <ul className="lista">
+          {mina.map((e) => (
+            <li key={e.id}>
+              <span className="vaxa">
+                <strong>{e.namn}</strong>
+                <div className="liten svag">
+                  {langDatum(String(e.start).slice(0, 10))}
+                  {e.plats ? ` · ${e.plats}` : ''}
+                </div>
+              </span>
+              {e.min_status === 'reserv' ? (
+                <Bricka farg="varning">Reserv</Bricka>
+              ) : e.avgift_ore > 0 && !e.betald_tid ? (
+                <Bricka farg="varning">Avgift obetald</Bricka>
+              ) : (
+                <Bricka farg="ok">Anmäld</Bricka>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <Tomt>Du är inte anmäld till något. Se vad klubben har på gång.</Tomt>
+      )}
+    </Kort>
   );
 }

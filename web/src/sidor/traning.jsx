@@ -145,7 +145,7 @@ function NarvaroLada({ id, jag, stang }) {
       <div className="rad hopp">
         <Bricka farg="info">{SLAG[t.slag]}</Bricka>
         {t.plats && <Bricka>{t.plats}</Bricka>}
-        {t.installt && <Bricka farg="fara">Inställt</Bricka>}
+        {!!t.installt && <Bricka farg="fara">Inställt</Bricka>}
         <span className="liten svag">{t.start}–{t.slut}</span>
       </div>
 

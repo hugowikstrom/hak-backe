@@ -120,23 +120,36 @@ function AttGora({ lage, starta }) {
   if (lage.fel) return null;
   const kvar = lage.data.mallar.filter((m) => m.kvar);
   const klara = lage.data.mallar.filter((m) => !m.kvar && m.klara);
-  return (
-    <Kort
-      titel="Att göra i dag"
-      undertext={
-        lage.data.kvar
-          ? `${lage.data.kvar} ronder kvar · ${lage.data.klara} gjorda${lage.data.snopass ? ' · snöpass pågår' : ''}`
-          : 'Allt som skulle göras i dag är gjort'
-      }
-    >
-      {kvar.length ? (
-        <div className="kolumn">
-          {kvar.map((m) => (
+
+  /**
+   * Grenarna i listan, i den ordning de spelar roll.
+   *
+   * Ett dygn har nio dagliga kontroller och fyrtio startkontroller för
+   * snöläggningen. Blandar man ihop dem står det "femtio ronder kvar" på
+   * en dag då det egentligen är nio som avgör om backen får öppna, och då
+   * slutar siffran betyda något. Det som gäller öppningen står först och
+   * räknas för sig.
+   */
+  const DELAR = [
+    { nyckel: 'dagligen', namn: 'Före öppning', under: 'Avgör om backen får öppna' },
+    { nyckel: 'vid_start', namn: 'Vid start av snöläggning', under: 'Bara för de maskiner som ska köra' },
+    { nyckel: 'per_pass', namn: 'Under passet', under: null },
+  ];
+  const delar = DELAR.map((d) => ({ ...d, mallar: kvar.filter((m) => m.intervall === d.nyckel) }))
+    .concat({
+      nyckel: 'ovrigt',
+      namn: 'Övrigt',
+      under: null,
+      mallar: kvar.filter((m) => !DELAR.some((d) => d.nyckel === m.intervall)),
+    })
+    .filter((d) => d.mallar.length);
+  const dagligen = kvar.filter((m) => m.intervall === 'dagligen').reduce((a, m) => a + m.kvar, 0);
+
+  const mallrad = (m) => (
             <div key={m.mall_id}>
               <div className="rad-mellan" style={{ marginBottom: 4 }}>
                 <strong>{m.namn}</strong>
                 <span className="rad">
-                  <Bricka>{INTERVALL[m.intervall]}</Bricka>
                   <Bricka farg="varning">{m.kvar} kvar</Bricka>
                   {!!m.klara && <Bricka farg="ok">{m.klara} klara</Bricka>}
                 </span>
@@ -152,10 +165,36 @@ function AttGora({ lage, starta }) {
                 {m.objekt
                   .filter((o) => o.klar)
                   .map((o) => (
-                    <span key={`klar-${o.slag}-${o.id}`} className="bricka gron" title={`Gjord ${tidpunkt(o.senast)}${o.senast_av ? ` av ${o.senast_av}` : ''}`}>
+                    <span key={`klar-${o.slag}-${o.id}`} className="bricka ok" title={`Gjord ${tidpunkt(o.senast)}${o.senast_av ? ` av ${o.senast_av}` : ''}`}>
                       ✓ {o.namn}
                     </span>
                   ))}
+              </div>
+            </div>
+  );
+
+  return (
+    <Kort
+      titel="Att göra i dag"
+      undertext={
+        lage.data.kvar
+          ? `${dagligen} före öppning · ${lage.data.kvar} totalt · ${lage.data.klara} gjorda${lage.data.snopass ? ' · snöpass pågår' : ''}`
+          : 'Allt som skulle göras i dag är gjort'
+      }
+    >
+      {delar.length ? (
+        <div className="kolumn" style={{ gap: 14 }}>
+          {delar.map((d) => (
+            <div key={d.nyckel} className="rondgren">
+              <div className="rad-mellan">
+                <h4 style={{ margin: 0 }}>{d.namn}</h4>
+                <Bricka farg={d.nyckel === 'dagligen' ? 'varning' : ''}>
+                  {d.mallar.reduce((a, m) => a + m.kvar, 0)} kvar
+                </Bricka>
+              </div>
+              {d.under && <div className="liten svag" style={{ marginTop: -2 }}>{d.under}</div>}
+              <div className="kolumn" style={{ marginTop: 6 }}>
+                {d.mallar.map(mallrad)}
               </div>
             </div>
           ))}
@@ -341,7 +380,9 @@ function KorningLada({ id, stang, notis }) {
                   onBlur={(e) => svara(p, { text: e.target.value, bockad: !!e.target.value, avvikelse: p.avvikelse, kommentar: p.kommentar })}
                 />
               )}
-              {p.avvikelse && (
+              {/* `!!` behövs: avvikelse kommer ur SQLite som 0 eller 1, och
+                  `{0 && …}` renderar en nolla i stället för ingenting. */}
+              {!!p.avvikelse && (
                 <input
                   placeholder="Vad är fel? Blir ett ärende när checklistan avslutas."
                   defaultValue={p.kommentar ?? ''}
@@ -521,13 +562,14 @@ function MallLada({ mall, typer, omraden, stang, klar }) {
               <th style={{ width: 110 }}>Svarstyp</th>
               <th style={{ width: 70 }}>Enhet</th>
               <th>Hjälptext</th>
-              <th style={{ width: 60 }}>Krav</th>
+              <th style={{ width: 60 }} title="Måste besvaras för att ronden ska gå att avsluta">Krav</th>
+              <th style={{ width: 76 }} title="Går varken att hoppa över eller markera som ej tillämplig">Säkerhet</th>
               <th style={{ width: 92 }}></th>
             </tr>
           </thead>
           <tbody>
             {punkter.map((p, i) => (
-              <tr key={i}>
+              <tr key={i} className={p.sakerhetskritisk ? 'sakerhetsrad' : undefined}>
                 <td className="sifra svag">{i + 1}</td>
                 <td className="redigerbar">
                   <input value={p.text || ''} onChange={(e) => sattPunkt(i, 'text', e.target.value)} />
@@ -549,7 +591,26 @@ function MallLada({ mall, typer, omraden, stang, klar }) {
                   <input
                     type="checkbox"
                     checked={p.obligatorisk !== 0 && p.obligatorisk !== false}
+                    disabled={!!p.sakerhetskritisk}
+                    title={p.sakerhetskritisk ? 'En säkerhetskritisk punkt är alltid obligatorisk' : undefined}
                     onChange={(e) => sattPunkt(i, 'obligatorisk', e.target.checked ? 1 : 0)}
+                  />
+                </td>
+                {/* Säkerhetskritisk drar med sig obligatorisk: en punkt som
+                    inte går att hoppa över men ändå får lämnas obesvarad
+                    vore en spärr som inte spärrar. */}
+                <td className="mitten">
+                  <input
+                    type="checkbox"
+                    checked={!!p.sakerhetskritisk}
+                    onChange={(e) => {
+                      const pa = e.target.checked ? 1 : 0;
+                      sattPunkter((x) =>
+                        x.map((q, j) =>
+                          j === i ? { ...q, sakerhetskritisk: pa, obligatorisk: pa ? 1 : q.obligatorisk } : q
+                        )
+                      );
+                    }}
                   />
                 </td>
                 <td>
@@ -562,7 +623,7 @@ function MallLada({ mall, typer, omraden, stang, klar }) {
               </tr>
             ))}
             {!punkter.length && (
-              <tr><td colSpan={7}><Tomt>Lägg till minst en punkt.</Tomt></td></tr>
+              <tr><td colSpan={8}><Tomt>Lägg till minst en punkt.</Tomt></td></tr>
             )}
           </tbody>
         </table>

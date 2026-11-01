@@ -43,6 +43,7 @@ const { medSkal } = dbmodul;
 const iForeningen = (fn) => medSkal({ db: handtag, forening: foreningen }, fn);
 const { hasha } = await import('./auth.mjs');
 const { passSlag, plusDagar, veckodag } = await import('./tid.mjs');
+const { CHECKLISTMALLAR } = await import('./checklistdata.mjs');
 
 const fanns = en('SELECT count(*) AS n FROM medlem').n;
 if (fanns && !nollstall) {
@@ -222,150 +223,12 @@ iForeningen(() => transaktion(() => {
     return id;
   };
 
-  // Positionsronden: den man faktiskt går i backen. Den gäller platsen –
-  // vattenuttaget, slangen och avspärrningen – oavsett vilken kanon som
-  // står där just nu.
-  mall('Lansposition – inför pass', 'snoplats', null, 'vid_start',
-    'Gås på positionen. Maskinen som står där har sin egen lista.', [
-      ['Vattenuttaget är tätt och ventilen går att stänga', 'bock'],
-      ['Slangen är hel och rätt dragen', 'bock'],
-      ['Elanslutningen är torr och oskadad', 'bock'],
-      ['Positionen är avspärrad från åkande', 'bock', null, null, true, true],
-      ['Vattentryck vid uttaget', 'varde', 'bar'],
-      ['Rätt maskin står på platsen', 'bock', null, 'Stämmer det som står i registret?'],
-      ['Anteckning om platsen', 'text', null, null, false],
-    ], 'snolaggning', { rondtyp: 'lansposition', platsslag: 'lans' });
-
-  mall('Fläktposition – inför pass', 'snoplats', null, 'vid_start', null, [
-      ['Vattenuttaget är tätt', 'bock'],
-      ['Elanslutning och jordfelsbrytare kontrollerad', 'bock'],
-      ['Kastriktningen är fri från åkande', 'bock', null, null, true, true],
-      ['Vattentryck vid uttaget', 'varde', 'bar'],
-      ['Anteckning om platsen', 'text', null, null, false],
-    ], 'snolaggning', { rondtyp: 'flaktposition', platsslag: 'flakt' });
-
-  mall('Lans – start av snöläggning', 'utrustningstyp', 'lans', 'vid_start',
-    'Gå igenom innan vatten släpps på lansen.', [
-      ['Wetbulb tillåter produktion (kontrollera i appen)', 'bock', null, 'Under −2,5 °C wetbulb. Rapportera mätningen först.'],
-      ['Lansen är riktad rätt efter vindriktningen', 'bock'],
-      ['Slangar och kopplingar är hela och utan läckage', 'bock'],
-      ['Dräneringsventilen är stängd', 'bock'],
-      ['Munstycken är rena och fria från is', 'bock'],
-      ['Vattentryck vid lansen', 'varde', 'bar', 'Normalt 25–40 bar.'],
-      ['Lufttryck vid lansen', 'varde', 'bar', 'Normalt 6–8 bar.'],
-      ['Området runt lansen är avspärrat från åkande', 'bock'],
-      ['Elanslutning och kabel är oskadad', 'bock'],
-      ['Anteckning om läge och inställning', 'text', null, null, false],
-    ], 'snolaggning');
-
-  mall('Lans – tillsyn under drift', 'utrustningstyp', 'lans', 'per_pass',
-    'Varannan timme under pågående pass.', [
-      ['Snöstrålen träffar rätt och snön är torr', 'bock'],
-      ['Ingen isbildning på munstycken', 'bock'],
-      ['Lufttemperatur', 'varde', '°C'],
-      ['Luftfuktighet', 'varde', '%'],
-      ['Vattenflöde', 'varde', 'l/s'],
-      ['Inga läckage vid kopplingar', 'bock'],
-      ['Snöhögen behöver flyttas av pistmaskin', 'bock', null, 'Bocka om pistmaskinen behöver kallas in.', false],
-    ], 'snolaggning');
-
-  mall('Fläkt – start av snöläggning', 'utrustningstyp', 'flakt', 'vid_start',
-    'Startrutin för fläktkanon.', [
-      ['Wetbulbn tillåter produktion', 'bock'],
-      ['Fläkten står stabilt och är uppriktad', 'bock'],
-      ['Oscilleringen går fritt i hela rörelsen', 'bock'],
-      ['Vattenfilter är rengjort', 'bock'],
-      ['Nukleatorer fungerar (kontrollera dimstrålen)', 'bock'],
-      ['Kompressortrycket är uppe', 'varde', 'bar'],
-      ['Vattenflöde vid start', 'varde', 'l/s'],
-      ['Elkabel och jordfelsbrytare kontrollerad', 'bock'],
-      ['Inga åkande i kastriktningen', 'bock'],
-    ], 'snolaggning');
-
-  mall('Fläkt – daglig tillsyn', 'utrustningstyp', 'flakt', 'dagligen',
-    'Görs en gång per dygn under snöläggningssäsong.', [
-      ['Ingen is i fläkthuset', 'bock'],
-      ['Lager och fläktmotor låter normalt', 'bock'],
-      ['Smörjning kontrollerad', 'bock'],
-      ['Driftstimmar', 'varde', 'h', null, false],
-      ['Avvikelser att rapportera', 'text', null, null, false],
-    ], 'snolaggning');
-
-  mall('Pumpstation – start och tillsyn', 'utrustningstyp', 'pumpstation', 'vid_start', null, [
-    ['Vattennivå i dammen är tillräcklig', 'bock'],
-    ['Nivå i dammen', 'varde', 'cm', null, false],
-    ['Silar och intag är fria från is och skräp', 'bock'],
-    ['Pumptryck', 'varde', 'bar'],
-    ['Inga larm på styrskåpet', 'bock'],
-    ['Ingen läckage i pumphuset', 'bock'],
-    ['Frostskydd av ledningar kontrollerat', 'bock'],
-  ], 'snolaggning');
-
-  mall('Lift – kontroll före öppning', 'utrustningstyp', 'lift', 'dagligen',
-    'Kontrollerna märkta säkerhet går inte att hoppa över. Appen avgör inte om liften får ' +
-      'öppna – den som kvitterar gör det.', [
-      ['Nödstopp testade i båda ändar', 'bock', null, 'Testa i drift, båda ändar, och känn att linan stannar.', true, true],
-      ['Linan ligger rätt i alla block', 'bock', null, null, true, true],
-      ['Provkörning utan last genomförd', 'bock', null, null, true, true],
-      ['På- och avstigning är plan och fri från is', 'bock', null, null, true, true],
-      ['Skyltar och avspärrningar på plats', 'bock'],
-      ['Kommunikationsradio fungerar', 'bock'],
-      ['Liftvärd har genomgått instruktion', 'bock'],
-      ['Ovant ljud eller vibration (beskriv)', 'text', null, 'Lämna tomt om allt lät som vanligt.', false],
-    ], 'backansvarig', { rondtyp: 'liftkontroll_start', kvittens: true });
-
-  mall('Bandet – daglig säkerhetskontroll', 'utrustningstyp', 'band', 'dagligen', null, [
-    ['Nödstopp testat', 'bock', null, null, true, true],
-    ['Sidoskydd och galler sitter fast', 'bock', null, null, true, true],
-    ['Provkörning genomförd', 'bock', null, null, true, true],
-    ['Bandytan är fri från is och grus', 'bock'],
-    ['Instruktionsskylt vid påstigning finns', 'bock'],
-  ], 'bandet', { rondtyp: 'bandkontroll', kvittens: true });
-
-  mall('Backansvarig – öppning av backen', 'allmant', null, 'dagligen',
-    'Backansvarigs rutin innan backen öppnar för allmänheten.', [
-      ['Pistning klar och backen besiktad', 'bock'],
-      ['Alla hinder är skyddade (stolpar, lansar, kanoner)', 'bock', null, null, true, true],
-      ['Nedfarter som är stängda är tydligt avspärrade', 'bock'],
-      ['Första hjälpen-väska och bår på plats', 'bock', null, null, true, true],
-      ['Liftkontroll är genomförd och kvitterad', 'bock', null, null, true, true],
-      ['Bemanning på plats enligt schema', 'bock'],
-      ['Snödjup representativt mätvärde', 'varde', 'cm', null, false],
-      ['Information till åkande uppdaterad (skyltar/webb)', 'bock', null, null, false],
-    ], 'backansvarig');
-
-  mall('Backansvarig – stängning', 'allmant', null, 'dagligen', null, [
-    ['Backen avsökt, inga åkande kvar', 'bock'],
-    ['Liftar avstängda och låsta', 'bock'],
-    ['Avspärrningar inför natten på plats', 'bock'],
-    ['Incidenter rapporterade som ärenden', 'bock'],
-    ['Pistningsbehov anmält', 'bock', null, null, false],
-  ], 'backansvarig');
-
-  mall('Fiket – öppning', 'omrade', 'Fiket', 'dagligen', null, [
-    ['Kyl- och frystemperatur kontrollerad', 'varde', '°C'],
-    ['Handtvätt och hygienrutiner på plats', 'bock'],
-    ['Kassa och kortterminal fungerar', 'bock'],
-    ['Växelkassa räknad', 'bock'],
-    ['Varor påfyllda', 'bock'],
-    ['Brandsläckare och utrymningsväg fria', 'bock'],
-  ], 'fik');
-
-  mall('Fiket – stängning', 'omrade', 'Fiket', 'dagligen', null, [
-    ['Kassa räknad och avstämd', 'bock'],
-    ['Kyl och frys stängda och rena', 'bock'],
-    ['Diskat och avtorkat', 'bock'],
-    ['Sopor utkastade', 'bock'],
-    ['Lås och larm', 'bock'],
-  ], 'fik');
-
-  mall('Skiduthyrningen – öppning', 'omrade', 'Skiduthyrningen', 'dagligen', null, [
-    ['Utrustning uppräknad mot utlåningslistan', 'bock'],
-    ['Skadad utrustning uttagen ur hyllan', 'bock'],
-    ['Bindningstestare kalibrerad', 'bock'],
-    ['Hjälmar kontrollerade', 'bock'],
-    ['Kassa och hyreskontrakt framme', 'bock'],
-  ], 'uthyrning');
+  // Rutinerna bor i checklistdata.mjs, delade med migreringsskriptet:
+  // en förening som redan är i drift ska kunna få de nya listorna utan
+  // att databasen nollställs.
+  for (const m of CHECKLISTMALLAR)
+    mall(m.namn, m.omfattning, m.nyckel, m.intervall, m.beskrivning, m.punkter,
+         m.position_nyckel, m.extra);
 
   // ---------- Positioner ----------
   const pos = {};
@@ -664,7 +527,7 @@ iForeningen(() => transaktion(() => {
       transkript: extra.transkript || null,
     });
 
-  journalpost(6, '07:40', 'rond', 'annika', 'Lift – kontroll före öppning, kvitterad driftklar',
+  journalpost(6, '07:40', 'rond', 'annika', 'Lift – före öppning, kvitterad driftklar',
     { utrustning: 'Stora liften', omrade: 'Stora liften' });
   journalpost(5, '22:15', 'atgard', 'stefan',
     'Avisade munstyckena på lans 9 och 10. Snön blev torr igen efteråt.',
@@ -1246,6 +1109,191 @@ iForeningen(() => transaktion(() => {
       betalsatt: m.id % 4 === 0 ? null : 'swish',
     });
   }
+
+  // ---------- Läger, tävlingar och aktiviteter ----------
+  // Blandningen är med flit: ett läger med avgift och platsbegränsning som
+  // hunnit bli fullt, en tävling med öppen anmälan, ett årsmöte utan
+  // avgift, och ett genomfört läger bakåt i tiden. Utan den blandningen
+  // går det inte att se att reservkö, sista anmälningsdag och avgiftsfria
+  // evenemang alla fungerar.
+  const evenemangsid = {};
+  const laggEvenemang = (nyckel, rad) => (evenemangsid[nyckel] = spara('evenemang', { av_id: mid.annika, ...rad }));
+
+  laggEvenemang('klappen', {
+    slag: 'lager',
+    namn: 'Träningsläger Kläppen',
+    plats: 'Kläppen, Sälen',
+    start: plusDagar(IDAG, 24),
+    slut: plusDagar(IDAG, 27),
+    sista_anmalan: plusDagar(IDAG, 10),
+    avgift_ore: 240000,
+    platser: 12,
+    beskrivning:
+      'Fyra dagar i Kläppen med U12 och U14/U16. Avgiften täcker boende, liftkort och ledare. ' +
+      'Resan sker med egna bilar – lägg upp eller boka plats under Samåkning.',
+    sektion_id: sektion.alpint,
+    ansvarig_id: mid.annika,
+    status: 'oppet',
+  });
+  laggEvenemang('kretstavling', {
+    slag: 'tavling',
+    namn: 'Kretstävling slalom, Vårdkasbacken',
+    plats: 'Vårdkasbacken',
+    start: `${plusDagar(IDAG, 13)} 10:00`,
+    slut: `${plusDagar(IDAG, 13)} 15:00`,
+    sista_anmalan: plusDagar(IDAG, 9),
+    avgift_ore: 15000,
+    platser: null,
+    beskrivning: 'Två åk. Besiktning från 08:30, första start 10:00. Klubben behöver fyra portvakter.',
+    sektion_id: sektion.alpint,
+    ansvarig_id: mid.per,
+    status: 'oppet',
+  });
+  laggEvenemang('arsmote', {
+    slag: 'mote',
+    namn: 'Årsmöte Härnösands Alpina',
+    plats: 'Klubbstugan, Vårdkasbacken',
+    start: `${plusDagar(IDAG, 41)} 18:30`,
+    avgift_ore: 0,
+    platser: null,
+    beskrivning: 'Kallelse och handlingar läggs ut under Föreningen senast två veckor före.',
+    ansvarig_id: mid.jonas,
+    status: 'oppet',
+  });
+  laggEvenemang('barmark', {
+    slag: 'lager',
+    namn: 'Barmarksläger Härnösand',
+    plats: 'Högsjö IP',
+    start: plusDagar(IDAG, -38),
+    slut: plusDagar(IDAG, -36),
+    sista_anmalan: plusDagar(IDAG, -52),
+    avgift_ore: 45000,
+    platser: 20,
+    ansvarig_id: mid.lotta,
+    status: 'genomfort',
+  });
+
+  // Anmälningarna. Kläppen tar tolv och vi skriver in fjorton, så de två
+  // sista hamnar i reservkön – precis som de ska.
+  const anmal = (evenemang, anvandarnamn, { status = 'anmald', betald = false, behov = null } = {}) => {
+    const m = mid[anvandarnamn] ?? en('SELECT id FROM medlem WHERE namn=?', anvandarnamn)?.id;
+    if (!m) return null;
+    return spara('evenemangsanmalan', {
+      evenemang_id: evenemangsid[evenemang],
+      medlem_id: m,
+      status,
+      behov,
+      betald_tid: betald ? `${plusDagar(IDAG, -3)} 19:14` : null,
+      betalsatt: betald ? 'swish' : null,
+    });
+  };
+
+  const klappenlista = ['Elsa Sund', 'Alma Åkerlund', 'Tuva Berg', 'Melker Ek', 'Ville Vikner',
+    'Hugo Molin', 'Maja Strand', 'Signe Dahl', 'annika', 'per', 'stefan', 'lotta'];
+  for (const [i, namn] of klappenlista.entries())
+    anmal('klappen', namn, { betald: i < 7, behov: namn === 'Alma Åkerlund' ? 'Glutenfritt' : null });
+  // Två i kön.
+  anmal('klappen', 'Noel Holm', { status: 'reserv' });
+  anmal('klappen', 'Viggo Sund', { status: 'reserv' });
+
+  for (const namn of ['Tuva Berg', 'Ville Vikner', 'Melker Ek', 'johan'])
+    anmal('kretstavling', namn, { betald: namn !== 'johan' });
+  for (const namn of ['jonas', 'annika', 'per', 'karin', 'mikael', 'ingrid', 'anders'])
+    anmal('arsmote', namn);
+  for (const namn of ['Elsa Sund', 'Alma Åkerlund', 'Noel Holm', 'lotta'])
+    anmal('barmark', namn, { betald: true });
+
+  // ---------- Samåkning ----------
+  // Tre bilar till Kläppen och en till tävlingen, med olika fyllnadsgrad.
+  const samak = (rad, passagerare = []) => {
+    const id = spara('samakning', rad);
+    for (const namn of passagerare) {
+      const m = mid[namn] ?? en('SELECT id FROM medlem WHERE namn=?', namn)?.id;
+      if (m) spara('samakningsplats', { samakning_id: id, medlem_id: m });
+    }
+    return id;
+  };
+
+  samak(
+    {
+      evenemang_id: evenemangsid.klappen,
+      forare_id: mid.annika,
+      fran: 'Härnösand, Coop Maxi',
+      avresa: `${plusDagar(IDAG, 24)} 06:00`,
+      platser: 4,
+      bil: 'Volvo V90, takbox',
+      anteckning: 'Plats för fyra par skidor i boxen. Fikapaus i Ånge.',
+    },
+    ['Elsa Sund', 'Viggo Sund', 'Alma Åkerlund']
+  );
+  samak(
+    {
+      evenemang_id: evenemangsid.klappen,
+      forare_id: mid.stefan,
+      fran: 'Härnösand, Ica Kvantum Kattastrand',
+      avresa: `${plusDagar(IDAG, 24)} 06:15`,
+      platser: 3,
+      bil: 'Passat kombi',
+    },
+    ['Tuva Berg']
+  );
+  samak({
+    evenemang_id: evenemangsid.klappen,
+    forare_id: mid.per,
+    fran: 'Älandsbro, vid macken',
+    avresa: `${plusDagar(IDAG, 24)} 06:30`,
+    platser: 3,
+    bil: 'Transit, åtta platser men bara tre lediga',
+    anteckning: 'Tar gärna med utrustning för dem som åker tåg.',
+  });
+  samak(
+    {
+      evenemang_id: evenemangsid.kretstavling,
+      forare_id: mid.johan,
+      fran: 'Härnösand, Nybrogatan',
+      avresa: `${plusDagar(IDAG, 13)} 07:45`,
+      platser: 3,
+    },
+    ['Ville Vikner']
+  );
+
+  // ---------- Utlägg ----------
+  // Ett i varje läge, så att både medlemmens och kassörens sida har något
+  // att visa. De två sista bokförs längre ned.
+  const utlagg = (rad) => spara('utlagg', rad);
+  utlagg({
+    medlem_id: mid.per,
+    datum: plusDagar(IDAG, -2),
+    belopp_ore: 48900,
+    moms_ore: 9780,
+    syfte: 'Slangklämmor och packningar till lans 4',
+    kategori: 'backen',
+    status: 'ny',
+    utbetalning: 'bank',
+  });
+  utlagg({
+    medlem_id: mid.emma,
+    datum: plusDagar(IDAG, -4),
+    belopp_ore: 21500,
+    moms_ore: 2560,
+    syfte: 'Kaffe, mjölk och bullar till lördagens pass',
+    kategori: 'fiket',
+    status: 'ny',
+    utbetalning: 'planbok',
+    anteckning: 'Lägg gärna i plånboken, jag fikar ändå varje lördag.',
+  });
+  utlagg({
+    medlem_id: mid.sara,
+    datum: plusDagar(IDAG, -9),
+    belopp_ore: 34000,
+    syfte: 'Parkering vid tävling i Sundsvall',
+    kategori: 'resa',
+    status: 'avslagen',
+    avslagsskal: 'Resan ersätts enligt milersättning i stället – skicka in reseräkningen.',
+    granskad_av_id: mid.kassor ?? mid.karin,
+    granskad_tid: `${plusDagar(IDAG, -7)} 20:11`,
+  });
+
 }));
 
 // ---------- Bokföring av det som sålts ----------
@@ -1273,6 +1321,70 @@ await iForeningen(async () => {
       referens_id: o.id,
       av: kassorska,
     });
+  }
+
+  // Plånböcker: några medlemmar har fyllt på. Behövs för att luckan,
+  // utläggen och evenemangsavgifterna ska ha något att dra ifrån.
+  const pb = await import('./planbok.mjs');
+  for (const [anv, kronor] of [['medlem', 50000], ['emma', 30000], ['tobias', 20000], ['sara', 15000], ['anders', 60000]]) {
+    const m = en('SELECT * FROM medlem WHERE anvandarnamn=?', anv);
+    if (m) pb.fyllPa({ medlem: m, belopp_ore: kronor, betalmedel: 'swish', av: kassor ?? kassorska });
+  }
+
+  // Två utlägg hela vägen: ett godkänt som väntar på utbetalning, och ett
+  // som betalats ut till plånboken. Bokförs med samma konton som API:t
+  // använder, så att ekonomisidan stämmer.
+  const UTLAGGSKONTO = { backen: '5410', fiket: '4010', resa: '5800', kontor: '6110', traning: '6590', tavling: '6590', ovrigt: '6990' };
+  const godkann = (u, betalaTill) => {
+    const moms = u.moms_ore || 0;
+    const rader = [{ konto: UTLAGGSKONTO[u.kategori], debet_ore: u.belopp_ore - moms, beskrivning: u.syfte }];
+    if (moms) rader.push({ konto: '2641', debet_ore: moms, beskrivning: 'Ingående moms' });
+    rader.push({ konto: '2890', kredit_ore: u.belopp_ore, beskrivning: 'Skuld till medlem' });
+    bok.bokfor({
+      serie: 'D', datum: u.datum, beskrivning: `Utlägg: ${u.syfte}`, motpart: u.medlem, rader,
+      referens_slag: 'utlagg', referens_id: u.id, av: kassor ?? kassorska,
+    });
+    kor(
+      "UPDATE utlagg SET status='godkand', granskad_av_id=?, granskad_tid=? WHERE id=?",
+      (kassor ?? kassorska).id, `${u.datum} 21:02`, u.id
+    );
+    if (!betalaTill) return;
+    const v = bok.bokfor({
+      serie: 'D', datum: u.datum, beskrivning: `Utbetalning av utlägg till ${u.medlem}`, motpart: u.medlem,
+      rader: [
+        { konto: '2890', debet_ore: u.belopp_ore, beskrivning: 'Skulden löses' },
+        { konto: betalaTill === 'planbok' ? '2420' : '1930', kredit_ore: u.belopp_ore },
+      ],
+      referens_slag: 'utlaggsbetalning', referens_id: u.id, av: kassor ?? kassorska,
+    });
+    if (betalaTill === 'planbok')
+      pb.krediteraPlanbok({
+        medlem: en('SELECT * FROM medlem WHERE id=?', u.medlem_id),
+        belopp_ore: u.belopp_ore,
+        beskrivning: `Utlägg: ${u.syfte}`,
+        referens_slag: 'utlagg',
+        referens_id: u.id,
+        verifikation_id: v.id,
+        av: kassor ?? kassorska,
+      });
+    kor("UPDATE utlagg SET status='utbetald', utbetalning=?, betald_tid=? WHERE id=?", betalaTill, `${u.datum} 21:05`, u.id);
+  };
+
+  const mid_tobias = en("SELECT id, namn FROM medlem WHERE anvandarnamn='tobias'");
+  const mid_jonas = en("SELECT id, namn FROM medlem WHERE anvandarnamn='jonas'");
+  if (mid_tobias) {
+    const id = spara('utlagg', {
+      medlem_id: mid_tobias.id, datum: plusDagar(IDAG, -12), belopp_ore: 129000, moms_ore: 25800,
+      syfte: 'Ny borrmaskin och bits till liftunderhållet', kategori: 'backen', utbetalning: 'bank',
+    });
+    godkann({ ...en('SELECT * FROM utlagg WHERE id=?', id), medlem: mid_tobias.namn }, null);
+  }
+  if (mid_jonas) {
+    const id = spara('utlagg', {
+      medlem_id: mid_jonas.id, datum: plusDagar(IDAG, -20), belopp_ore: 62500, moms_ore: 12500,
+      syfte: 'Startnummerlappar och buntband till kretstävlingen', kategori: 'tavling', utbetalning: 'planbok',
+    });
+    godkann({ ...en('SELECT * FROM utlagg WHERE id=?', id), medlem: mid_jonas.namn }, 'planbok');
   }
 
   for (const h of alla("SELECT * FROM hyresavtal WHERE betald_tid IS NOT NULL ORDER BY skapad")) {
@@ -1348,7 +1460,8 @@ iForeningen(() => {
     'komponent', 'leverantor', 'driftpost', 'incident',
     'serviceplan', 'serviceatgard', 'reservdel', 'reservdelsuttag', 'hogbelastning', 'tillganglighet',
     'dokument', 'snoplats', 'uppstallning',
-    'behorighetsgrupp', 'gruppbehorighet', 'gruppyta', 'grupptillhorighet'])
+    'behorighetsgrupp', 'gruppbehorighet', 'gruppyta', 'grupptillhorighet',
+    'utlagg', 'evenemang', 'evenemangsanmalan', 'samakning', 'samakningsplats', 'planbokstransaktion'])
     console.log(`  ${t}: ${en(`SELECT count(*) AS n FROM ${t}`).n}`);
 });
 db.close();
