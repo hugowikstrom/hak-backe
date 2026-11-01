@@ -116,11 +116,131 @@ test('en daglig kontroll som gjordes för en vecka sedan är försenad sex dagar
   assert.equal(d.kontroller.forsenade[0].aldrig, false);
 });
 
+test('ett dagschema räknar förfallodag, dagar kvar och fönstret', async () => {
+  const { spara, kor } = db;
+  const mall = spara('checklistmall', {
+    namn: 'Månadskontroll', intervall: 'veckovis', omfattning: 'utrustningstyp',
+    utrustningstyp: 'lift', aktiv: 1,
+    intervalltyp: 'dagar', intervall_dagar: 30, fonster_dagar: 14,
+  });
+  spara('checklistpunkt', { mall_id: mall, text: 'Linspänning', svarstyp: 'bock', obligatorisk: 1 });
+  const k = spara('checklistkorning', {
+    mall_id: mall, utrustning_id: 1, av_id: 1, startad: `${dag(-10)} 09:00`, status: 'klar',
+  });
+  kor('UPDATE checklistkorning SET avslutad=? WHERE id=?', `${dag(-10)} 09:20`, k);
+
+  const d = await ok('GET', '/api/kontroll/objekt?slag=utrustning&id=1');
+  const r = d.kontroller.alla.find((x) => x.mall_id === mall);
+  assert.equal(r.intervalltyp, 'dagar');
+  assert.equal(r.senast_datum, dag(20), 'förfaller 30 dagar efter senast utförd');
+  assert.equal(r.dagar_kvar, 20);
+  // Fönstret är fristen efter förfallodagen: 30 + 14 − 10 gångna dagar.
+  assert.equal(r.inom_dagar, 34);
+  assert.equal(r.forsenad, false);
+});
+
+test('ett dagschema som passerat förfallodagen är försenat', async () => {
+  const { spara, kor } = db;
+  const mall = spara('checklistmall', {
+    namn: 'Kvartalskontroll', intervall: 'sasong', omfattning: 'utrustningstyp',
+    utrustningstyp: 'lift', aktiv: 1, intervalltyp: 'dagar', intervall_dagar: 90,
+  });
+  spara('checklistpunkt', { mall_id: mall, text: 'Växellådsolja', svarstyp: 'bock', obligatorisk: 1 });
+  const k = spara('checklistkorning', {
+    mall_id: mall, utrustning_id: 1, av_id: 1, startad: `${dag(-100)} 09:00`, status: 'klar',
+  });
+  kor('UPDATE checklistkorning SET avslutad=? WHERE id=?', `${dag(-100)} 09:20`, k);
+
+  const d = await ok('GET', '/api/kontroll/objekt?slag=utrustning&id=1');
+  const r = d.kontroller.forsenade.find((x) => x.mall_id === mall);
+  assert.ok(r, 'ska ligga bland de försenade');
+  assert.equal(r.forsenad_dagar, 10);
+  assert.equal(r.dagar_kvar, null, 'en försenad kontroll har inga dagar kvar');
+});
+
+test('ett timschema räknar från timmarna vid senaste körningen, inte från noll', async () => {
+  const { spara, uppdatera } = db;
+  uppdatera('utrustning', 1, { drifttimmar: 7400 });
+  const mall = spara('checklistmall', {
+    namn: 'Linklämmorflytt', intervall: 'sasong', omfattning: 'utrustningstyp',
+    utrustningstyp: 'lift', aktiv: 1, intervalltyp: 'drifttimmar', intervall_timmar: 50,
+    start_timmar: 7400,
+  });
+  spara('checklistpunkt', { mall_id: mall, text: 'Klämmorna flyttade', svarstyp: 'bock', obligatorisk: 1 });
+
+  // Räkningen utgår från startställningen Jonas skrivit in, inte från
+  // noll – en gammal lift ska inte vara sjutusen timmar försenad bara
+  // för att kontrollen aldrig bokförts.
+  let d = await ok('GET', '/api/kontroll/objekt?slag=utrustning&id=1');
+  let r = d.kontroller.alla.find((x) => x.mall_id === mall);
+  assert.equal(r.tidigast_timmar, 7450);
+  assert.equal(r.timmar_kvar, 50);
+  assert.equal(r.forsenad, false);
+
+  // Maskinen går vidare förbi gränsen.
+  uppdatera('utrustning', 1, { drifttimmar: 7470 });
+  d = await ok('GET', '/api/kontroll/objekt?slag=utrustning&id=1');
+  r = d.kontroller.forsenade.find((x) => x.mall_id === mall);
+  assert.ok(r, 'över sina timmar är försenad');
+  assert.equal(r.timmar_kvar, -20);
+});
+
+test('det Jonas ändrar i mallen syns i både ronden och kontrollvyn', async () => {
+  const mallar = await ok('GET', '/api/checklistor/mallar');
+  const m = mallar.find((x) => x.namn === 'Lift – före öppning');
+
+  await ok('PUT', `/api/checklistor/mallar/${m.id}`, {
+    namn: 'Lift – före öppning',
+    intervalltyp: 'dagar',
+    intervall_dagar: 7,
+    fonster_dagar: 3,
+    punkter: [
+      ...m.punkter.map((p) => ({ ...p })),
+      { text: 'Backvarnaren hörs från toppen', svarstyp: 'bock', obligatorisk: true, sakerhetskritisk: true },
+    ],
+  });
+
+  // Ronden hämtar sina punkter ur mallistan.
+  const efter = (await ok('GET', '/api/checklistor/mallar')).find((x) => x.id === m.id);
+  assert.equal(efter.punkter.length, m.punkter.length + 1);
+  assert.equal(efter.punkter.at(-1).sakerhetskritisk, 1);
+  assert.equal(efter.intervall_dagar, 7);
+
+  // Och kontrollvyn räknar på det nya schemat.
+  const d = await ok('GET', '/api/kontroll/objekt?slag=utrustning&id=1');
+  const r = d.kontroller.alla.find((x) => x.mall_id === m.id);
+  assert.equal(r.intervalltyp, 'dagar');
+  assert.equal(r.antal_punkter, m.punkter.length + 1);
+});
+
+test('en mall utan antal avvisas när schemat kräver ett', async () => {
+  const r = await anrop('POST', '/api/checklistor/mallar', {
+    namn: 'Trasig', omfattning: 'allmant', intervalltyp: 'dagar',
+    punkter: [{ text: 'Något', svarstyp: 'bock' }],
+  });
+  assert.equal(r.status, 400);
+});
+
+test('ett timschema utan nollpunkt är inte igång, och räknar inte ned', async () => {
+  const { spara } = db;
+  const mall = spara('checklistmall', {
+    namn: 'Växelolja', intervall: 'sasong', omfattning: 'utrustningstyp',
+    utrustningstyp: 'lift', aktiv: 1, intervalltyp: 'drifttimmar', intervall_timmar: 500,
+  });
+  spara('checklistpunkt', { mall_id: mall, text: 'Olja bytt', svarstyp: 'bock', obligatorisk: 1 });
+
+  const d = await ok('GET', '/api/kontroll/objekt?slag=utrustning&id=1');
+  const r = d.kontroller.alla.find((x) => x.mall_id === mall);
+  assert.equal(r.tidigast_timmar, null, 'utan nollpunkt finns ingen gräns');
+  assert.equal(r.timmar_kvar, null);
+  assert.equal(r.aldrig, true);
+});
+
 test('service registreras och kvitteras i ett anrop, och flyttar mätarställningen', async () => {
   const svar = await ok('POST', '/api/kontroll/service', {
     utrustning_id: 1,
     namn: 'Bytt lager i topphjulet',
-    drifttimmar: 7460,
+    drifttimmar: 7600,
     arbetstimmar: 3,
     kostnad_ore: 450000,
     anteckning: 'SKF 6210',
@@ -129,7 +249,7 @@ test('service registreras och kvitteras i ett anrop, och flyttar mätarställnin
   assert.equal(svar.atgard.utford_av_id, 1);
 
   const u = db.en('SELECT drifttimmar FROM utrustning WHERE id=1');
-  assert.equal(u.drifttimmar, 7460);
+  assert.equal(u.drifttimmar, 7600);
 
   // Och den syns i maskinens historik, bredvid kontrollerna.
   const d = await ok('GET', '/api/kontroll/objekt?slag=utrustning&id=1');
@@ -142,7 +262,7 @@ test('en felskriven mätarställning kan inte backa maskinens timmar', async () 
   await ok('POST', '/api/kontroll/service', {
     utrustning_id: 1, namn: 'Smörjning', drifttimmar: 46,
   });
-  assert.equal(db.en('SELECT drifttimmar FROM utrustning WHERE id=1').drifttimmar, 7460);
+  assert.equal(db.en('SELECT drifttimmar FROM utrustning WHERE id=1').drifttimmar, 7600);
 });
 
 test('en vanlig medlem får inte registrera service', async () => {
@@ -153,10 +273,10 @@ test('en vanlig medlem får inte registrera service', async () => {
 
 test('påfyllning får medlemmen göra – annars blir den inte gjord alls', async () => {
   const r = await anrop('POST', '/api/pafyllningar', {
-    utrustning_id: 1, vatsketyp: 'diesel', mangd: 40, matarstallning: 7500,
+    utrustning_id: 1, vatsketyp: 'diesel', mangd: 40, matarstallning: 7700,
   });
   assert.equal(r.status, 201);
-  assert.equal(db.en('SELECT drifttimmar FROM utrustning WHERE id=1').drifttimmar, 7500);
+  assert.equal(db.en('SELECT drifttimmar FROM utrustning WHERE id=1').drifttimmar, 7700);
 });
 
 test('dokumentgrenarna svarar även när de är tomma', async () => {

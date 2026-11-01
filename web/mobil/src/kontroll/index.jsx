@@ -20,8 +20,7 @@ import {
   Pafyllning, Ronder,
 } from './vyer.jsx';
 import {
-  Aktivitet, AllaAvvikelser, Avvikelse, Avvikelser, Besiktningar, Enhet, EnhetNy,
-  Enhetsdokument, Vatskor,
+  Aktivitet, AllaAvvikelser, Avvikelse, Avvikelser, Besiktningar, Enhet, Enhetsdokument, Vatskor,
 } from './enhet.jsx';
 import { Kontrollval } from './kontrollval.jsx';
 import { NyAvvikelse } from './nyavvikelse.jsx';
@@ -37,8 +36,8 @@ const TITLAR = {
   avvikelser: 'Avvikelser', enheter: 'Enheter', ronder: 'Ronder', dokument: 'Dokument',
   incidenter: 'Incidenter', genvagar: 'Genvägar', dokumentlista: 'Dokument',
   dokumentstallen: 'Arbetsställen',
-  kontrollval: 'Kontroller', vatskor: 'Vätsketyper', besiktningar: 'Besiktningar',
-  enhetsavvikelser: 'Avvikelser', enhetny: 'Ny',
+  kontrollval: 'Checklistor', vatskor: 'Vätsketyper', besiktningar: 'Besiktningar',
+  enhetsavvikelser: 'Avvikelser',
   aktivitet: 'Aktivitet', enhetsdokument: 'Dokument', pafyllning: 'Påfyllning',
   nyavvikelse: 'Ny avvikelse', incident: 'Incident', service: 'Service', korning: 'Kontroll',
   avvikelse: null, enhet: null, rondobjekt: null,
@@ -49,7 +48,6 @@ const VYER = {
   ronder: Ronder,
   enhet: Enhet,
   rondobjekt: Enhet,
-  enhetny: EnhetNy,
   avvikelser: AllaAvvikelser,
   enhetsavvikelser: Avvikelser,
   avvikelse: Avvikelse,

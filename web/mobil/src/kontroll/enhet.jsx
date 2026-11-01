@@ -53,6 +53,7 @@ export function Enhet({ vy, ga }) {
   const { objekt, stalle } = vy;
   const slag = objekt.slag || 'utrustning';
   const [mer, sattMer] = useState(false);
+  const [nyOppen, sattNyOppen] = useState(false);
   const [oppna, sattOppna] = useState(null);
   const d = useHamta(() => hamtaObjekt(slag, objekt.id), [slag, objekt.id]);
   if (d.laddar && !d.data) return <Vanta />;
@@ -88,7 +89,7 @@ export function Enhet({ vy, ga }) {
   return (
     <>
       <div className="kv-knapprad">
-        <button className="kv-pill" onClick={vidare('enhetny')}>
+        <button className="kv-pill" onClick={() => sattNyOppen(true)}>
           <Ikon namn="plus" storlek={24} /> Ny
         </button>
         <button className="kv-pill" onClick={() => sattMer(true)}>
@@ -170,6 +171,29 @@ export function Enhet({ vy, ga }) {
           </div>
         )}
 
+      {/* "+ Ny" på en enhet är ett ark, inte en sida: enheten är redan
+          vald, och att pusha en sida för fyra val hade lagt till ett steg
+          som förlagan inte har. */}
+      {nyOppen && (
+        <div className="kv-ark-bak" onMouseDown={(e) => e.target === e.currentTarget && sattNyOppen(false)}>
+          <div className="kv-ark" role="dialog" aria-label="Ny registrering">
+            {[
+              ['kontrollval', 'Kontroll', 'kontroll'],
+              ['nyavvikelse', 'Avvikelse', 'nyckel'],
+              ...(slag === 'utrustning'
+                ? [['pafyllning', 'Påfyllning', 'vatska'], ['service', 'Service', 'service']]
+                : []),
+            ].map(([v, namn, ikon]) => (
+              <button key={v} onClick={() => (sattNyOppen(false), vidare(v)())}>
+                <Ikon namn={ikon} storlek={22} /> {namn}
+              </button>
+            ))}
+            <div className="skilj" />
+            <button onClick={() => sattNyOppen(false)}>Avbryt</button>
+          </div>
+        </div>
+      )}
+
       {mer && (
         <div className="kv-ark-bak" onMouseDown={(e) => e.target === e.currentTarget && sattMer(false)}>
           <div className="kv-ark" role="dialog" aria-label="Mer">
@@ -186,27 +210,6 @@ export function Enhet({ vy, ga }) {
         </div>
       )}
     </>
-  );
-}
-
-/** "+ Ny" på en enhet: samma fyra val, men enheten är redan vald. */
-export function EnhetNy({ vy, ga }) {
-  const val = [
-    ['kontrollval', 'Kontroll', 'kontroll'],
-    ['nyavvikelse', 'Avvikelse', 'nyckel'],
-    ['pafyllning', 'Påfyllning', 'vatska'],
-    ['service', 'Service', 'service'],
-  ];
-  return (
-    <div className="kv-lista">
-      {val.map(([v, namn, ikon]) => (
-        <button key={v} className="rad" onClick={() => ga(v, { objekt: vy.objekt, stalle: vy.stalle })}>
-          <Ikon namn={ikon} storlek={22} />
-          <span className="txt"><strong>{namn}</strong></span>
-          <span aria-hidden="true">›</span>
-        </button>
-      ))}
-    </div>
   );
 }
 

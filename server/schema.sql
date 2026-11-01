@@ -110,6 +110,11 @@ CREATE TABLE IF NOT EXISTS checklistmall (
   utrustningstyp TEXT,
   omrade_id   INTEGER REFERENCES omrade(id) ON DELETE SET NULL,
   intervall   TEXT NOT NULL DEFAULT 'per_pass',   -- vid_start | per_pass | dagligen | veckovis | sasong
+  -- Schema vid sidan av rytmen, för det tillverkaren skriver i manualen.
+  intervalltyp TEXT NOT NULL DEFAULT 'handelse',   -- handelse | dagar | drifttimmar
+  intervall_dagar INTEGER,
+  intervall_timmar REAL,
+  fonster_dagar INTEGER,                           -- hur länge efter förfall den ändå får göras
   position_nyckel TEXT,                            -- vems rond: backansvarig, fik, uthyrning …
   beskrivning TEXT,
   aktiv       INTEGER NOT NULL DEFAULT 1,

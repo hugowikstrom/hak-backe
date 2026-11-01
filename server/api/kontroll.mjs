@@ -128,47 +128,124 @@ const perDag = (rader) => {
 };
 
 /**
- * Kontrolltyperna som gäller för ett objekt, delade i försenade och
- * kommande. Delningen är hela poängen med vyn: den som står vid liften
- * vill veta vad som skulle ha gjorts, inte läsa en lista med allt.
+ * Kontrolltyperna för ett objekt, delade i försenade och kommande.
  *
- * Försenad räknas från när den senast gjordes plus intervallet – inte
- * från periodens början. En daglig kontroll som gjordes i går är inte
- * försenad en dag bara för att dygnet bytts.
+ * Tre sorters schema, och de svarar på olika frågor:
+ *
+ *   handelse     rytmen i backen – vid start, varje pass, dagligen.
+ *                Förfaller när perioden gått utan att den gjorts.
+ *   dagar        N dagar efter senast utförd. Det tillverkaren skriver.
+ *   drifttimmar  N timmar efter mätarställningen vid senaste. Den som
+ *                står still förfaller inte.
+ *
+ * Fönstret är skillnaden mellan *utför om* och *utför inom*: dagarna
+ * kvar till förfallodagen, och dagarna kvar tills den räknas som missad.
+ * En kontroll utan fönster förfaller på dagen.
  */
 export function kontrolltyper({ slag, id }) {
   const nu = idag();
+  const u = slag === 'utrustning' ? en('SELECT drifttimmar FROM utrustning WHERE id=?', id) : null;
+  const timmarNu = u?.drifttimmar ?? null;
+
+  const kol = { utrustning: 'utrustning_id', omrade: 'omrade_id', snoplats: 'snoplats_id' }[slag];
+
+  /**
+   * Senaste avslutade körningen, utan tidsgräns.
+   *
+   * `lage()` tittar bara 21 dagar bakåt – lagom för frågan "vad ska
+   * göras i dag", men obrukbart för ett schema på 90 dagar eller 500
+   * drifttimmar. Den som gjorde kvartalskontrollen för hundra dagar
+   * sedan hade annars sett "Ingen gjord" och förlorat sin nollpunkt.
+   */
+  const senasteFor = (mall_id) =>
+    en(
+      `SELECT avslutad, timmar FROM checklistkorning
+        WHERE mall_id=? AND ${kol}=? AND status LIKE 'klar%' AND avslutad IS NOT NULL
+        ORDER BY avslutad DESC LIMIT 1`,
+      mall_id, id
+    );
+
   const rader = [];
   for (const m of lage().mallar) {
-    const o = (m.objekt || []).find(
-      (x) => x.slag === slag && (x.id ?? null) === (id ?? null)
-    );
+    const o = (m.objekt || []).find((x) => x.slag === slag && (x.id ?? null) === (id ?? null));
     if (!o) continue;
-    const dagar = INTERVALLDAGAR[m.intervall] ?? null;
-    const nasta = o.senast && dagar ? plusDagar(String(o.senast).slice(0, 10), dagar) : null;
-    const over = nasta ? dagarMellan(nasta, nu) : null;
-    rader.push({
+    const gjord = senasteFor(m.mall_id);
+    if (gjord && !o.senast) o.senast = gjord.avslutad;
+
+    const mall = en(
+      `SELECT intervalltyp, intervall_dagar, intervall_timmar, fonster_dagar, start_timmar
+         FROM checklistmall WHERE id=?`,
+      m.mall_id
+    ) || {};
+    const senast = o.senast ? String(o.senast).slice(0, 10) : null;
+    const rad = {
       mall_id: m.mall_id,
       namn: m.namn,
       intervall: m.intervall,
+      intervalltyp: mall.intervalltyp || 'handelse',
       intervalltext: INTERVALLTEXT[m.intervall] || m.intervall,
       antal_punkter: m.antal_punkter,
       objekt: o,
       senast: o.senast,
       senast_av: o.senast_av,
       schemalagd: m.schemalagd,
-      behovs: o.behovs,
-      // Aldrig utförd väger tyngre än försenad: den har ingen historik alls.
       aldrig: !o.senast,
-      forsenad_dagar: over != null && over > 0 ? over : null,
-      nasta,
-      dagar_kvar: over != null && over <= 0 ? -over : null,
-    });
+      // Fylls i nedan av det schema som gäller.
+      forsenad_dagar: null,
+      dagar_kvar: null,
+      inom_dagar: null,
+      senast_datum: null,
+      timmar_kvar: null,
+      tidigast_timmar: null,
+    };
+
+    if (rad.intervalltyp === 'drifttimmar' && mall.intervall_timmar) {
+      // Nollpunkten är timmarna vid senaste körningen, annars den
+      // startställning som skrivits in på mallen. Saknas båda är
+      // kontrollen inte igång: då visas "Ingen gjord" och ingen
+      // nedräkning. Maskinens timmar i dag duger inte som nollpunkt –
+      // de rör sig, och en gräns som flyttar med mätaren nås aldrig.
+      const start = gjord?.timmar ?? mall.start_timmar ?? null;
+      if (start != null) {
+        rad.tidigast_timmar = start + mall.intervall_timmar;
+        if (timmarNu != null) rad.timmar_kvar = Math.round(rad.tidigast_timmar - timmarNu);
+      }
+    } else if (rad.intervalltyp === 'dagar' && mall.intervall_dagar) {
+      if (senast) {
+        rad.senast_datum = plusDagar(senast, mall.intervall_dagar);
+        const over = dagarMellan(rad.senast_datum, nu);
+        if (over > 0) rad.forsenad_dagar = over;
+        else rad.dagar_kvar = -over;
+        if (mall.fonster_dagar)
+          rad.inom_dagar = Math.max(0, dagarMellan(nu, plusDagar(rad.senast_datum, mall.fonster_dagar)));
+      }
+    } else {
+      // Händelsestyrd: samma räkning som förr.
+      const dagar = INTERVALLDAGAR[m.intervall] ?? null;
+      if (senast && dagar) {
+        rad.senast_datum = plusDagar(senast, dagar);
+        const over = dagarMellan(rad.senast_datum, nu);
+        if (over > 0) rad.forsenad_dagar = over;
+        else rad.dagar_kvar = -over;
+      }
+      rad.behovs = o.behovs;
+    }
+
+    // Försenad är tre olika saker, och alla tre stoppar: aldrig utförd,
+    // över sin förfallodag, eller över sina drifttimmar.
+    rad.forsenad =
+      Boolean(rad.forsenad_dagar) ||
+      (rad.timmar_kvar != null && rad.timmar_kvar <= 0) ||
+      (rad.intervalltyp === 'handelse' && o.behovs) ||
+      (rad.aldrig && rad.intervalltyp !== 'drifttimmar' && m.schemalagd);
+    rader.push(rad);
   }
-  const forsenade = rader.filter((r) => r.behovs || r.aldrig || r.forsenad_dagar);
+
+  const forsenade = rader.filter((r) => r.forsenad);
+  const tyngd = (r) => r.forsenad_dagar ?? (r.timmar_kvar != null ? -r.timmar_kvar : 0);
   return {
-    forsenade: forsenade.sort((a, b) => (b.forsenad_dagar || 0) - (a.forsenad_dagar || 0)),
-    kommande: rader.filter((r) => !forsenade.includes(r)),
+    forsenade: forsenade.sort((a, b) => tyngd(b) - tyngd(a)),
+    kommande: rader.filter((r) => !r.forsenad),
     alla: rader,
   };
 }

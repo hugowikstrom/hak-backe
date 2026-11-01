@@ -1,20 +1,31 @@
-// "Välj typ av kontroll" – fjärde nivån, och den som faktiskt startar en rond.
+// "Välj typ av kontroll" – och den som faktiskt startar en rond.
 //
-// Två lägen, som i förlagan: *Enstaka* startar en kontroll direkt,
-// *Utför flera* låter en kryssa i flera och köra dem efter varandra.
-// Listan delas i Försenade och Kommande, och försenade sorteras på hur
-// länge de varit försenade. Den som har en lift som inte besiktats på
-// 600 dagar ska se det högst upp, inte leta efter det.
+// Två lägen, som i förlagan: *Enstaka* startar en, *Utför flera* låter
+// en kryssa i flera och köra dem efter varandra. Listan delas i
+// Försenade och Kommande.
+//
+// Fotraden under varje namn är hela poängen med skärmen, och den säger
+// olika saker beroende på vad som styr kontrollen:
+//
+//   försenad      "Utför om: 236 dagar försenad"  (rött)
+//   dagschema     "Utförs senast 30 juli 2027"
+//                 "Utför om: 181 dagar"            (grönt)
+//                 "Utför inom: 271 dagar"          (grönt)
+//   timschema     "Utförs tidigast vid 5629 h"
+//   aldrig gjord  "Senast utförd: Ingen gjord"
+//
+// En kontroll vars tid inte är inne går inte att starta. Kortet är grått
+// och saknar pil – det är så förlagan säger nej, utan att skriva det.
 import { useState } from 'react';
 import { api } from '../api.js';
 import { useRuta } from '../app.jsx';
 import { nyRond, synka } from '../ko.js';
 import { useHamta, useNotis, Vanta } from '../delar.jsx';
 import { Ikon } from './skal.jsx';
+import { useFavoriter } from './favoriter.js';
 
 const data = (d) => d.data?.data || d.data || {};
 
-/** Hur ronden ska startas beror på vad den gäller. */
 const startaRond = (mall, objekt, slag) =>
   nyRond({
     mall,
@@ -23,29 +34,43 @@ const startaRond = (mall, objekt, slag) =>
     snoplats: slag === 'snoplats' ? objekt : null,
   });
 
-const forfallotext = (k) => {
-  if (k.aldrig) return 'Aldrig utförd';
-  if (k.forsenad_dagar) return `Försenad ${k.forsenad_dagar} dagar`;
-  if (k.behovs) return `Ska göras ${k.intervalltext.toLowerCase()}`;
-  if (k.dagar_kvar === 0) return 'Utför i dag';
-  if (k.dagar_kvar != null) return `Utför om ${k.dagar_kvar} dagar`;
-  return k.intervalltext;
-};
+const datum = (d) =>
+  d ? new Date(`${d}T12:00`).toLocaleDateString('sv-SE', { day: 'numeric', month: 'long', year: 'numeric' }) : '';
+
+/** Raderna under namnet. Tom lista betyder att kortet inte har någon fot. */
+function fotrader(k) {
+  if (k.forsenad_dagar) return [['Utför om:', `${k.forsenad_dagar} dagar försenad`, 'sen']];
+  if (k.timmar_kvar != null && k.timmar_kvar > 0)
+    return [['Utförs tidigast vid', `${Math.round(k.tidigast_timmar)} h`, '']];
+  if (k.timmar_kvar != null && k.timmar_kvar <= 0)
+    return [['Utför om:', `${-k.timmar_kvar} drifttimmar försenad`, 'sen']];
+  if (k.aldrig) return [['Senast utförd:', 'Ingen gjord', '']];
+  const ut = [];
+  if (k.senast_datum) ut.push(['Utförs senast', datum(k.senast_datum), '']);
+  if (k.dagar_kvar != null) ut.push(['Utför om:', `${k.dagar_kvar} dagar`, 'kvar']);
+  if (k.inom_dagar != null) ut.push(['Utför inom:', `${k.inom_dagar} dagar`, 'kvar']);
+  return ut;
+}
+
+/** Går kontrollen att starta nu? */
+const startbar = (k) => !(k.timmar_kvar != null && k.timmar_kvar > 0);
 
 export function Kontrollval({ vy, ga }) {
   const { ga: gaApp } = useRuta();
   const notis = useNotis();
   const [lage, sattLage] = useState(null);
   const [valda, sattValda] = useState([]);
+  const [favorit, vaxlaFavorit] = useFavoriter('mall');
   const slag = vy.objekt.slag || 'utrustning';
   const d = useHamta(() => api.hamta(`/api/kontroll/objekt?slag=${slag}&id=${vy.objekt.id}`), [vy.objekt.id]);
   const m = useHamta(() => api.hamta('/api/checklistor/mallar'));
 
   if (d.laddar && !d.data) return <Vanta />;
-  const k = data(d).kontroller || { forsenade: [], kommande: [], alla: [] };
+  const i = data(d);
+  const k = i.kontroller || { forsenade: [], kommande: [], alla: [] };
   const mallar = m.data?.data || m.data || [];
 
-  const starta = async (rad) => {
+  const starta = (rad) => {
     const mall = mallar.find((x) => x.id === rad.mall_id);
     if (!mall) return notis('Checklistan gick inte att hämta – prova igen när telefonen har täckning.', 'fel');
     const rond = startaRond(mall, vy.objekt, slag);
@@ -53,11 +78,8 @@ export function Kontrollval({ vy, ga }) {
     gaApp('rond', { lokalId: rond.lokalId });
   };
 
-  // Utför flera: ronderna köas, och den första öppnas. Resten ligger
-  // kvar som påbörjade och nås från Pågående – samma väg som förlagan.
-  const startaFlera = async () => {
+  const startaFlera = () => {
     const rader = k.alla.filter((r) => valda.includes(r.mall_id));
-    if (!rader.length) return;
     let forsta = null;
     for (const rad of rader) {
       const mall = mallar.find((x) => x.id === rad.mall_id);
@@ -74,15 +96,18 @@ export function Kontrollval({ vy, ga }) {
   if (!lage)
     return (
       <>
-        <p className="kv-ledtext">Välj typ av kontroll</p>
+        <h1 className="kv-sidtitel">Välj typ av kontroll</h1>
+        <p className="kv-underrad">
+          {[i.arbetsstalle?.namn, vy.objekt.namn].filter(Boolean).join(' / ')} <span className="prick" />
+        </p>
         <div className="kv-lista">
           <button className="rad" onClick={() => sattLage('enstaka')}>
-            <Ikon namn="kontroll" storlek={20} />
+            <Ikon namn="kontroll" storlek={22} />
             <span className="txt"><strong>Enstaka</strong><small>Starta en kontroll</small></span>
             <span aria-hidden="true">›</span>
           </button>
           <button className="rad" onClick={() => sattLage('flera')}>
-            <Ikon namn="lista" storlek={20} />
+            <Ikon namn="lista" storlek={22} />
             <span className="txt"><strong>Utför flera</strong><small>Kryssa i och kör efter varandra</small></span>
             <span aria-hidden="true">›</span>
           </button>
@@ -90,49 +115,92 @@ export function Kontrollval({ vy, ga }) {
       </>
     );
 
-  const grupp = (rubrik, rader) =>
-    rader.length ? (
-      <section key={rubrik}>
-        <h2 className="kv-rubrik">{rubrik}</h2>
-        <div className="kv-lista">
-          {rader.map((r) => (
-            <div key={r.mall_id} className={`rad${lage === 'flera' ? ' kryss' : ''}`}>
-              {lage === 'flera' && (
-                <input type="checkbox" checked={valda.includes(r.mall_id)}
-                  onChange={(e) =>
-                    sattValda((v) => (e.target.checked ? [...v, r.mall_id] : v.filter((x) => x !== r.mall_id)))
-                  }
-                  aria-label={r.namn} />
-              )}
-              <span className="txt">
-                <strong>{r.namn}</strong>
-                <small>
-                  {forfallotext(r)} · {r.antal_punkter} punkter
-                  {r.senast ? ` · senast ${String(r.senast).slice(0, 10)}${r.senast_av ? ` av ${r.senast_av}` : ''}` : ''}
-                </small>
-              </span>
-              {lage === 'enstaka' && (
-                <button className="kv-starta" onClick={() => starta(r)}>Starta</button>
-              )}
-            </div>
-          ))}
+  const kort = (r) => {
+    const rader = fotrader(r);
+    const kanStarta = startbar(r);
+    return (
+      <article key={r.mall_id} className={`kv-kontrollkort${kanStarta ? '' : ' vilande'}`}>
+        <div className="topp">
+          <span className="markera">
+            {lage === 'flera' ? (
+              <input
+                type="checkbox"
+                checked={valda.includes(r.mall_id)}
+                disabled={!kanStarta}
+                aria-label={r.namn}
+                onChange={(e) =>
+                  sattValda((v) => (e.target.checked ? [...v, r.mall_id] : v.filter((x) => x !== r.mall_id)))
+                }
+              />
+            ) : (
+              <button
+                className={`stjarna${favorit(r.mall_id) ? ' pa' : ''}`}
+                aria-pressed={favorit(r.mall_id)}
+                aria-label={`Favorit: ${r.namn}`}
+                onClick={() => vaxlaFavorit(r.mall_id)}
+              >
+                <Ikon namn="stjarna" storlek={24} />
+              </button>
+            )}
+          </span>
+          <span className="namn">{r.namn}</span>
+          {lage === 'enstaka' && kanStarta && (
+            <button className="pil" onClick={() => starta(r)} aria-label={`Starta ${r.namn}`}>»</button>
+          )}
         </div>
-      </section>
-    ) : null;
+        {!!rader.length && (
+          <div className="fot">
+            {rader.map(([e, v, f]) => (
+              <p key={e}>
+                {e} <span className={f}>{v}</span>
+              </p>
+            ))}
+          </div>
+        )}
+      </article>
+    );
+  };
+
+  const stjarnforst = (a, b) => Number(favorit(b.mall_id)) - Number(favorit(a.mall_id));
 
   return (
     <>
+      <h1 className="kv-sidtitel">Välj typ av kontroll</h1>
+      <p className="kv-underrad">
+        {[i.arbetsstalle?.namn, vy.objekt.namn].filter(Boolean).join(' / ')} <span className="prick" />
+      </p>
+
       <div className="kv-segment">
         <button aria-pressed={lage === 'enstaka'} onClick={() => sattLage('enstaka')}>Enstaka</button>
         <button aria-pressed={lage === 'flera'} onClick={() => sattLage('flera')}>Utför flera</button>
       </div>
-      {grupp('Försenade', k.forsenade)}
-      {grupp('Kommande', k.kommande)}
+
+      {lage === 'flera' && (
+        <p className="kv-vadardetta">
+          <button onClick={() => notis('Kryssa i flera kontroller och starta dem efter varandra. Du gör en i taget, men slipper gå tillbaka hit mellan varje.')}>
+            Vad är detta? <span className="fraga">?</span>
+          </button>
+        </p>
+      )}
+
+      {!!k.forsenade.length && (
+        <section>
+          <h2 className="kv-avdelning latt">Försenade</h2>
+          {[...k.forsenade].sort(stjarnforst).map(kort)}
+        </section>
+      )}
+      {!!k.kommande.length && (
+        <section>
+          <h2 className="kv-avdelning latt">Kommande</h2>
+          {[...k.kommande].sort(stjarnforst).map(kort)}
+        </section>
+      )}
       {!k.alla.length && (
         <p className="svag" style={{ textAlign: 'center', marginTop: 36 }}>
           Ingen checklista gäller den här enheten ännu.
         </p>
       )}
+
       {lage === 'flera' && (
         <div className="kv-nasta">
           <button disabled={!valda.length} onClick={startaFlera}>

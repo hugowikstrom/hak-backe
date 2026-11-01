@@ -13,6 +13,31 @@ import { aktivSasong, omradeslista, utrustningslista } from './register.mjs';
 import { idag } from '../tid.mjs';
 
 const INTERVALL = ['vid_start', 'per_pass', 'dagligen', 'veckovis', 'sasong'];
+const INTERVALLTYP = ['handelse', 'dagar', 'drifttimmar'];
+
+/**
+ * Schemat, läst ur det klienten skickar.
+ *
+ * Fälten som inte hör till den valda typen nollas. En mall som växlar
+ * från dagar till drifttimmar ska inte bära kvar ett dagintervall som
+ * ingen ser men som räkningen hittar.
+ */
+const schema = (kropp) => {
+  const typ = ettAv(kropp.intervalltyp, INTERVALLTYP, 'Intervalltyp') || 'handelse';
+  const dagar = typ === 'dagar' ? heltal(kropp.intervall_dagar) : null;
+  const timmar = typ === 'drifttimmar' ? num(kropp.intervall_timmar) : null;
+  if (typ === 'dagar' && !(dagar > 0)) throw fel(400, 'Ange hur många dagar mellan kontrollerna');
+  if (typ === 'drifttimmar' && !(timmar > 0)) throw fel(400, 'Ange hur många drifttimmar mellan kontrollerna');
+  return {
+    intervalltyp: typ,
+    intervall_dagar: dagar,
+    intervall_timmar: timmar,
+    // Fönstret hör bara till dagschemat: timmar har ingen kalender att
+    // ge frist i.
+    fonster_dagar: typ === 'dagar' ? heltal(kropp.fonster_dagar) : null,
+    start_timmar: typ === 'drifttimmar' ? num(kropp.start_timmar) : null,
+  };
+};
 const OMFATTNING = ['utrustningstyp', 'snoplats', 'omrade', 'allmant'];
 
 export const mallMedPunkter = (id) => {
@@ -131,6 +156,7 @@ export const rutter = [
       utrustningstyp: txt(kropp.utrustningstyp, 40),
       omrade_id: heltal(kropp.omrade_id),
       intervall: ettAv(kropp.intervall, INTERVALL, 'Intervall') || 'per_pass',
+      ...schema(kropp),
       beskrivning: txt(kropp.beskrivning),
       ordning: heltal(kropp.ordning, 0),
     });
@@ -164,6 +190,7 @@ export const rutter = [
         utrustningstyp: kropp.utrustningstyp === undefined ? undefined : txt(kropp.utrustningstyp, 40),
         omrade_id: kropp.omrade_id === undefined ? undefined : heltal(kropp.omrade_id),
         intervall: ettAv(kropp.intervall, INTERVALL, 'Intervall'),
+        ...(kropp.intervalltyp === undefined ? {} : schema(kropp)),
         beskrivning: kropp.beskrivning === undefined ? undefined : txt(kropp.beskrivning),
         aktiv: bool(kropp.aktiv),
         ordning: kropp.ordning === undefined ? undefined : heltal(kropp.ordning, 0),
@@ -362,9 +389,16 @@ export const rutter = [
     if (saknas.length && !txt(kropp.motivering))
       throw fel(400, 'Ange varför ronden avslutas med obesvarade obligatoriska punkter');
 
+    // Drifttimmarna vid avslut. De schemalagda timkontrollerna räknar
+    // från den här siffran, inte från maskinens timmar i dag.
+    const timmar = k.utrustning_id
+      ? en('SELECT drifttimmar FROM utrustning WHERE id=?', k.utrustning_id)?.drifttimmar ?? null
+      : null;
+
     uppdatera('checklistkorning', k.id, {
       status: saknas.length ? 'klar_med_brist' : 'klar',
       avslutad: new Date().toISOString().slice(0, 19).replace('T', ' '),
+      timmar,
       anteckning: kropp.anteckning === undefined ? undefined : txt(kropp.anteckning),
       brister: saknas.length
         ? JSON.stringify(saknas.map((p) => ({ punkt_id: p.id, text: p.text })))

@@ -401,6 +401,39 @@ att lösa upp, ärvde appens textfärg i stället, och blev i mörkt läge
 nästan vit text på ett ljust ark. Det såg ut som att knappen inte gjorde
 någonting.
 
+### Schemat: tre sorter, och nollpunkten
+
+En checklista har två oberoende egenskaper. **Rytmen** (`intervall`)
+säger när i backens dygn den hör hemma – vid start, varje pass,
+dagligen. **Schemat** (`intervalltyp`) säger hur ofta den förfaller, och
+det är det tillverkaren skriver i manualen:
+
+| typ | räknar | visar |
+| --- | --- | --- |
+| `handelse` | perioden i rytmen | som förr |
+| `dagar` | `intervall_dagar` efter senast utförd | *Utförs senast* · *Utför om* · *Utför inom* |
+| `drifttimmar` | `intervall_timmar` efter mätaren vid senaste | *Utförs tidigast vid N h* |
+
+`fonster_dagar` är fristen efter förfallodagen, och är hela skillnaden
+mellan *utför om* och *utför inom*. Utan fönster förfaller kontrollen på
+dagen.
+
+`start_timmar` är nollpunkten för ett timschema innan det gjorts en
+första gång. Den behövs: maskinens timmar **i dag** duger inte som
+nollpunkt, för de rör sig, och en gräns som flyttar med mätaren nås
+aldrig. Noll duger inte heller – då är varje gammal lift sjutusen timmar
+försenad vid uppstart. Saknas nollpunkt står kontrollen som *ingen
+gjord* utan nedräkning, vilket är sant.
+
+Körningen sparar `checklistkorning.timmar` vid avslut. Det är den
+siffran nästa timintervall räknar från, inte maskinens timmar i dag.
+
+`kontrolltyper()` slår upp senaste körningen **utan tidsgräns**.
+`lage()` tittar bara 21 dagar bakåt – lagom för frågan "vad ska göras i
+dag", obrukbart för ett schema på 90 dagar. Den som gjorde
+kvartalskontrollen för hundra dagar sedan hade annars sett *Ingen gjord*
+och förlorat sin nollpunkt.
+
 ### Försenat och aktivitet
 
 Två begrepp är vyns egna och räknas i `server/api/kontroll.mjs`:

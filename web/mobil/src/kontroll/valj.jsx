@@ -4,21 +4,24 @@
 // det är vägen klubben kan, och vanan är värd mer än ett klick. Den som
 // vill gå raka vägen når samma ronder från Backis vanliga startsida.
 import { useState } from 'react';
+import { Ikon } from './skal.jsx';
+import { useFavoriter } from './favoriter.js';
 
-export function Valjare({ etikett, platshallare, valt, poster, satt, grupper }) {
+export function Valjare({ etikett, platshallare, valt, poster, satt, grupper, favoritslag }) {
   const [oppen, sattOppen] = useState(false);
   const [sok, sattSok] = useState('');
+  const [favorit, vaxlaFavorit] = useFavoriter(favoritslag || 'enhet');
 
-  const traffar = poster.filter(
-    (p) => !sok || p.namn.toLowerCase().includes(sok.toLowerCase())
-  );
-  // Favoriter först, som i förlagan – men bara när någon är märkt.
-  const indelat = grupper
-    ? [
-        { rubrik: 'Favoriter', rader: traffar.filter((p) => p.favorit) },
-        { rubrik: etikett === 'Rond' ? 'Ronder' : 'Enheter', rader: traffar.filter((p) => !p.favorit) },
-      ].filter((g) => g.rader.length)
-    : [{ rubrik: null, rader: traffar }];
+  const traffar = poster.filter((p) => !sok || p.namn.toLowerCase().includes(sok.toLowerCase()));
+  // Favoriter först, med egen rubrik. Rubriken står kvar även när
+  // gruppen är tom i förlagan – men en tom rubrik säger ingenting, så
+  // den visas bara när den har något under sig.
+  const favoriter = traffar.filter((p) => favorit(p.id ?? p.nyckel));
+  const ovriga = traffar.filter((p) => !favorit(p.id ?? p.nyckel));
+  const indelat = [
+    { rubrik: 'Favoriter', rader: favoriter },
+    { rubrik: grupper ? 'Enheter' : 'Arbetsställen', rader: ovriga },
+  ].filter((g) => g.rader.length);
 
   return (
     <label className="kv-falt">
@@ -35,8 +38,9 @@ export function Valjare({ etikett, platshallare, valt, poster, satt, grupper }) 
         </button>
       )}
       {oppen && !valt && (
-        <div className="kv-lista">
+        <div className="kv-lista rullande">
           <div className="sok">
+            <Ikon namn="sok" storlek={22} />
             <input
               value={sok}
               onChange={(e) => sattSok(e.target.value)}
@@ -45,25 +49,37 @@ export function Valjare({ etikett, platshallare, valt, poster, satt, grupper }) 
             />
           </div>
           {indelat.map((g) => (
-            <div key={g.rubrik || 'alla'}>
-              {g.rubrik && <div className="rubrik">{g.rubrik}</div>}
-              {g.rader.map((p) => (
-                <button
-                  key={p.id ?? p.nyckel}
-                  className="rad"
-                  onClick={() => {
-                    satt(p);
-                    sattOppen(false);
-                    sattSok('');
-                  }}
-                >
-                  {p.aktiv !== false && <span className="prick" />}
-                  <span className="txt">
-                    <strong>{p.namn}</strong>
-                    {p.under && <small>{p.under}</small>}
-                  </span>
-                </button>
-              ))}
+            <div key={g.rubrik}>
+              <div className="rubrik">{g.rubrik}</div>
+              {g.rader.map((p) => {
+                const id = p.id ?? p.nyckel;
+                return (
+                  <div key={id} className="rad stjarnrad">
+                    <button
+                      className="val"
+                      onClick={() => {
+                        satt(p);
+                        sattOppen(false);
+                        sattSok('');
+                      }}
+                    >
+                      {p.aktiv !== false && <span className="prick" />}
+                      <span className="txt">
+                        <strong>{p.namn}</strong>
+                        {p.under && <small>{p.under}</small>}
+                      </span>
+                    </button>
+                    <button
+                      className={`stjarna${favorit(id) ? ' pa' : ''}`}
+                      aria-pressed={favorit(id)}
+                      aria-label={`Favorit: ${p.namn}`}
+                      onClick={() => vaxlaFavorit(id)}
+                    >
+                      <Ikon namn="stjarna" storlek={24} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           ))}
           {!traffar.length && <div className="tomt">Hittade inga objekt.</div>}

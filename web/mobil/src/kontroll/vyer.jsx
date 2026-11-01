@@ -31,6 +31,7 @@ function Trappa({ etikett, slagfilter, vidVal }) {
         platshallare="Välj arbetsställe"
         valt={stalle}
         poster={stallen}
+        favoritslag="stalle"
         satt={(v) => {
           sattStalle(v);
           sattObjekt(null);
@@ -42,6 +43,7 @@ function Trappa({ etikett, slagfilter, vidVal }) {
         valt={objekt}
         poster={stalle ? valbara : []}
         satt={sattObjekt}
+        favoritslag="enhet"
         grupper
       />
       <Nasta pa={Boolean(objekt)} onClick={() => vidVal(stalle, objekt)} />

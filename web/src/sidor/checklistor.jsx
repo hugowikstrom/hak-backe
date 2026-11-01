@@ -470,6 +470,11 @@ function MallLada({ mall, typer, omraden, stang, klar }) {
     utrustningstyp: mall.utrustningstyp || typer[0] || 'lans',
     omrade_id: mall.omrade_id || omraden[0]?.id || '',
     intervall: mall.intervall || 'per_pass',
+    intervalltyp: mall.intervalltyp || 'handelse',
+    intervall_dagar: mall.intervall_dagar ?? '',
+    intervall_timmar: mall.intervall_timmar ?? '',
+    start_timmar: mall.start_timmar ?? '',
+    fonster_dagar: mall.fonster_dagar ?? '',
     beskrivning: mall.beskrivning || '',
     aktiv: mall.aktiv === undefined ? true : !!mall.aktiv,
   });
@@ -490,6 +495,10 @@ function MallLada({ mall, typer, omraden, stang, klar }) {
     const kropp = {
       ...form,
       aktiv: form.aktiv,
+      intervall_dagar: form.intervall_dagar === '' ? null : Number(form.intervall_dagar),
+      intervall_timmar: form.intervall_timmar === '' ? null : Number(form.intervall_timmar),
+      start_timmar: form.start_timmar === '' ? null : Number(form.start_timmar),
+      fonster_dagar: form.fonster_dagar === '' ? null : Number(form.fonster_dagar),
       utrustningstyp: form.omfattning === 'utrustningstyp' ? form.utrustningstyp : null,
       omrade_id: form.omfattning === 'omrade' ? form.omrade_id : null,
       punkter: punkter.filter((p) => p.text?.trim()),
@@ -540,10 +549,53 @@ function MallLada({ mall, typer, omraden, stang, klar }) {
           />
         )}
         <Val
-          etikett="Intervall" varde={form.intervall} satt={satt('intervall')} tomtext={null}
+          etikett="Rytm" varde={form.intervall} satt={satt('intervall')} tomtext={null}
           poster={Object.entries(INTERVALL).map(([v, t]) => ({ varde: v, text: t }))}
         />
       </div>
+
+      {/* Rytmen säger när i dygnet kontrollen hör hemma. Schemat säger
+          hur ofta den förfaller – det som står i tillverkarens manual. */}
+      <div className="faltrad">
+        <Val
+          etikett="Schema" varde={form.intervalltyp} satt={satt('intervalltyp')} tomtext={null}
+          poster={[
+            { varde: 'handelse', text: 'Följer rytmen' },
+            { varde: 'dagar', text: 'Var N:e dag' },
+            { varde: 'drifttimmar', text: 'Var N:e drifttimme' },
+          ]}
+        />
+        {form.intervalltyp === 'dagar' && (
+          <>
+            <Text etikett="Antal dagar" varde={form.intervall_dagar} satt={satt('intervall_dagar')}
+              inputMode="numeric" />
+            <Text etikett="Får göras inom (dagar)" varde={form.fonster_dagar} satt={satt('fonster_dagar')}
+              inputMode="numeric" />
+          </>
+        )}
+        {form.intervalltyp === 'drifttimmar' && (
+          <>
+            <Text etikett="Antal drifttimmar" varde={form.intervall_timmar} satt={satt('intervall_timmar')}
+              inputMode="decimal" />
+            <Text etikett="Räkna från mätarställning" varde={form.start_timmar} satt={satt('start_timmar')}
+              inputMode="decimal" />
+          </>
+        )}
+      </div>
+      {form.intervalltyp === 'drifttimmar' && (
+        <p className="liten svag" style={{ margin: '-6px 0 10px' }}>
+          Nollpunkten. Efter första utförda kontrollen räknas intervallet från maskinens timmar
+          då – men innan dess finns inget att räkna från. Lämnar du fältet tomt står kontrollen
+          som <em>ingen gjord</em> utan nedräkning, i stället för att gissa.
+        </p>
+      )}
+      {form.intervalltyp === 'dagar' && (
+        <p className="liten svag" style={{ margin: '-6px 0 10px' }}>
+          Fönstret är fristen efter förfallodagen. Står det 30 dagars intervall och 14 dagars
+          fönster visas <em>utför om</em> fram till dag 30 och <em>utför inom</em> fram till dag 44.
+          Lämna tomt om den förfaller på dagen.
+        </p>
+      )}
       <Text etikett="Beskrivning" varde={form.beskrivning} satt={satt('beskrivning')} />
       <Ruta etikett="Aktiv" pa={form.aktiv} satt={satt('aktiv')} />
 

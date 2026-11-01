@@ -170,8 +170,31 @@ function migrera(db) {
     ['arende', 'bild', 'TEXT'],
     ['matning', 'snoplats_id', 'INTEGER'],
     ['checklistkorning', 'snoplats_id', 'INTEGER'],
+    // Mätarställningen när kontrollen gjordes. En kontroll som ska göras
+    // var 500:e drifttimme måste veta vilka timmar den senast gjordes
+    // vid – maskinens timmar i dag säger ingenting om det.
+    ['checklistkorning', 'timmar', 'REAL'],
     ['driftpost', 'snoplats_id', 'INTEGER'],
     ['checklistmall', 'platsslag', 'TEXT'],
+    // Schemat. `intervall` säger *när i rytmen* en kontroll hör hemma –
+    // vid start, varje pass, dagligen. Det räcker för en backe som körs
+    // på dygn, men inte för en lift där tillverkaren skriver "var 500:e
+    // drifttimme" eller "senast 30 juli". Därför ett schema vid sidan:
+    //   dagar       – N dagar efter senast utförd
+    //   drifttimmar – N timmar efter mätarställningen vid senaste
+    //   handelse    – som förr, `intervall` bestämmer
+    // `fonster_dagar` är hur länge efter förfallodagen den fortfarande
+    // får göras innan den räknas som missad. Det är skillnaden mellan
+    // "utför om" och "utför inom".
+    ['checklistmall', 'intervalltyp', "TEXT NOT NULL DEFAULT 'handelse'"],
+    ['checklistmall', 'intervall_dagar', 'INTEGER'],
+    ['checklistmall', 'intervall_timmar', 'REAL'],
+    ['checklistmall', 'fonster_dagar', 'INTEGER'],
+    // Nollpunkten för ett timschema. En kontroll som aldrig gjorts har
+    // ingen körning att räkna från, och maskinens timmar i dag duger
+    // inte – de rör sig, och då blir kontrollen aldrig förfallen.
+    // Står den tom är kontrollen helt enkelt inte igång ännu.
+    ['checklistmall', 'start_timmar', 'REAL'],
     // Vad tolkningen kom fram till om dokumentet. Sparas rått, så att det
     // går att se vad modellen sa även efter att någon rättat uppgifterna.
     ['dokument', 'tolkning', 'TEXT'],
