@@ -504,10 +504,16 @@ html.kontrollvy { color-scheme: light; }
   background: none; border: 0; padding: 0; min-height: 0; color: var(--kv-text);
 }
 .kv-kontrollkort .stjarna.pa svg { fill: currentColor; }
+/* min-width: 0 måste sägas: utan den vägrar namnkolumnen krympa under
+ * sitt längsta ord, och på en 360-pixels telefon trycks pilen utanför
+ * kortet. overflow-wrap tar hand om ord som ändå inte får plats. */
 .kv-kontrollkort .namn {
-  flex: 1; display: flex; align-items: center; padding: 14px 16px;
+  flex: 1; min-width: 0; overflow-wrap: anywhere;
+  display: flex; align-items: center; padding: 14px 14px;
   font-size: 1.18rem; font-weight: 600;
 }
+.kv-kontrollkort .markera { width: 62px; }
+.kv-kontrollkort .pil { width: 64px; }
 .kv-kontrollkort .pil {
   flex: none; width: 74px; background: none; border: 0; border-left: 1px solid var(--kv-ram);
   border-radius: 0; font-size: 1.6rem; color: var(--kv-text); min-height: 0;
