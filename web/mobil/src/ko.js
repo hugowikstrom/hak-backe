@@ -24,7 +24,7 @@ export const prenumerera = (fn) => {
   return () => lyssnare.delete(fn);
 };
 
-export function nyRond({ mall, utrustning, omrade, snoplats, avvikelser }) {
+export function nyRond({ mall, utrustning, omrade, snoplats, avvikelser, foregaende }) {
   const rond = {
     lokalId: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     mall_id: mall.id,
@@ -40,6 +40,9 @@ export function nyRond({ mall, utrustning, omrade, snoplats, avvikelser }) {
     punkter: mall.punkter.map((p) => ({
       id: p.id, text: p.text, hjalptext: p.hjalptext,
       svarstyp: p.svarstyp, enhet: p.enhet, obligatorisk: p.obligatorisk,
+      // Alternativen måste följa med ned: en vallista utan val går inte
+      // att svara på när telefonen saknar täckning.
+      alternativ: p.alternativ || null,
       // Säkerhetskritiska punkter måste följa med ned i telefonen, annars
       // kan appen inte hålla regeln offline.
       sakerhetskritisk: p.sakerhetskritisk ? 1 : 0,
@@ -49,6 +52,7 @@ export function nyRond({ mall, utrustning, omrade, snoplats, avvikelser }) {
     // i ronden och inte bakom ett anrop: siffran ska finnas kvar när
     // täckningen är borta, och den ändrar sig ändå inte under ronden.
     avvikelser: avvikelser || {},
+    foregaende: foregaende || {},
     startad: new Date().toISOString(),
     klar: false,
     serverId: null,

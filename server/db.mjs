@@ -200,6 +200,13 @@ function migrera(db) {
     // inte – de rör sig, och då blir kontrollen aldrig förfallen.
     // Står den tom är kontrollen helt enkelt inte igång ännu.
     ['checklistmall', 'start_timmar', 'REAL'],
+    // Punkter som inte är ja/nej. Klubbens dagliga uppstartskontroll
+    // börjar med "Väder" ur en lista och slutar med drifttimmar och
+    // signering – inget av det är en bock.
+    ['checklistpunkt', 'alternativ', 'TEXT'],
+    // Punktens värde är maskinens mätarställning. Då är det ronden som
+    // för drifttimmarna framåt, inte tankningen.
+    ['checklistpunkt', 'matarstallning', 'INTEGER NOT NULL DEFAULT 0'],
     // Vad tolkningen kom fram till om dokumentet. Sparas rått, så att det
     // går att se vad modellen sa även efter att någon rättat uppgifterna.
     ['dokument', 'tolkning', 'TEXT'],

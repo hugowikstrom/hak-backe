@@ -123,6 +123,7 @@ export function Rond({ vy, ronder }) {
                 klar={klar}
                 svar={sv}
                 tidigare={rond.avvikelser?.[p.id] || 0}
+                foregaende={rond.foregaende?.[p.id] || null}
                 oppna={() => sattIndex(i)}
                 svara={(data) => {
                   sattSvar(rond.lokalId, p.id, data);
@@ -144,8 +145,10 @@ export function Rond({ vy, ronder }) {
       )}
 
       <div className="knapprad">
-        <button className="fara" onClick={() => sattLamnar(true)}>Avbryt</button>
-        <button className="primar" onClick={() => sattAvsluta(true)}>Avsluta rond</button>
+        {/* Pausa och Slutför, som i förlagan. "Avbryt" sa fel sak: den
+            som blir avbruten mitt i vill inte slänga det som är gjort. */}
+        <button onClick={() => sattLamnar(true)}>Pausa</button>
+        <button className="primar" onClick={() => sattAvsluta(true)}>Slutför</button>
       </div>
 
       {avvikelse && (
@@ -217,7 +220,7 @@ export function Rond({ vy, ronder }) {
  * för godkänt. Formen är förlagans, och den är gjord för tumme och
  * vante – inte för att läsa noga.
  */
-function Punktrad({ punkt, oppen, klar, svar, tidigare, oppna, svara, avvik, ejTillamplig }) {
+function Punktrad({ punkt, oppen, klar, svar, tidigare, foregaende, oppna, svara, avvik, ejTillamplig }) {
   const [varde, sattVarde] = useState(svar?.varde ?? '');
   const [text, sattText] = useState(svar?.text ?? '');
   const [visaAvvikelser, sattVisaAvvikelser] = useState(false);
@@ -228,25 +231,39 @@ function Punktrad({ punkt, oppen, klar, svar, tidigare, oppna, svara, avvik, ejT
   if (!oppen)
     return (
       <button className={`punktkort stangd ${lage}`} onClick={oppna}>
-        <span className="fraga">{punkt.text}</span>
+        <span className="fraga">
+          {punkt.text}
+          {!!punkt.obligatorisk && <span className="kravs"> *</span>}
+        </span>
         {!!punkt.sakerhetskritisk && <span className="bricka fara liten">säkerhet</span>}
         {svar?.varde != null && <span className="liten svag">{svar.varde} {punkt.enhet || ''}</span>}
       </button>
     );
 
-  const kanSpara = punkt.svarstyp === 'varde' ? varde !== '' : punkt.svarstyp === 'text' ? !!text.trim() : true;
+  const kanSpara =
+    punkt.svarstyp === 'varde' ? varde !== ''
+      : punkt.svarstyp === 'text' || punkt.svarstyp === 'val' ? !!text.trim()
+        : true;
   const godkann = () =>
     svara(
       punkt.svarstyp === 'varde'
         ? { varde: Number(varde), bockad: true, avvikelse: false }
-        : punkt.svarstyp === 'text'
+        : punkt.svarstyp === 'text' || punkt.svarstyp === 'val'
           ? { text: text.trim(), bockad: true, avvikelse: false }
           : { bockad: true, avvikelse: false, kommentar: null }
     );
 
+  // En punkt som samlar in ett värde har inget att avvika mot: väder är
+  // varken godkänt eller underkänt. Förlagan visar bara den gröna
+  // knappen där, och det är rätt.
+  const baraGodkann = punkt.svarstyp === 'val' || punkt.svarstyp === 'varde' || punkt.svarstyp === 'text';
+
   return (
     <div className={`punktkort oppen ${lage}`}>
-      <div className="fraga">{punkt.text}</div>
+      <div className="fraga">
+        {punkt.text}
+        {!!punkt.obligatorisk && <span className="kravs" aria-label="obligatorisk"> *</span>}
+      </div>
       {punkt.hjalptext && <div className="underfraga">{punkt.hjalptext}</div>}
 
       {/* Vad punkten dragit på sig förut. Noll visas inte – en nolla är
@@ -268,6 +285,20 @@ function Punktrad({ punkt, oppen, klar, svar, tidigare, oppna, svara, avvik, ejT
         </>
       )}
 
+      {/* Vallistan: ett av några fasta alternativ. Väder i den dagliga
+          uppstartskontrollen är en sådan – den frågar inte om något är
+          i ordning utan under vilka förutsättningar ronden gjordes. */}
+      {punkt.svarstyp === 'val' && (
+        <label className="falt">
+          <span>Välj</span>
+          <select value={text} onChange={(e) => sattText(e.target.value)}>
+            <option value="">Välj</option>
+            {(punkt.alternativ || []).map((a) => (
+              <option key={a} value={a}>{a}</option>
+            ))}
+          </select>
+        </label>
+      )}
       {punkt.svarstyp === 'varde' && (
         <label className="falt">
           <span>Värde {punkt.enhet ? `(${punkt.enhet})` : ''}</span>
@@ -277,8 +308,13 @@ function Punktrad({ punkt, oppen, klar, svar, tidigare, oppna, svara, avvik, ejT
         </label>
       )}
       {punkt.svarstyp === 'text' && (
-        <Omrade etikett="Noteringar" varde={text} satt={sattText} placeholder="Skriv här" />
+        <Omrade etikett="Svar" varde={text} satt={sattText} placeholder="Skriv här" />
       )}
+
+      {/* Vad som svarades förra gången. Den som anger drifttimmar vill
+          veta vad som stod sist; den som skriver väder vill se att det
+          var mulet i går. */}
+      {foregaende && <div className="foregaende">Föregående kontroll: {foregaende}</div>}
 
       {svar?.bild && (
         <img className="bildruta" alt="Bild till avvikelsen"
@@ -287,10 +323,12 @@ function Punktrad({ punkt, oppen, klar, svar, tidigare, oppna, svara, avvik, ejT
       {svar?.kommentar && <div className="meddelande varning">{svar.kommentar}</div>}
       {svar?.motivering && <div className="meddelande">{svar.motivering}</div>}
 
-      <div className="svarsblock">
-        <button className="avvik" onClick={avvik} aria-label="Avvikelse">
-          <span className="tecken" aria-hidden="true">!</span>
-        </button>
+      <div className={`svarsblock${baraGodkann ? ' ensam' : ''}`}>
+        {!baraGodkann && (
+          <button className="avvik" onClick={avvik} aria-label="Avvikelse">
+            <span className="tecken" aria-hidden="true">!</span>
+          </button>
+        )}
         <button className="ok" onClick={godkann} disabled={!kanSpara} aria-label="Godkänd">
           <span className="tecken" aria-hidden="true">✓</span>
         </button>

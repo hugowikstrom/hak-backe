@@ -462,3 +462,10 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .segment.rondlage { border: 1px solid var(--ram); border-radius: 999px; overflow: hidden; }
 .segment.rondlage button { border-radius: 999px; min-height: 48px; font-size: 17px; }
 .segment.rondlage button[aria-pressed='true'] { background: #3f4448; color: #fff; }
+
+/* Obligatorisk punkt: röd asterisk, som i förlagan. */
+.punktkort .kravs { color: var(--fara); font-weight: 700; }
+/* Vad som svarades förra gången. */
+.punktkort .foregaende { margin-top: 10px; color: var(--text-svag); font-size: 15px; text-align: right; }
+/* En punkt som bara samlar in ett värde har ingen avvikelseknapp. */
+.svarsblock.ensam { grid-template-columns: 1fr; }

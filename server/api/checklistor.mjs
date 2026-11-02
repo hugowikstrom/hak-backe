@@ -13,6 +13,24 @@ import { aktivSasong, omradeslista, utrustningslista } from './register.mjs';
 import { idag } from '../tid.mjs';
 
 const INTERVALL = ['vid_start', 'per_pass', 'dagligen', 'veckovis', 'sasong'];
+
+/**
+ * Vad en punkt kan fråga efter.
+ *
+ *   bock      godkänd eller avvikelse – de allra flesta
+ *   val       ett av några fasta alternativ, t.ex. väder
+ *   varde     ett tal, t.ex. drifttimmar
+ *   text      fritext, t.ex. vem som signerar
+ */
+const SVARSTYPER = ['bock', 'val', 'varde', 'text'];
+
+/** Alternativen till en vallista, normaliserade och utan dubbletter. */
+const alternativ = (v) => {
+  const lista = (Array.isArray(v) ? v : String(v || '').split('\n'))
+    .map((x) => String(x).trim())
+    .filter(Boolean);
+  return lista.length ? JSON.stringify([...new Set(lista)]) : null;
+};
 const INTERVALLTYP = ['handelse', 'dagar', 'drifttimmar'];
 
 /**
@@ -40,16 +58,25 @@ const schema = (kropp) => {
 };
 const OMFATTNING = ['utrustningstyp', 'snoplats', 'omrade', 'allmant'];
 
+/**
+ * Alternativen lagras som JSON i en kolumn men lämnar servern som en
+ * lista. Klienten ska inte behöva veta hur de ligger.
+ */
+const punkter = (mall_id) =>
+  alla('SELECT * FROM checklistpunkt WHERE mall_id=? ORDER BY ordning, id', mall_id).map((p) => ({
+    ...p,
+    alternativ: p.alternativ ? JSON.parse(p.alternativ) : null,
+  }));
+
 export const mallMedPunkter = (id) => {
   const m = en('SELECT * FROM checklistmall WHERE id=?', id);
-  if (!m) return null;
-  return { ...m, punkter: alla('SELECT * FROM checklistpunkt WHERE mall_id=? ORDER BY ordning, id', id) };
+  return m ? { ...m, punkter: punkter(id) } : null;
 };
 
 export const mallar = () =>
   alla('SELECT * FROM checklistmall ORDER BY aktiv DESC, ordning, namn').map((m) => ({
     ...m,
-    punkter: alla('SELECT * FROM checklistpunkt WHERE mall_id=? ORDER BY ordning, id', m.id),
+    punkter: punkter(m.id),
   }));
 
 const KORNING_SQL = `
@@ -166,7 +193,7 @@ export const rutter = [
         ordning: heltal(p.ordning, i),
         text: kravTxt(p.text, 'Punkttext', 400),
         hjalptext: txt(p.hjalptext),
-        svarstyp: ettAv(p.svarstyp, ['bock', 'varde', 'text'], 'Svarstyp') || 'bock',
+        svarstyp: ettAv(p.svarstyp, SVARSTYPER, 'Svarstyp') || 'bock',
         enhet: txt(p.enhet, 16),
         obligatorisk: bool(p.obligatorisk) ?? 1,
         // Den viktigaste egenskapen en punkt har. Gick tidigare bara att
@@ -174,6 +201,8 @@ export const rutter = [
         // redigerade sina egna listor inte kunde märka något som
         // säkerhetskritiskt – och då finns spärren bara på pappret.
         sakerhetskritisk: bool(p.sakerhetskritisk) ?? 0,
+        alternativ: alternativ(p.alternativ),
+        matarstallning: bool(p.matarstallning) ?? 0,
       });
     }
     svar(res, 201, mallMedPunkter(id));
@@ -205,10 +234,12 @@ export const rutter = [
             ordning: i,
             text: kravTxt(p.text, 'Punkttext', 400),
             hjalptext: txt(p.hjalptext),
-            svarstyp: ettAv(p.svarstyp, ['bock', 'varde', 'text'], 'Svarstyp') || 'bock',
+            svarstyp: ettAv(p.svarstyp, SVARSTYPER, 'Svarstyp') || 'bock',
             enhet: txt(p.enhet, 16),
             obligatorisk: bool(p.obligatorisk) ?? 1,
             sakerhetskritisk: bool(p.sakerhetskritisk) ?? 0,
+            alternativ: alternativ(p.alternativ),
+            matarstallning: bool(p.matarstallning) ?? 0,
           };
           if (p.id) uppdatera('checklistpunkt', p.id, data);
           else spara('checklistpunkt', { mall_id: m.id, ...data });
@@ -239,8 +270,11 @@ export const rutter = [
           mall_id: ny, ordning: p.ordning, text: p.text, hjalptext: p.hjalptext,
           svarstyp: p.svarstyp, enhet: p.enhet, obligatorisk: p.obligatorisk,
           // En kopierad lista som tappar sina säkerhetspunkter är farligare
-          // än originalet: den ser likadan ut men spärrar ingenting.
+          // än originalet: den ser likadan ut men spärrar ingenting. Samma
+          // sak gäller alternativen: en vallista utan val går inte att svara på.
           sakerhetskritisk: p.sakerhetskritisk,
+          alternativ: p.alternativ,
+          matarstallning: p.matarstallning,
         });
       return ny;
     });
@@ -335,6 +369,18 @@ export const rutter = [
     const fanns = en('SELECT id FROM checklistsvar WHERE korning_id=? AND punkt_id=?', k.id, p.id);
     if (fanns) uppdatera('checklistsvar', fanns.id, data);
     else spara('checklistsvar', { korning_id: k.id, punkt_id: p.id, ...data });
+
+    // En punkt som frågar efter mätarställningen för maskinens timmar
+    // framåt. Det är så den dagliga uppstartskontrollen håller
+    // drifttimmarna aktuella – inte tankningen, som sker mer sällan.
+    if (p.matarstallning && data.varde != null && k.utrustning_id) {
+      const u = en('SELECT drifttimmar FROM utrustning WHERE id=?', k.utrustning_id);
+      if (u && (!u.drifttimmar || data.varde > u.drifttimmar))
+        uppdatera('utrustning', k.utrustning_id, {
+          drifttimmar: data.varde,
+          matarstallning_tid: new Date().toISOString().slice(0, 19).replace('T', ' '),
+        });
+    }
     svar(res, 200, korning(k.id));
   }),
 

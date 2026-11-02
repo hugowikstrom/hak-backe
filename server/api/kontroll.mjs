@@ -397,6 +397,24 @@ export const rutter = [
           GROUP BY a.punkt_id`,
         id, ...ARENDE_OPPNA
       ).reduce((o, r) => ({ ...o, [r.punkt_id]: r.antal }), {}),
+
+      // Vad som svarades förra gången, per punkt. Den som anger
+      // drifttimmar vill veta vad som stod sist, och den som skriver
+      // väder vill se att det var mulet i går. Följer med ned i ronden
+      // så att siffran finns kvar utan täckning.
+      foregaende: alla(
+        `SELECT s.punkt_id, s.varde, s.text, s.bockad
+           FROM checklistsvar s
+           JOIN checklistkorning k ON k.id=s.korning_id
+          WHERE k.${kol}=? AND k.avslutad IS NOT NULL
+            AND k.avslutad = (SELECT max(k2.avslutad) FROM checklistkorning k2
+                               WHERE k2.mall_id=k.mall_id AND k2.${kol}=k.${kol}
+                                 AND k2.avslutad IS NOT NULL)`,
+        id
+      ).reduce((o, r) => {
+        const v = r.varde != null ? String(r.varde) : r.text || null;
+        return v ? { ...o, [r.punkt_id]: v } : o;
+      }, {}),
       avvikelser,
       pafyllningar,
       vatskor,
