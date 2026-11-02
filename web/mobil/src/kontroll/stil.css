@@ -506,9 +506,14 @@ html.kontrollvy { color-scheme: light; }
 .kv-kontrollkort .stjarna.pa svg { fill: currentColor; }
 /* min-width: 0 måste sägas: utan den vägrar namnkolumnen krympa under
  * sitt längsta ord, och på en 360-pixels telefon trycks pilen utanför
- * kortet. overflow-wrap tar hand om ord som ändå inte får plats. */
+ * kortet.
+ *
+ * Brytningen är `break-word` och inte `anywhere`: `anywhere` låter
+ * flexboxen räkna minsta bredd som ett tecken, och då delades
+ * "Månadskontroll" mitt itu fast det fanns gott om plats. `break-word`
+ * bryter bara ett ord som faktiskt inte får plats på egen rad. */
 .kv-kontrollkort .namn {
-  flex: 1; min-width: 0; overflow-wrap: anywhere;
+  flex: 1; min-width: 0; overflow-wrap: break-word;
   display: flex; align-items: center; padding: 14px 14px;
   font-size: 1.18rem; font-weight: 600;
 }
