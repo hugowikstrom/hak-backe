@@ -386,6 +386,17 @@ export const rutter = [
       objekt,
       arbetsstalle: arbetsstalle || null,
       kontroller: kontrolltyper({ slag, id }),
+      // Öppna avvikelser per checklistpunkt. Ronden visar dem bredvid
+      // frågan – den som ska kontrollera nödstoppet bör veta att det
+      // anmälts två gånger förut. Skickas med när ronden startas så att
+      // siffran finns kvar när täckningen är borta.
+      avvikelser_per_punkt: alla(
+        `SELECT a.punkt_id, count(*) AS antal FROM arende a
+          WHERE a.punkt_id IS NOT NULL AND a.${kol}=?
+            AND a.status IN (${ARENDE_OPPNA.map(() => '?').join(',')})
+          GROUP BY a.punkt_id`,
+        id, ...ARENDE_OPPNA
+      ).reduce((o, r) => ({ ...o, [r.punkt_id]: r.antal }), {}),
       avvikelser,
       pafyllningar,
       vatskor,

@@ -20,6 +20,11 @@
  * förlagan har en ljus list där. */
 html.kontrollvy, html.kontrollvy body { background: #eceef1; }
 
+/* Själva temat sätts med data-tema='ljust' i app.jsx – det är appens
+ * eget växelspak, och den vinner utan att tävla om specificitet. Här
+ * står bara det som hör till kontrollvyns egen botten. */
+html.kontrollvy { color-scheme: light; }
+
 .kv,
 .kv-ark-bak,
 .inlogg.kv-inlogg {

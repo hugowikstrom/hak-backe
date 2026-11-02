@@ -388,3 +388,77 @@ input[type='checkbox'] { width: 24px; height: 24px; min-height: 0; accent-color:
 .sakerhetsval span { display: flex; flex-direction: column; gap: 2px; }
 .sakerhetsval strong { color: var(--fara); }
 .sakerhetsval small { font-size: 0.76rem; color: var(--text-svag); line-height: 1.35; }
+
+/* ---------- Ronden i standardläge ---------- */
+/* Alla punkter under varandra, en utfälld. Formen är hämtad ur det
+ * kontrollsystem klubben kommer ifrån: gult block med utropstecken för
+ * avvikelse, grönt med bock för godkänt. Två stora ytor, inga ord att
+ * läsa — det är det som gör den möjlig med vante i mörker. */
+.punktlista { display: flex; flex-direction: column; gap: 12px; }
+
+.punktkort.stangd {
+  /* justify-content måste sägas: appens button-regel centrerar allt,
+     och en kryssad punktlista ska läsas från vänsterkanten. */
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 10px; width: 100%; text-align: left;
+  background: var(--yta); border: 1px solid var(--ram); border-radius: var(--radie);
+  padding: 18px 16px; min-height: 0; font-weight: 400;
+}
+.punktkort.stangd .fraga { flex: 1; font-size: 17px; font-weight: 700; line-height: 1.3; }
+.punktkort.stangd .bricka { flex: none; }
+.punktkort.stangd.klar { border-color: var(--klubb-ram); }
+.punktkort.stangd.avvikande { border-color: var(--varning); background: var(--varning-mjuk); }
+.punktkort.stangd.ejtillamplig { opacity: .7; }
+
+.punktkort.oppen {
+  position: relative; background: var(--yta); border: 1px solid var(--ram);
+  border-radius: var(--radie); padding: 18px 16px;
+}
+.punktkort.oppen .fraga { font-size: 19px; font-weight: 700; line-height: 1.3; }
+.punktkort.oppen .underfraga { margin-top: 10px; color: var(--text-svag); font-size: 16px; }
+
+/* Räknaren för vad punkten dragit på sig förut. */
+.avvikelseraknare {
+  display: flex; align-items: center; gap: 12px; width: 100%; margin-top: 14px;
+  background: none; border: 0; border-top: 1px solid var(--ram); border-radius: 0;
+  padding: 14px 0 12px; min-height: 0; font-weight: 400; color: var(--text);
+}
+.avvikelseraknare .ring {
+  flex: none; width: 30px; height: 30px; border-radius: 50%;
+  border: 2px solid var(--info); color: var(--info);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.avvikelseraknare .txt { flex: 1; text-align: left; font-size: 17px; }
+.avvikelseraknare .pil { font-size: 20px; color: var(--text-svag); }
+
+/* De två svarsblocken. */
+.svarsblock { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 16px; }
+.svarsblock button {
+  min-height: 74px; border: 0; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+}
+.svarsblock .tecken {
+  width: 42px; height: 42px; border-radius: 50%; border: 2.5px solid currentColor;
+  display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: 700;
+}
+.svarsblock .avvik { background: #f5c518; color: #2b2410; }
+.svarsblock .ok { background: #2e9e4f; color: #fff; }
+.svarsblock .ok .tecken { border-color: #fff; }
+.svarsblock button:disabled { opacity: .45; }
+
+/* Infofliken i kanten: hjälptexten utan att ta plats förrän den frågas efter. */
+.punktkort.oppen .infoflik {
+  position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
+  width: 46px; height: 46px; border-radius: 50%; border: 0;
+  background: var(--bak-2); color: var(--text-svag);
+  font-size: 19px; font-style: italic; min-height: 0; padding: 0;
+}
+
+/* Lägesväljaren i ronden: full bredd, egen rad. */
+.segment.rondlage { width: 100%; margin: 12px 0 4px; }
+
+/* Lägesväljaren: mörk halva för det valda, som i kontrollsystemet
+ * klubben kommer ifrån. */
+.segment.rondlage { border: 1px solid var(--ram); border-radius: 999px; overflow: hidden; }
+.segment.rondlage button { border-radius: 999px; min-height: 48px; font-size: 17px; }
+.segment.rondlage button[aria-pressed='true'] { background: #3f4448; color: #fff; }

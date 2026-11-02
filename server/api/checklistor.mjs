@@ -433,6 +433,9 @@ export const rutter = [
               utrustning_id: k.snoplats_id ? null : k.utrustning_id,
               omrade_id: k.omrade_id,
               korning_id: k.id,
+              // Punkten, inte bara körningen: ronden räknar hur många
+              // avvikelser just den här kontrollpunkten dragit på sig.
+              punkt_id: p.id,
             },
             medlem
           )

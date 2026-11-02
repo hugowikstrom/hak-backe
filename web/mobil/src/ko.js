@@ -24,7 +24,7 @@ export const prenumerera = (fn) => {
   return () => lyssnare.delete(fn);
 };
 
-export function nyRond({ mall, utrustning, omrade, snoplats }) {
+export function nyRond({ mall, utrustning, omrade, snoplats, avvikelser }) {
   const rond = {
     lokalId: `r${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`,
     mall_id: mall.id,
@@ -45,6 +45,10 @@ export function nyRond({ mall, utrustning, omrade, snoplats }) {
       sakerhetskritisk: p.sakerhetskritisk ? 1 : 0,
     })),
     svar: {},
+    // Öppna avvikelser per punkt, hämtade när ronden startades. Ligger
+    // i ronden och inte bakom ett anrop: siffran ska finnas kvar när
+    // täckningen är borta, och den ändrar sig ändå inte under ronden.
+    avvikelser: avvikelser || {},
     startad: new Date().toISOString(),
     klar: false,
     serverId: null,

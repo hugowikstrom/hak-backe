@@ -403,15 +403,19 @@ någonting.
 
 ### Där kopian och förlagan skiljer sig
 
-Två ställen är medvetna avvikelser, och båda syns:
+Ronden har samma form som förlagan sedan klubben bad om det: alla
+punkter i en rullande lista, en utfälld, och två färgblock som svar –
+gult med utropstecken för avvikelse, grönt med bock för godkänt. Lägena
+heter *Standard* och *Fullskärmsläge*, och standard är listan. Bytet
+gäller **båda** klienterna: ronden är en och samma, och två former hade
+betytt två rondkoder att hålla i takt.
 
-**Ronden.** Förlagan kör alla punkter i en rullande lista där man fäller
-ut en punkt i taget och svarar med två färgblock – gul med utropstecken,
-grön med bock – och har lägena *Standard* och *Fullskärmsläge*. Backis
-rond är en punkt i taget med *OK*, *Avvikelse* och *Går inte att utföra*,
-och lägena heter *Steg* och *Lista*. Begreppen är desamma, formen är
-inte. Ronden delas med Backis Rond, så ett byte här byter för alla –
-därför står den kvar tills klubben sagt att den ska bytas.
+Det Backis har och förlagan inte har står kvar, för det bär regler som
+klubben redan beslutat: säkerhetskritiska punkter går inte att hoppa
+över, obesvarade obligatoriska kräver en motivering, och framstegsraden
+säger hur många punkter som är besvarade.
+
+Ett ställe är en medveten avvikelse:
 
 **Aldrig utförd.** En daglig kontroll som aldrig gjorts hamnar under
 *Försenade* i Backis och under *Kommande* i förlagan. Skillnaden är inte

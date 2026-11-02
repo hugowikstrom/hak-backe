@@ -13,7 +13,10 @@ export function Rond({ vy, ronder }) {
   const notis = useNotis();
   const online = useNat();
   const rond = ronder.find((r) => r.lokalId === vy.lokalId) || hamtaRond(vy.lokalId);
-  const [lage, sattLage] = useState('steg');
+  // Standard är listan, som i förlagan: alla punkter synliga, en
+  // utfälld. Fullskärmsläget är en punkt i taget och är kvar för den
+  // som vill ha det – men det är inte längre det man möts av.
+  const [lage, sattLage] = useState('standard');
   const [index, sattIndex] = useState(() => {
     const r = hamtaRond(vy.lokalId);
     if (!r) return 0;
@@ -22,6 +25,7 @@ export function Rond({ vy, ronder }) {
   });
   const [avvikelse, sattAvvikelse] = useState(null);
   const [avsluta, sattAvsluta] = useState(false);
+  const [lamnar, sattLamnar] = useState(false);
 
   const punkt = rond?.punkter[index];
   const klara = rond ? antalBesvarade(rond) : 0;
@@ -66,7 +70,7 @@ export function Rond({ vy, ronder }) {
       <div className="rondtopp">
         <div className="rad-mellan">
           <div className="vaxa">
-            <h1 style={{ fontSize: 19 }}>{rond.mallnamn}</h1>
+            {/* Namnet står i sidhuvudet. Här räcker objektet. */}
             {rond.objektnamn && (
               <div className="liten svag">
                 {rond.objektnamn}
@@ -76,10 +80,12 @@ export function Rond({ vy, ronder }) {
               </div>
             )}
           </div>
-          <div className="segment" style={{ flex: '0 0 auto' }}>
-            <button aria-pressed={lage === 'steg'} onClick={() => sattLage('steg')}>Steg</button>
-            <button aria-pressed={lage === 'lista'} onClick={() => sattLage('lista')}>Lista</button>
-          </div>
+        </div>
+        {/* Lägesväljaren står på egen rad i full bredd, som i förlagan –
+            den är ett val om hela ronden, inte en detalj i rubriken. */}
+        <div className="segment rondlage">
+          <button aria-pressed={lage === 'standard'} onClick={() => sattLage('standard')}>Standard</button>
+          <button aria-pressed={lage === 'helskarm'} onClick={() => sattLage('helskarm')}>Fullskärmsläge</button>
         </div>
         <Framsteg andel={(klara / rond.punkter.length) * 100} />
         <div className="rad-mellan liten svag">
@@ -88,7 +94,7 @@ export function Rond({ vy, ronder }) {
         </div>
       </div>
 
-      {lage === 'steg' ? (
+      {lage === 'helskarm' ? (
         <Punktkort
           punkt={punkt}
           index={index}
@@ -104,45 +110,41 @@ export function Rond({ vy, ronder }) {
           fram={nasta}
         />
       ) : (
-        <div className="kort lista">
+        <div className="punktlista">
           {rond.punkter.map((p, i) => {
-            const s = rond.svar[p.id];
-            const klar = s && (s.bockad || s.varde != null || s.text || s.avvikelse || s.ej_tillampligt);
+            const sv = rond.svar[p.id];
+            const klar = sv && (sv.bockad || sv.varde != null || sv.text || sv.avvikelse || sv.ej_tillampligt);
+            const oppen = i === index;
             return (
-              <button
+              <Punktrad
                 key={p.id}
-                className={`punktrad${s?.avvikelse ? ' avvikande' : klar ? ' klar' : ''}`}
-                onClick={() => {
-                  sattIndex(i);
-                  sattLage('steg');
+                punkt={p}
+                oppen={oppen}
+                klar={klar}
+                svar={sv}
+                tidigare={rond.avvikelser?.[p.id] || 0}
+                oppna={() => sattIndex(i)}
+                svara={(data) => {
+                  sattSvar(rond.lokalId, p.id, data);
+                  synka().catch(() => {});
+                  const r = hamtaRond(rond.lokalId);
+                  const kvar = r.punkter.findIndex((x, j) => j > i && !r.svar[x.id]);
+                  if (kvar >= 0) sattIndex(kvar);
                 }}
-              >
-                <span className="markor">{s?.avvikelse ? '!' : klar ? '✓' : i + 1}</span>
-                <span>
-                  {p.text}
-                  {!!p.sakerhetskritisk && <span className="bricka rod liten"> säkerhet</span>}
-                  {s?.varde != null && <span className="liten svag"> — {s.varde} {p.enhet || ''}</span>}
-                  {s?.kommentar && <span className="liten svag" style={{ display: 'block' }}>{s.kommentar}</span>}
-                </span>
-                {s?.bild && <img className="miniatyr" src={s.bild.startsWith('data:') ? s.bild : `/api/bilder/${s.bild}`} alt="" />}
-              </button>
+                avvik={() => sattAvvikelse(p)}
+                ejTillamplig={() => {
+                  const skal = prompt('Varför går kontrollen inte att utföra?');
+                  if (skal?.trim())
+                    svara({ ej_tillampligt: true, motivering: skal.trim(), bockad: false }, false);
+                }}
+              />
             );
           })}
         </div>
       )}
 
       <div className="knapprad">
-        <button
-          className="fara"
-          onClick={() => {
-            if (confirm('Avbryt ronden? Det som fyllts i försvinner.')) {
-              taBortRond(rond.lokalId);
-              ga('hem');
-            }
-          }}
-        >
-          Avbryt
-        </button>
+        <button className="fara" onClick={() => sattLamnar(true)}>Avbryt</button>
         <button className="primar" onClick={() => sattAvsluta(true)}>Avsluta rond</button>
       </div>
 
@@ -161,6 +163,27 @@ export function Rond({ vy, ronder }) {
         />
       )}
 
+      {/* Att lämna en halvgjord rond är två olika saker, och appen ska
+          inte gissa vilket: den som blev avbruten vill ha kvar den, den
+          som startade fel vill bli av med den. */}
+      {lamnar && (
+        <Ark titel="Du lämnar nu kontrollen" stang={() => sattLamnar(false)}>
+          <p style={{ margin: '0 0 18px' }}>Vill du lämna den som pågående?</p>
+          <div className="knapprad">
+            <button
+              className="fara"
+              onClick={() => {
+                taBortRond(rond.lokalId);
+                ga('hem');
+              }}
+            >
+              Ta bort
+            </button>
+            <button className="primar" onClick={() => ga('hem')}>Ja, lämna som pågående</button>
+          </div>
+        </Ark>
+      )}
+
       {avsluta && (
         <AvslutaArk
           saknadSakerhet={saknadSakerhet}
@@ -176,12 +199,118 @@ export function Rond({ vy, ronder }) {
           }}
           tillPunkt={(p) => {
             sattIndex(rond.punkter.findIndex((x) => x.id === p.id));
-            sattLage('steg');
+            sattLage('standard');
             sattAvsluta(false);
           }}
         />
       )}
     </>
+  );
+}
+
+/**
+ * En punkt i standardläget.
+ *
+ * Stängd är den ett vitt kort med bara frågan. Utfälld visar den
+ * hjälptexten, hur många avvikelser punkten dragit på sig förut, och de
+ * två svarsblocken: gult med utropstecken för avvikelse, grönt med bock
+ * för godkänt. Formen är förlagans, och den är gjord för tumme och
+ * vante – inte för att läsa noga.
+ */
+function Punktrad({ punkt, oppen, klar, svar, tidigare, oppna, svara, avvik, ejTillamplig }) {
+  const [varde, sattVarde] = useState(svar?.varde ?? '');
+  const [text, sattText] = useState(svar?.text ?? '');
+  const [visaAvvikelser, sattVisaAvvikelser] = useState(false);
+  const [visaHjalp, sattVisaHjalp] = useState(false);
+
+  const lage = svar?.avvikelse ? 'avvikande' : svar?.ej_tillampligt ? 'ejtillamplig' : klar ? 'klar' : '';
+
+  if (!oppen)
+    return (
+      <button className={`punktkort stangd ${lage}`} onClick={oppna}>
+        <span className="fraga">{punkt.text}</span>
+        {!!punkt.sakerhetskritisk && <span className="bricka fara liten">säkerhet</span>}
+        {svar?.varde != null && <span className="liten svag">{svar.varde} {punkt.enhet || ''}</span>}
+      </button>
+    );
+
+  const kanSpara = punkt.svarstyp === 'varde' ? varde !== '' : punkt.svarstyp === 'text' ? !!text.trim() : true;
+  const godkann = () =>
+    svara(
+      punkt.svarstyp === 'varde'
+        ? { varde: Number(varde), bockad: true, avvikelse: false }
+        : punkt.svarstyp === 'text'
+          ? { text: text.trim(), bockad: true, avvikelse: false }
+          : { bockad: true, avvikelse: false, kommentar: null }
+    );
+
+  return (
+    <div className={`punktkort oppen ${lage}`}>
+      <div className="fraga">{punkt.text}</div>
+      {punkt.hjalptext && <div className="underfraga">{punkt.hjalptext}</div>}
+
+      {/* Vad punkten dragit på sig förut. Noll visas inte – en nolla är
+          inte en upplysning, den är brus. */}
+      {tidigare > 0 && (
+        <>
+          <button className="avvikelseraknare" aria-expanded={visaAvvikelser}
+            onClick={() => sattVisaAvvikelser((v) => !v)}>
+            <span className="ring">{tidigare}</span>
+            <span className="txt">Avvikelser</span>
+            <span className={`pil${visaAvvikelser ? ' upp' : ''}`}>⌄</span>
+          </button>
+          {visaAvvikelser && (
+            <p className="liten svag" style={{ margin: '0 0 10px' }}>
+              {tidigare} öppen{tidigare === 1 ? '' : 'na'} avvikelse{tidigare === 1 ? '' : 'r'} på den
+              här punkten sedan tidigare. De ligger kvar tills någon åtgärdat dem.
+            </p>
+          )}
+        </>
+      )}
+
+      {punkt.svarstyp === 'varde' && (
+        <label className="falt">
+          <span>Värde {punkt.enhet ? `(${punkt.enhet})` : ''}</span>
+          <input type="number" inputMode="decimal" step="0.1" value={varde}
+            onChange={(e) => sattVarde(e.target.value)}
+            style={{ fontSize: 26, minHeight: 60, fontWeight: 700 }} />
+        </label>
+      )}
+      {punkt.svarstyp === 'text' && (
+        <Omrade etikett="Noteringar" varde={text} satt={sattText} placeholder="Skriv här" />
+      )}
+
+      {svar?.bild && (
+        <img className="bildruta" alt="Bild till avvikelsen"
+          src={svar.bild.startsWith('data:') ? svar.bild : `/api/bilder/${svar.bild}`} />
+      )}
+      {svar?.kommentar && <div className="meddelande varning">{svar.kommentar}</div>}
+      {svar?.motivering && <div className="meddelande">{svar.motivering}</div>}
+
+      <div className="svarsblock">
+        <button className="avvik" onClick={avvik} aria-label="Avvikelse">
+          <span className="tecken" aria-hidden="true">!</span>
+        </button>
+        <button className="ok" onClick={godkann} disabled={!kanSpara} aria-label="Godkänd">
+          <span className="tecken" aria-hidden="true">✓</span>
+        </button>
+      </div>
+
+      {/* En säkerhetskontroll går inte att skriva bort. Den utförs eller
+          lämnas obesvarad, och då syns den som saknad hela vägen. */}
+      {!punkt.sakerhetskritisk && (
+        <button className="tom ejtillamplig" onClick={ejTillamplig}>
+          Går inte att utföra just nu
+        </button>
+      )}
+
+      {punkt.hjalptext && (
+        <button className="infoflik" onClick={() => sattVisaHjalp((v) => !v)} aria-label="Mer om punkten">
+          i
+        </button>
+      )}
+      {visaHjalp && <div className="meddelande info">{punkt.hjalptext}</div>}
+    </div>
   );
 }
 

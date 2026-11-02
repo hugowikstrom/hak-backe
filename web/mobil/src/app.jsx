@@ -42,8 +42,16 @@ export function App() {
   });
   // Märker dokumentet, så att stilmallen kan måla hela sidan – inklusive
   // det som syns bakom telefonens navigeringsfält i appläge.
+  //
+  // `data-tema` sätts också: kontrollvyn är ljus med flit, och ronden
+  // ritas av appens egen stilmall. Utan det blir ronden mörk på en
+  // telefon i mörkt läge medan allt runt den är ljust. Attributet är
+  // appens eget temaval – att använda det är bättre än att skriva över
+  // variablerna utifrån och tävla om specificiteten.
   useEffect(() => {
     document.documentElement.classList.toggle('kontrollvy', kontrollvy);
+    if (kontrollvy) document.documentElement.dataset.tema = 'ljust';
+    else delete document.documentElement.dataset.tema;
   }, [kontrollvy]);
 
   const [vy, sattVy] = useState({ namn: 'mitt' });
@@ -98,9 +106,17 @@ export function App() {
               <div className="skal kontrollskal">
                 <header className="topp">
                   <button className="tillbaka" onClick={tillbaka} aria-label="Tillbaka">‹</button>
+                  {/* Rubriken är checklistans namn när en rond körs –
+                      det är den man är inne i, inte föreningen. */}
                   <div className="marke">
-                    <Marke storlek={30} />
-                    <span>{forening?.namn || 'Backis'}</span>
+                    {vy.namn === 'rond' ? (
+                      <span>{ronder.find((r) => r.lokalId === vy.lokalId)?.mallnamn || 'Kontroll'}</span>
+                    ) : (
+                      <>
+                        <Marke storlek={30} />
+                        <span>{forening?.namn || 'Backis'}</span>
+                      </>
+                    )}
                   </div>
                   <div className="slut" />
                 </header>
@@ -157,12 +173,20 @@ export function App() {
               {['rond', 'mall', 'handelse', 'utlagg'].includes(vy.namn) ? (
                 <button className="tillbaka" onClick={tillbaka} aria-label="Tillbaka">‹</button>
               ) : null}
+              {/* Under en rond är det checklistan man är inne i, inte
+                  produkten. Rubriken säger var man är. */}
               <div className="marke">
-                <Marke storlek={34} />
-                <span>
-                  Backis Rond
-                  <small>Härnösands Alpina</small>
-                </span>
+                {vy.namn === 'rond' ? (
+                  <span>{ronder.find((r) => r.lokalId === vy.lokalId)?.mallnamn || 'Kontroll'}</span>
+                ) : (
+                  <>
+                    <Marke storlek={34} />
+                    <span>
+                      Backis Rond
+                      <small>Härnösands Alpina</small>
+                    </span>
+                  </>
+                )}
               </div>
               <div className="slut">
                 {osynkade > 0 && <span className="bricka varning">{osynkade} att skicka</span>}

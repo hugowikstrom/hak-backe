@@ -26,12 +26,13 @@ import { useFavoriter } from './favoriter.js';
 
 const data = (d) => d.data?.data || d.data || {};
 
-const startaRond = (mall, objekt, slag) =>
+const startaRond = (mall, objekt, slag, avvikelser) =>
   nyRond({
     mall,
     utrustning: slag === 'utrustning' ? objekt : null,
     omrade: slag === 'omrade' ? objekt : null,
     snoplats: slag === 'snoplats' ? objekt : null,
+    avvikelser,
   });
 
 const datum = (d) =>
@@ -81,7 +82,7 @@ export function Kontrollval({ vy, ga }) {
     for (const rad of rader) {
       const mall = mallar.find((x) => x.id === rad.mall_id);
       if (!mall) continue;
-      const rond = startaRond(mall, vy.objekt, slag);
+      const rond = startaRond(mall, vy.objekt, slag, i.avvikelser_per_punkt);
       if (!forsta) forsta = rond;
     }
     synka().catch(() => {});
@@ -232,7 +233,7 @@ export function Kontrollstart({ vy, ga }) {
   const starta = () => {
     const mall = mallar.find((x) => x.id === vy.rad.mall_id);
     if (!mall) return notis('Checklistan gick inte att hämta – prova igen när telefonen har täckning.', 'fel');
-    const rond = startaRond(mall, vy.objekt, slag);
+    const rond = startaRond(mall, vy.objekt, slag, i.avvikelser_per_punkt);
     synka().catch(() => {});
     gaApp('rond', { lokalId: rond.lokalId });
   };

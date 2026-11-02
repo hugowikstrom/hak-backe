@@ -168,6 +168,11 @@ function migrera(db) {
     ['arende', 'snoplats_id', 'INTEGER'],
     // Avvikelser bär ofta ett foto. Filnamnet, aldrig bilden – den ligger under data/bilder.
     ['arende', 'bild', 'TEXT'],
+    // Vilken checklistpunkt avvikelsen kom ur. Körningen räckte förr,
+    // men ronden visar nu hur många avvikelser just den här punkten
+    // dragit på sig genom åren – och det går inte att svara på med
+    // bara körningen.
+    ['arende', 'punkt_id', 'INTEGER'],
     ['matning', 'snoplats_id', 'INTEGER'],
     ['checklistkorning', 'snoplats_id', 'INTEGER'],
     // Mätarställningen när kontrollen gjordes. En kontroll som ska göras
