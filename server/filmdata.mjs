@@ -42,6 +42,17 @@ export const FILMER = [
     ordning: 0.5,
   },
   {
+    // Beviset. Den som undrar om kopian verkligen är en kopia ska slippa
+    // ta det på någons ord.
+    nyckel: 'sidavsida',
+    titel: 'Kopian bredvid originalet',
+    beskrivning:
+      'Samma telefon, samma steg, fotade direkt efter varandra: startskärm, plus Ny, arbetsställe och enhet, enhetsvyn, välj typ av kontroll, och ronden med sina två svarsknappar.',
+    for: 'Styrelsen',
+    modul: 'checklistor',
+    ordning: 0.7,
+  },
+  {
     nyckel: 'medlem',
     titel: 'För dig som är medlem',
     beskrivning:
