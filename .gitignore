@@ -3,4 +3,10 @@ data/
 web/dist/
 *.log
 .env
-drift/hak.env
+# Hemligheter: ta hela familjen, inte bara det exakta namnet. En
+# redigerares säkerhetskopia heter hak.env.bak-20261025-1424 och slank
+# förbi en regel som bara matchade hak.env.
+drift/*.env
+drift/*.env.*
+*.bak
+*.bak-*
