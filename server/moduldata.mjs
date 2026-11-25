@@ -89,6 +89,14 @@ export const MODULDATA = [
     sidor: [{ nyckel: 'snolaggning', grupp: 'backen', text: 'Snöläggning', stig: '/snolaggning' }],
   },
   {
+    // Externa IoT-enheter (väderstation och givare) via Feeder-serverns API:
+    // batteri, temperatur, position, el- eller batteridrift och datamängd.
+    nyckel: 'enheter',
+    namn: 'Enheter',
+    beskrivning: 'Status för väderstation och givare: batteri, temperatur, position och datamängd',
+    sidor: [{ nyckel: 'enheter', grupp: 'backen', text: 'Enheter', stig: '/enheter' }],
+  },
+  {
     // Medlemmens egen vy: en sak i taget. Hör till bemanningen, för det är
     // pass och ronder den handlar om.
     nyckel: 'mitt',

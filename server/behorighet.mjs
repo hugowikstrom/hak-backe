@@ -227,14 +227,14 @@ export const ARBETSYTOR = {
   anlaggning: {
     namn: 'Anläggningen',
     beskrivning: 'Snöläggning, utrustning och backens skick',
-    sidor: ['snolaggning', 'snoplan', 'checklistor', 'journal', 'underhall', 'arenden', 'incidenter',
+    sidor: ['snolaggning', 'enheter', 'snoplan', 'checklistor', 'journal', 'underhall', 'arenden', 'incidenter',
       'bemanning', 'rapporter', 'register', 'utlagg', 'ideer', 'mina'],
   },
   back: {
     namn: 'Backen',
     beskrivning: 'Dagens drift: bemanning, ronder och ärenden',
     sidor: ['bemanning', 'snoplan', 'checklistor', 'journal', 'arenden', 'incidenter', 'snolaggning',
-      'underhall', 'utlagg', 'ideer', 'mina'],
+      'enheter', 'underhall', 'utlagg', 'ideer', 'mina'],
   },
   kiosk: {
     namn: 'Kiosken',
@@ -280,7 +280,7 @@ export const ARBETSYTOR = {
   medlem: {
     namn: 'Medlem',
     beskrivning: 'Dina pass, dina ronder och läget i backen',
-    sidor: ['bemanning', 'checklistor', 'journal', 'arenden', 'snolaggning', 'evenemang',
+    sidor: ['bemanning', 'checklistor', 'journal', 'arenden', 'snolaggning', 'enheter', 'evenemang',
       'samakning', 'planbok', 'utlagg', 'ideer', 'mina'],
   },
 };

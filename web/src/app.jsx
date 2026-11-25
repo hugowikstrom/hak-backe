@@ -10,6 +10,7 @@ import { Inlogg } from './sidor/inlogg.jsx';
 import { Start } from './sidor/start.jsx';
 import { Oversikt } from './sidor/oversikt.jsx';
 import { Snolaggning } from './sidor/snolaggning.jsx';
+import { Enheter } from './sidor/enheter.jsx';
 import { Checklistor } from './sidor/checklistor.jsx';
 import { Arenden } from './sidor/arenden.jsx';
 import { Bemanning } from './sidor/bemanning.jsx';
@@ -40,6 +41,7 @@ const SIDOR = [
   { stig: '/', text: 'Start', komp: Start, nyckel: 'start' },
   { stig: '/oversikt', text: 'Hela läget', komp: Oversikt, nyckel: 'oversikt' },
   { nyckel: 'snolaggning', stig: '/snolaggning', text: 'Snöläggning', komp: Snolaggning },
+  { nyckel: 'enheter', stig: '/enheter', text: 'Enheter', komp: Enheter },
   { nyckel: 'checklistor', stig: '/checklistor', text: 'Checklistor', komp: Checklistor },
   { nyckel: 'arenden', stig: '/arenden', text: 'Ärenden', komp: Arenden },
   { nyckel: 'journal', stig: '/journal', text: 'Driftjournal', komp: Journal },

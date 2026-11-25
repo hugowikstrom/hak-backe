@@ -39,6 +39,7 @@ import { rutter as samakning } from './api/samakning.mjs';
 import { rutter as projekt } from './api/projekt.mjs';
 import { rutter as arbetsstalle } from './api/arbetsstalle.mjs';
 import { rutter as kontroll } from './api/kontroll.mjs';
+import { rutter as enheter } from './api/enheter.mjs';
 
 // Rutterna kopplas på metadatan i moduldata.mjs. Lägg till modulen där,
 // och dess rutter här.
@@ -54,6 +55,7 @@ const RUTTER = {
   incidenter: incident,
   checklistor: [...checklistor, ...kontroll],
   snolaggning: [...sno, ...vader, ...platser],
+  enheter: enheter,
   mitt: mitt,
   bemanning: bemanning,
   snoplan: snoplan,
